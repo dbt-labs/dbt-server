@@ -2,7 +2,7 @@
 
 **Configure your machine**
 
-1. Make sure you have a `~/.profiles.yml` file with a profile called "debug"
+1. Make sure you have a `~/.dbt/profiles.yml` file with a profile called "debug"
 2. Create a virtualenv
 3. Install dependencies in the virtualenv
 
