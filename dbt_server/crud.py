@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from dbt_rpc.database import SessionLocal
+from dbt_server.database import SessionLocal
 
 from . import models, schemas
 

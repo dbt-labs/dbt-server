@@ -1,0 +1,7 @@
+dbt-postgres == 0.20.0
+fastapi ==0.68.1
+uvicorn == 0.15.0
+ipdb == 0.13.9
+websockets== 9.1
+SQLAlchemy==1.4.23
+diff-match-patch==20200713

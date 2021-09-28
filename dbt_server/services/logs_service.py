@@ -1,5 +1,5 @@
 
-from dbt_rpc.logging import GLOBAL_LOGGER as logger, CapturingLogManager
+from dbt_server.logging import GLOBAL_LOGGER as logger, CapturingLogManager
 from contextlib import contextmanager, ContextDecorator
 
 

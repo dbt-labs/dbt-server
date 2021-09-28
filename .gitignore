@@ -11,3 +11,4 @@ __pycache__/
 working-dir/
 target/
 sql_app.db
+/env

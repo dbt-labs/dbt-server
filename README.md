@@ -18,7 +18,7 @@ From the root of the repo:
 ```
 # Source the poetry env before kicking off the server
 poetry shell
-uvicorn dbt_rpc.server:app --reload --host=127.0.0.1 --port 8580
+uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
 ```
 
 ### Testing

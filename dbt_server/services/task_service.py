@@ -1,8 +1,8 @@
 
 import uuid
-from dbt_rpc import crud, schemas
-from dbt_rpc.services import dbt_service, filesystem_service
-from dbt_rpc.logging import GLOBAL_LOGGER as logger, LogManager
+from dbt_server import crud, schemas
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
