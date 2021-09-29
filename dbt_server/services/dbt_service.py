@@ -1,6 +1,7 @@
 
 import os
 from . import filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger
 
 import dbt
 import dbt.tracking
@@ -24,9 +25,16 @@ class dbtConfig(BaseModel):
     @classmethod
     def new(cls, project_dir):
         # TODO: How do we handle creds more.... dynamically?
+        if os.getenv('DBT_PROFILES_DIR'):
+            profiles_dir = os.getenv('DBT_PROFILES_DIR')
+        else:
+            profiles_dir = os.path.expanduser("~/.dbt")
+
+        logger.info(f"Using profile path @ {profiles_dir}")
+
         return cls(
             project_dir=project_dir,
-            profiles_dir=os.path.expanduser("~/.dbt")
+            profiles_dir=profiles_dir,
         )
 
 def disable_tracking():
