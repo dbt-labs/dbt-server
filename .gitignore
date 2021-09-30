@@ -12,3 +12,4 @@ working-dir/
 target/
 sql_app.db
 /env
+dbt-core-server-exploration/
