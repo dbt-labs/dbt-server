@@ -37,6 +37,19 @@ class RunArgs(BaseModel):
     defer: bool = None
     threads: int = 4
 
+class ListArgs(BaseModel):
+    state_id: str
+    models: Optional[List[str]] = None
+    exclude: Optional[List[str]] = None
+    single_threaded: bool = False
+    output: str = 'path'
+    state: Optional[str] = None
+    select: Optional[str] = None
+    selector_name: Optional[str] = None
+    resource_types: Optional[str] = None
+    output_keys: Optional[List[str]] = None
+    threads: int = 4
+
 class SQLConfig(BaseModel):
     state_id: str
     sql: str
@@ -95,6 +108,23 @@ async def run_models(args: RunArgs):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_run_sync(path, args, manifest)
+
+    encoded_results = jsonable_encoder(results)
+
+    return {
+        "parsing": args.state_id,
+        "path": serialize_path,
+        "res": encoded_results,
+        "ok": True,
+    }
+
+@app.post("/list")
+async def list_resources(args: ListArgs):
+    path = filesystem_service.get_root_path(args.state_id)
+    serialize_path = filesystem_service.get_path(args.state_id, 'manifest.msgpack')
+
+    manifest = dbt_service.deserialize_manifest(serialize_path)
+    results = dbt_service.dbt_list(path, args, manifest)
 
     encoded_results = jsonable_encoder(results)
 
