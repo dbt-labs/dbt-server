@@ -85,7 +85,6 @@ def dbt_list(project_path, args, manifest):
 
     # Create the task
     task = ListTask(args, config)
-    print(f'args: {args}')
     # Wow! We can monkeypatch taskCls.load_manifest to return _our_ manifest
     # TODO : Let's update Core to support this kind of thing more natively?
     task.load_manifest = no_op
