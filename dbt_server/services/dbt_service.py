@@ -1,7 +1,5 @@
 
-import os
 from . import filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger
 
 import dbt
 import dbt.tracking
@@ -10,15 +8,8 @@ from dbt.lib import create_task, get_dbt_config
 from dbt.parser.manifest import ManifestLoader, process_node
 from dbt.contracts.graph.manifest import Manifest
 
-<<<<<<< HEAD
-from dbt.task.run import RunTask
-from dbt.task.list import ListTask
-=======
->>>>>>> 6c67310 (first pass)
 from dbt.parser.rpc import RPCCallParser
 from dbt.rpc.node_runners import RPCExecuteRunner, RPCCompileRunner
-
-from pydantic import BaseModel
 
 
 def disable_tracking():
