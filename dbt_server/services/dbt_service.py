@@ -11,6 +11,7 @@ from dbt.parser.manifest import ManifestLoader, process_node
 from dbt.contracts.graph.manifest import Manifest
 
 from dbt.task.run import RunTask
+from dbt.task.list import ListTask
 from dbt.parser.rpc import RPCCallParser
 from dbt.rpc.node_runners import RPCExecuteRunner, RPCCompileRunner
 
@@ -70,6 +71,20 @@ def dbt_run_sync(project_path, args, manifest):
     # Create the task
     task = RunTask(args, config)
 
+    # Wow! We can monkeypatch taskCls.load_manifest to return _our_ manifest
+    # TODO : Let's update Core to support this kind of thing more natively?
+    task.load_manifest = no_op
+    task.manifest = manifest
+
+    return task.run()
+
+def dbt_list(project_path, args, manifest):
+    config = _get_dbt_config(project_path)
+    def no_op(*args, **kwargs):
+        pass
+
+    # Create the task
+    task = ListTask(args, config)
     # Wow! We can monkeypatch taskCls.load_manifest to return _our_ manifest
     # TODO : Let's update Core to support this kind of thing more natively?
     task.load_manifest = no_op
