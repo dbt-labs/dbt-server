@@ -7,7 +7,7 @@
 # -e dbt-core-server-exploration/plugins/snowflake
 
 dbt-postgres
-fastapi==0.68.1
+fastapi==0.68.2
 uvicorn==0.15.0
 ipdb==0.13.9
 websockets==9.1
