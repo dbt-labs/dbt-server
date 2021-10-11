@@ -1,5 +1,12 @@
 
+import json
 import os
+import yaml
+import boto3
+import botocore.exceptions
+import time
+from base64 import b64decode
+from typing import Dict
 from . import filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
@@ -30,6 +37,18 @@ class dbtConfig(BaseModel):
             profiles_dir = os.getenv('DBT_PROFILES_DIR')
         else:
             profiles_dir = os.path.expanduser("~/.dbt")
+        if os.getenv('PROFILES_YML_CONTENTS'):
+            response = decrypt_kms(
+                os.getenv('PROFILES_YML_CONTENTS'),
+                {
+                    "type": "profiles_yaml",
+                    # "user_id": f"{user_id}",
+                },)
+            if response:
+                with open(f'{profiles_dir}/profiles.yml', 'w+') as profiles_yml:
+                    profiles = json.loads(response)
+                    yaml.dump(profiles, profiles_yml)
+
 
         logger.info(f"Using profile path @ {profiles_dir}")
 
@@ -37,6 +56,24 @@ class dbtConfig(BaseModel):
             project_dir=project_dir,
             profiles_dir=profiles_dir,
         )
+      
+def decrypt_kms(
+      ciphertext: str,
+      context: Dict,
+      attempt_number: int = 1,
+      max_retries: int = 5,
+  ) -> str:
+      if attempt_number > max_retries:
+          raise Exception("Exceeded maximum number of retries.")
+      try:
+          client = boto3.client("kms", region_name="us-east-1")
+          response = client.decrypt(CiphertextBlob=b64decode(ciphertext), EncryptionContext=context)
+      except botocore.exceptions.BotoCoreError as e:
+          time.sleep(0.1)
+          return decrypt_kms(ciphertext, context, attempt_number + 1, max_retries)
+      except BaseException as e:
+          raise e
+      return response.get("Plaintext").decode("utf-8")
 
 def disable_tracking():
     # This messes with my stuff
