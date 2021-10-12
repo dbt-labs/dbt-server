@@ -40,10 +40,13 @@ class dbtConfig(BaseModel):
         if os.getenv('PROFILES_YML_CONTENTS'):
             response = decrypt_kms(
                 os.getenv('PROFILES_YML_CONTENTS'),
-                # We probably need some kind of user/project-specific key to pass with context
+                # We probably need some kind of user/project-specific key to pass with context,
+                # but currently the server itself is agnostic toward those details.
+                # Type is sufficient for now, since we're running one server per user env 
                 {
                     "type": "profiles_yaml",
-                },)
+                }
+            )
             if response:
                 with open(f'{profiles_dir}/profiles.yml', 'w+') as profiles_yml:
                     profiles = json.loads(response)
