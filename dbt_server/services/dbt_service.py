@@ -13,7 +13,6 @@ from dbt.lib import (
 
 
 def disable_tracking():
-    # This messes with my stuff
     # TODO: why does this mess with stuff
     import dbt.tracking
     dbt.tracking.disable_tracking()
