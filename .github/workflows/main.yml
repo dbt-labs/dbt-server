@@ -39,7 +39,7 @@ jobs:
 
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: dbt-server-${{ matrix.dbt-core-version }}
+          image-name: dbt-server-${{ matrix.dbt-database-adapter }}-${{ matrix.dbt-core-version }}
           docker-file-path: Dockerfile
           docker-build-args: |
             DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
@@ -62,7 +62,7 @@ jobs:
 
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: dbt-server-${{ matrix.dbt-core-version }}
+          image-name: dbt-server-${{ matrix.dbt-database-adapter }}-${{ matrix.dbt-core-version }}
           docker-file-path: Dockerfile
           docker-build-args: |
             DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
