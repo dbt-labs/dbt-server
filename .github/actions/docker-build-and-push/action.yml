@@ -14,6 +14,9 @@ inputs:
   docker-build-args:
     description: "The docker build args to pass to the build step"
     required: false
+  docker-ssh-agents:
+    description: "The list of SSH agent socket or keys to expose to the build"
+    required: false
   registry-endpoint:
     description: "The registry where the image should be stored"
     required: true
@@ -47,6 +50,6 @@ runs:
         build-args: ${{ inputs.docker-build-args }}
         file: ${{ inputs.docker-file-path }}
         target: ${{ inputs.docker-file-target }}
-        ssh: default
+        ssh: ${{ inputs.docker-ssh-agents }}
         tags: ${{ github.event_name == 'push' && format('{0}, {1}', env.VERSION_TAG, env.LATEST_TAG) || env.VERSION_TAG }}
         push: true
