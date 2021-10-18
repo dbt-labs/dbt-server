@@ -9,127 +9,65 @@ on:
       - main
 
 jobs:
+  # TODO: add code linting
   # lint:
   #   name: lint code
   #   runs-on: ubuntu-latest
-  #   timeout-minutes: 2
-  #   steps:
-  #     - name: checkout dimsum repo
-  #       uses: actions/checkout@v2
-
-  #     - uses: ./.github/actions/private-repo-ssh-setup
-  #       with:
-  #         ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
-
-  #     - name: check code style
-  #       uses: golangci/golangci-lint-action@v2
-  #       with:
-  #         version: latest
-  #         args: "--config=.github/.golang-ci.yml"
-
-  # test:
-  #   name: test code
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 3
   #   steps:
   #     - name: checkout code
   #       uses: actions/checkout@v2
 
-  #     - name: setup go
-  #       uses: actions/setup-go@v2
-  #       with:
-  #         go-version: "1.16"
-
-  #     - uses: ./.github/actions/private-repo-ssh-setup
-  #       with:
-  #         ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
-
-  #     - name: run unit tests
-  #       run: |
-  #         go test -v ./pkg/... # TODO: use base image to run integration tests in a kubernetes cluster
+  # TODO: add automated testing
+  # test:
+  #   name: test code
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: checkout code
+  #       uses: actions/checkout@v2
 
   build-staging-image:
     name: build and publish staging image
-    # needs: [test]
     if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dbt-core-version: [0.21.0]
+        dbt-database-adapter: [snowflake]
     steps:
-      - name: checkout dbt-server repo
+      - name: checkout code
         uses: actions/checkout@v2
 
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: dimsum-proxy
-          docker-file-path: ./docker/Dockerfile
-          docker-file-target: dimsum-app
+          image-name: dbt-server-${{ matrix.dbt-core-version }}
+          docker-file-path: Dockerfile
+          docker-build-args: |
+            DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
+            DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
           registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
           registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
 
-  # deploy-to-staging:
-  #   name: deploy image to staging environment
-  #   needs: [build-staging-image]
-  #   runs-on: ubuntu-latest
-  #   environment: staging
-  #   steps:
-  #     - name: checkout helm-charts repo
-  #       uses: actions/checkout@v2
-  #       with:
-  #         repository: dbt-labs/helm-charts
-  #         ssh-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
-  #         path: helm-charts
-
-  #     - name: install Task
-  #       uses: arduino/setup-task@v1
-
-  #     - name: create release commit
-  #       env:
-  #         APP_NAME: dimsum
-  #         APP_ENV: staging
-  #       run: |
-  #         cd "${GITHUB_WORKSPACE}"/helm-charts
-  #         task update-tag APP=${APP_NAME} ENV=${APP_ENV} TAG=${GITHUB_SHA}
-  #         task bumpversion-ci APP=${APP_NAME} ENV=${APP_ENV} SEGMENT=patch
-
   build-production-image:
-    name: build and publish production images
-    needs: [deploy-to-staging]
+    name: build and publish production image
+    needs: [build-staging-image]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dbt-core-version: [0.21.0]
+        dbt-database-adapter: [snowflake]
     environment: production
     steps:
-      - name: checkout dimsum repo
+      - name: checkout code
         uses: actions/checkout@v2
 
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: dimsum-proxy
-          docker-file-path: ./docker/Dockerfile
-          docker-file-target: dimsum-app
+          image-name: dbt-server-${{ matrix.dbt-core-version }}
+          docker-file-path: Dockerfile
+          docker-build-args: |
+            DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
+            DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
           registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
           registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
-
-  # deploy-to-production:
-  #   name: deploy image to production environment
-  #   needs: [build-production-image]
-  #   runs-on: ubuntu-latest
-  #   environment: production
-  #   steps:
-  #     - name: checkout helm-charts repo
-  #       uses: actions/checkout@v2
-  #       with:
-  #         repository: dbt-labs/helm-charts
-  #         ssh-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
-  #         path: helm-charts
-
-  #     - name: install Task
-  #       uses: arduino/setup-task@v1
-
-  #     - name: create release commit
-  #       env:
-  #         APP_NAME: dimsum
-  #         APP_ENV: production
-  #       run: |
-  #         cd "${GITHUB_WORKSPACE}"/helm-charts
-  #         task update-tag APP=${APP_NAME} ENV=${APP_ENV} TAG=${GITHUB_SHA}
-  #         task bumpversion-ci APP=${APP_NAME} ENV=${APP_ENV} SEGMENT=patch

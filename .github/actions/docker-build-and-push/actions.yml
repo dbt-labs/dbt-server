@@ -1,0 +1,52 @@
+# TODO: factor out into a org repo (dbt-labs/actions)
+name: "Build and Push Docker Image"
+description: "Build and push docker image to container registry"
+inputs:
+  image-name:
+    description: "The name for the docker image"
+    required: true
+  docker-file-path:
+    description: "The path to the docker file to use in the build step"
+    required: true
+  docker-file-target:
+    description: "The docker file target to build"
+    required: false
+  docker-build-args:
+    description: "The docker build args to pass to the build step"
+    required: false
+  registry-endpoint:
+    description: "The registry where the image should be stored"
+    required: true
+  registry-username:
+    description: "The username to use when authenticating to the registry"
+    required: true
+  registry-password:
+    description: "The password to use when authenticating to the registry"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: setup docker buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: login to container registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ inputs.registry-endpoint }}
+        username: ${{ inputs.registry-username }}
+        password: ${{ inputs.registry-password }}
+
+    - name: build and publish docker image
+      uses: docker/build-push-action@v2
+      env:
+        VERSION_TAG: ${{ inputs.registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
+        LATEST_TAG: ${{ inputs.registry-endpoint }}/${{ inputs.image-name }}:latest
+      with:
+        builder: ${{ steps.buildx.output.name }}
+        build-args: ${{ inputs.docker-build-args }}
+        file: ${{ inputs.docker-file-path }}
+        target: ${{ inputs.docker-file-target }}
+        ssh: default
+        tags: ${{ github.event_name == 'push' && format('{0}, {1}', env.VERSION_TAG, env.LATEST_TAG) || env.VERSION_TAG }}
+        push: true
