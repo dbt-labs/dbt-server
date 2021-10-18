@@ -1,4 +1,5 @@
-ARG BASE_IMAGE=python:3.8-slim-bullseye
+# python:3.8-slim-bullseye
+ARG BASE_IMAGE=python@sha256:bb908c726535fc6787a69d4ef3cdb5ee90dc5edeae56da3181b2108539a5eb64
 
 FROM $BASE_IMAGE
 
