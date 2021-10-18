@@ -44,7 +44,7 @@ jobs:
           docker-build-args: |
             DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
             DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
-          registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+          registry-endpoint: ${{ secrets.STAGING_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
           registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
 
@@ -56,7 +56,6 @@ jobs:
       matrix:
         dbt-core-version: [0.21.0]
         dbt-database-adapter: [snowflake]
-    environment: production
     steps:
       - name: checkout code
         uses: actions/checkout@v2
@@ -68,6 +67,6 @@ jobs:
           docker-build-args: |
             DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
             DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
-          registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+          registry-endpoint: ${{ secrets.INFRA_ROOT_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
           registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
