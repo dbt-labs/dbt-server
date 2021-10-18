@@ -1,10 +1,5 @@
-import os
-
-from . import crud, models, schemas
-from .database import SessionLocal, engine
-
-from .logging import GLOBAL_LOGGER as logger
-
+from . import models
+from .database import engine
 from .views import app
 from .services import dbt_service
 
@@ -19,6 +14,7 @@ dbt_service.disable_tracking()
 @app.on_event("startup")
 async def startup_event():
     pass
+
 
 @app.on_event("shutdown")
 def shutdown_event():

@@ -1,15 +1,6 @@
-# temp for working with local copy of dbt
-# copy dbt-core-server-exploration into dbt-server
-# -e dbt-core-server-exploration/core
-# -e dbt-core-server-exploration/plugins/postgres
-# -e dbt-core-server-exploration/plugins/bigquery
-# -e dbt-core-server-exploration/plugins/redshift
-# -e dbt-core-server-exploration/plugins/snowflake
-
-dbt-postgres
+dbt-core
 fastapi==0.68.1
 uvicorn==0.15.0
-ipdb==0.13.9
 websockets==9.1
 SQLAlchemy==1.4.23
 diff-match-patch==20200713
