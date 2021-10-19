@@ -29,7 +29,7 @@ class State(BaseModel):
 
 class RunArgs(BaseModel):
     state_id: str
-    models: List[str] = None
+    select: List[str] = None
     exclude: List[str] = None
     single_threaded: bool = False
     state: str = None
