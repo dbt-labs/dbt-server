@@ -58,6 +58,10 @@ class SQLConfig(BaseModel):
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
 
+@app.get("/ready")
+async def ready():
+    return {"ok": True}
+
 @app.post("/push")
 async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
     # Parse / validate it
