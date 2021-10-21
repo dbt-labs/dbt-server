@@ -10,9 +10,6 @@ def get_root_path(state_id):
 def get_symlink_path():
     return os.path.join(ROOT_PATH, "latest-state-manifest")
 
-def get_temp_symlink_path():
-    return os.path.join(ROOT_PATH, "temp-symlink")
-
 def get_path(state_id, *path_parts):
     if not state_id:
         return get_symlink_path()
@@ -45,12 +42,11 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
         write_file(path, body['contents'])
 
 def update_symlink(serialize_path):
-    temp_symlink_path = get_temp_symlink_path()
-    symlink_path = get_symlink_path()
+    symlink_path = os.path.abspath(get_symlink_path())
+    serialize_absolute_path = os.path.abspath(serialize_path)
+    if os.path.exists(symlink_path):
+        os.unlink(symlink_path)
+    os.symlink(serialize_absolute_path, symlink_path)
 
-    # Safely overwrite existing symlink if present
-    os.symlink(serialize_path, temp_symlink_path)
-    os.rename(temp_symlink_path, symlink_path)
-
-    if os.path.realpath(symlink_path) != serialize_path:
-        logger.error(f"Symlink was not successfully updated to {serialize_path}")
+    if os.path.realpath(symlink_path) != serialize_absolute_path:
+        logger.error(f"Symlink was not successfully updated to {serialize_absolute_path}")
