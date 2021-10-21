@@ -1,4 +1,4 @@
-dbt-core
+git+https://github.com/dbt-labs/dbt-core.git#egg=dbt-core&subdirectory=core
 fastapi==0.68.1
 uvicorn==0.15.0
 websockets==9.1

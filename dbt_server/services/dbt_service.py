@@ -1,4 +1,3 @@
-
 from . import filesystem_service
 
 from dbt.lib import (
@@ -35,7 +34,6 @@ def deserialize_manifest(serialize_path):
 
 def dbt_run_sync(project_path, args, manifest):
     config = get_dbt_config(project_path)
-    # TODO: what do we truely need to kick off a task
     task = create_task('run', args, manifest, config)
     return task.run()
 

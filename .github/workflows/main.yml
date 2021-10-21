@@ -31,8 +31,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dbt-core-version: [0.21.0]
-        dbt-database-adapter: [snowflake, postgres, bigquery, redshift]
+        include:
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: snowflake
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: postgres
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: redshift
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: bigquery
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
     steps:
       - name: checkout code
         uses: actions/checkout@v2
@@ -42,8 +57,8 @@ jobs:
           image-name: dbt-server-${{ matrix.dbt-database-adapter }}-${{ matrix.dbt-core-version }}
           docker-file-path: Dockerfile
           docker-build-args: |
-            DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
-            DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
+            DBT_CORE_PACKAGE=${{ matrix.dbt-core-package }}
+            DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter-package }}
           registry-endpoint: ${{ secrets.STAGING_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
           registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
@@ -54,8 +69,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        dbt-core-version: [0.21.0]
-        dbt-database-adapter: [snowflake, postgres, bigquery, redshift]
+        include:
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: snowflake
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: postgres
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: redshift
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift
+          - dbt-core-version: head
+            dbt-core-package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+            dbt-database-adapter: bigquery
+            dbt-database-adapter-package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
     steps:
       - name: checkout code
         uses: actions/checkout@v2
@@ -65,8 +95,8 @@ jobs:
           image-name: dbt-server-${{ matrix.dbt-database-adapter }}-${{ matrix.dbt-core-version }}
           docker-file-path: Dockerfile
           docker-build-args: |
-            DBT_CORE_VERSION=${{ matrix.dbt-core-version }}
-            DBT_DATABASE_ADAPTER_PACKAGE=dbt-${{ matrix.dbt-database-adapter }}
+            DBT_CORE_PACKAGE=${{ matrix.dbt-core-package }}
+            DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter-package }}
           registry-endpoint: ${{ secrets.INFRA_ROOT_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
           registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
           registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}

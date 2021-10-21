@@ -1,4 +1,3 @@
-
 from sqlalchemy.orm import Session
 from dbt_server.database import SessionLocal
 

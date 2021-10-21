@@ -1,6 +1,8 @@
+import os
+import json
+
 from sse_starlette.sse import EventSourceResponse
-import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks, HTTPException, Depends
+from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
@@ -16,7 +18,6 @@ from .logging import GLOBAL_LOGGER as logger
 from sqlalchemy.orm import Session
 from . import crud
 from . import schemas
-# from .database import engine
 
 app = FastAPI()
 
@@ -43,6 +44,7 @@ class RunArgs(BaseModel):
 
 class ListArgs(BaseModel):
     state_id: str
+    models: Optional[List[str]] = None
     exclude: Optional[List[str]] = None
     single_threaded: bool = False
     output: str = 'path'
