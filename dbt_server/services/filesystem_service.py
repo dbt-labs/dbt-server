@@ -40,11 +40,11 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
         write_file(path, body['contents'])
 
 def get_latest_state_id(state_id):
-    if state_id:
-        return state_id
-    path = os.path.abspath(get_latest_state_file_path())
-    with open(path, 'r') as latest_path_file:
-        return latest_path_file.read()
+    if not state_id:
+        path = os.path.abspath(get_latest_state_file_path())
+        with open(path, 'r') as latest_path_file:
+            state_id = latest_path_file.read()
+    return state_id
 
 def update_state_id(state_id):
     path = os.path.abspath(get_latest_state_file_path())
