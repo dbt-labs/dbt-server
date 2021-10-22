@@ -58,7 +58,7 @@ class SQLConfig(BaseModel):
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
 
-@app.get("/ready")
+@app.post("/ready")
 async def ready():
     return {"ok": True}
 

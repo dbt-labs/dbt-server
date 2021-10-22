@@ -57,6 +57,7 @@ def parse_to_manifest(project_path):
 
 def serialize_manifest(manifest, serialize_path):
     filesystem_service.write_file(serialize_path, manifest.to_msgpack())
+    filesystem_service.update_symlink(serialize_path)
 
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_file(serialize_path)
