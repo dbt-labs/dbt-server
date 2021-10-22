@@ -51,7 +51,7 @@ class ListArgs(BaseModel):
     threads: int = 4
 
 class SQLConfig(BaseModel):
-    state_id: str
+    state_id: Optional[str] = None
     sql: str
 
 @app.get("/")
@@ -65,7 +65,7 @@ async def ready():
 @app.post("/push")
 async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
     # Parse / validate it
-    state_id = manifest.state_id
+    state_id = filesystem_service.get_latest_state_id(manifest.state_id)
     body = manifest.body
 
     logger.info(f"Recieved manifest {len(body)} bytes")
@@ -92,7 +92,7 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
 
 @app.post("/parse")
 def parse_project(state: State):
-    state_id = state.state_id
+    state_id = filesystem_service.get_latest_state_id(state.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
@@ -101,14 +101,16 @@ def parse_project(state: State):
 
     logger.info("Serializing as messagepack file")
     dbt_service.serialize_manifest(manifest, serialize_path)
+    filesystem_service.update_state_id(state_id)
 
     return {"parsing": state.state_id, "path": serialize_path}
 
 
 @app.post("/run")
 async def run_models(args: RunArgs):
-    path = filesystem_service.get_root_path(args.state_id)
-    serialize_path = filesystem_service.get_path(args.state_id, 'manifest.msgpack')
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_run_sync(path, args, manifest)
@@ -124,8 +126,9 @@ async def run_models(args: RunArgs):
 
 @app.post("/list")
 async def list_resources(args: ListArgs):
-    path = filesystem_service.get_root_path(args.state_id)
-    serialize_path = filesystem_service.get_path(args.state_id, 'manifest.msgpack')
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_list(path, args, manifest)
@@ -151,14 +154,15 @@ async def run_models(
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    path = filesystem_service.get_root_path(sql.state_id)
-    serialize_path = filesystem_service.get_path(sql.state_id, 'manifest.msgpack')
+    state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.execute_sql(manifest, path, sql.sql)
 
     return {
-        "state": sql.state_id,
+        "state": state_id,
         "path": serialize_path,
         "ok": True,
         "res": jsonable_encoder(result),
@@ -166,14 +170,15 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 async def compile_sql(sql: SQLConfig):
-    path = filesystem_service.get_root_path(sql.state_id)
-    serialize_path = filesystem_service.get_path(sql.state_id, 'manifest.msgpack')
+    state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.compile_sql(manifest, path, sql.sql)
 
     return {
-        "state": sql.state_id,
+        "state": state_id,
         "path": serialize_path,
         "ok": True,
         "res": jsonable_encoder(result),

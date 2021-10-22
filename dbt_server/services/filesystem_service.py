@@ -7,12 +7,10 @@ ROOT_PATH = "./working-dir"
 def get_root_path(state_id):
     return os.path.join(ROOT_PATH, f"state-{state_id}")
 
-def get_symlink_path():
-    return os.path.join(ROOT_PATH, "latest-state-manifest")
+def get_latest_state_file_path():
+    return os.path.join(ROOT_PATH, "latest-state-id.txt")
 
 def get_path(state_id, *path_parts):
-    if not state_id:
-        return get_symlink_path()
     return os.path.join(get_root_path(state_id), *path_parts)
 
 def ensure_dir_exists(path):
@@ -41,12 +39,14 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
         path = get_path(state_id, filename)
         write_file(path, body['contents'])
 
-def update_symlink(serialize_path):
-    symlink_path = os.path.abspath(get_symlink_path())
-    serialize_absolute_path = os.path.abspath(serialize_path)
-    if os.path.exists(symlink_path):
-        os.unlink(symlink_path)
-    os.symlink(serialize_absolute_path, symlink_path)
+def get_latest_state_id(state_id):
+    if not state_id:
+        path = os.path.abspath(get_latest_state_file_path())
+        with open(path, 'r') as latest_path_file:
+            state_id = latest_path_file.read()
+    return state_id
 
-    if os.path.realpath(symlink_path) != serialize_absolute_path:
-        logger.error(f"Symlink was not successfully updated to {serialize_absolute_path}")
+def update_state_id(state_id):
+    path = os.path.abspath(get_latest_state_file_path())
+    with open(path, 'w+') as latest_path_file:
+        latest_path_file.write(state_id)
