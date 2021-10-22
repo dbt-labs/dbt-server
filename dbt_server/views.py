@@ -92,7 +92,7 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
 
 @app.post("/parse")
 def parse_project(state: State):
-    state_id = state.state_id
+    state_id = filesystem_service.get_latest_state_id(state.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
