@@ -6,9 +6,8 @@ from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
-
+import asyncio
 import io
-import time
 
 def run_dbt(task_id, args, db):
     db_task = crud.get_task(db, task_id)
@@ -63,10 +62,10 @@ def _wait_for_file(path):
         except FileNotFoundError:
             # TODO : Remove / debugging
             logger.info(f"Waiting for file handle @ {path}")
-            time.sleep(0.5)
+            asyncio.sleep(0.5)
             continue
     else:
-        raise RuntimeException("No log file appeared in designated timeout")
+        raise Exception("No log file appeared in designated timeout")
     return fh
 
 def _read_until_empty(fh):
@@ -80,6 +79,7 @@ def _read_until_empty(fh):
 def tail_logs_for_path(
     db,
     task_id,
+    request,
     live=True
 ):
     db_task = crud.get_task(db, task_id)
@@ -92,7 +92,7 @@ def tail_logs_for_path(
     try:
         while db_task.state != 'finished':
             yield from _read_until_empty(fh)
-            time.sleep(0.5)
+            asyncio.sleep(0.5)
             db.refresh(db_task)
 
         # Drain any lines accumulated after end of task
