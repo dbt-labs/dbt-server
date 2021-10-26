@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         dbt-core-version: [0.21.0]
-        dbt-database-adapter: [snowflake]
+        dbt-database-adapter: [snowflake, postgres, bigquery, redshift]
     steps:
       - name: checkout code
         uses: actions/checkout@v2
@@ -55,7 +55,7 @@ jobs:
     strategy:
       matrix:
         dbt-core-version: [0.21.0]
-        dbt-database-adapter: [snowflake]
+        dbt-database-adapter: [snowflake, postgres, bigquery, redshift]
     steps:
       - name: checkout code
         uses: actions/checkout@v2
