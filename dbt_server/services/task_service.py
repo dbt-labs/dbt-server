@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
 import asyncio
 import io
+import json
 
 def run_dbt(task_id, args, db):
     db_task = crud.get_task(db, task_id)
@@ -101,4 +102,5 @@ def tail_logs_for_path(
         yield from _read_until_empty(fh)
 
     finally:
+        yield json.dumps({"status": "Complete"})
         fh.close()
