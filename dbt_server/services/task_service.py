@@ -1,5 +1,7 @@
 
 import uuid
+from enum import Enum
+
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
@@ -9,6 +11,9 @@ from fastapi import HTTPException, Depends
 import asyncio
 import io
 import json
+
+class LogStatus(str, Enum):
+    COMPLETE='Complete'
 
 def run_dbt(task_id, args, db):
     db_task = crud.get_task(db, task_id)
@@ -106,5 +111,5 @@ async def tail_logs_for_path(
             yield log
 
     finally:
-        yield json.dumps({"status": "Complete"})
+        yield json.dumps({"status": LogStatus.COMPLETE})
         fh.close()
