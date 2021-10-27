@@ -1,14 +1,19 @@
 
 import uuid
+from enum import Enum
+
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, Depends
-
+import asyncio
 import io
-import time
+import json
+
+class LogStatus(str, Enum):
+    COMPLETE='Complete'
 
 def run_dbt(task_id, args, db):
     db_task = crud.get_task(db, task_id)
@@ -55,7 +60,7 @@ def run_async(background_tasks, db, args):
     background_tasks.add_task(run_dbt, task_id, args, db)
     return crud.create_task(db, task)
 
-def _wait_for_file(path):
+async def _wait_for_file(path):
     fh = None
     for i in range(10):
         try:
@@ -63,13 +68,13 @@ def _wait_for_file(path):
         except FileNotFoundError:
             # TODO : Remove / debugging
             logger.info(f"Waiting for file handle @ {path}")
-            time.sleep(0.5)
+            await asyncio.sleep(0.5)
             continue
     else:
-        raise RuntimeException("No log file appeared in designated timeout")
+        raise Exception("No log file appeared in designated timeout")
     return fh
 
-def _read_until_empty(fh):
+async def _read_until_empty(fh):
     while True:
         line = fh.readline()
         if len(line) == 0:
@@ -77,28 +82,34 @@ def _read_until_empty(fh):
         else:
             yield line
 
-def tail_logs_for_path(
+async def tail_logs_for_path(
     db,
     task_id,
+    request,
     live=True
 ):
     db_task = crud.get_task(db, task_id)
     logger.info(f"Waiting for file @ {db_task.log_path}")
-    fh = _wait_for_file(db_task.log_path)
+    fh = await _wait_for_file(db_task.log_path)
 
     if live:
         fh.seek(0, io.SEEK_END)
-
     try:
         while db_task.state != 'finished':
-            yield from _read_until_empty(fh)
-            time.sleep(0.5)
+            if await request.is_disconnected():
+                logger.debug("Log request disconnected")
+                break
+            async for log in _read_until_empty(fh):
+                yield log
+            await asyncio.sleep(0.5)
             db.refresh(db_task)
 
         # Drain any lines accumulated after end of task
         # If we didn't do this, some lines could be omitted
         logger.info(f"Draining logs from file")
-        yield from _read_until_empty(fh)
+        async for log in _read_until_empty(fh):
+            yield log
 
     finally:
+        yield json.dumps({"status": LogStatus.COMPLETE})
         fh.close()

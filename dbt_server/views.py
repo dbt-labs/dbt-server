@@ -1,5 +1,7 @@
+from sse_starlette.sse import EventSourceResponse
 import uvicorn
 from fastapi import FastAPI, WebSocket, BackgroundTasks, HTTPException, Depends
+from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from typing import List, Optional, Dict, Any, Union
@@ -188,19 +190,11 @@ async def compile_sql(sql: SQLConfig):
 class Task(BaseModel):
     task_id: str
 
-@app.websocket("/ws")
-async def websocket_endpoint(
-    websocket: WebSocket,
+@app.get('/stream-logs/{task_id}')
+async def log_endpoint(
+    task_id: str,
+    request: Request,
     db: Session = Depends(crud.get_db),
 ):
-    await websocket.accept()
-    message = await websocket.receive_text()
-
-    message_data = json.loads(message)
-    logger.info(f"Got WS request: {message_data}")
-
-    task_id = message_data['task_id']
-
-    for log_line in task_service.tail_logs_for_path(db, task_id):
-        await websocket.send_text(log_line)
-    await websocket.close(code=1000)
+    event_generator = task_service.tail_logs_for_path(db, task_id, request)
+    return EventSourceResponse(event_generator, ping=2)
