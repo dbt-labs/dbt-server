@@ -12,6 +12,8 @@ from typing import List, Optional
 from .services import filesystem_service
 from .services import dbt_service
 from .services import task_service
+from .services import kubernetes_service
+
 from .logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
@@ -55,6 +57,8 @@ class ListArgs(BaseModel):
     output_keys: Optional[List[str]] = None
     threads: int = 4
 
+class DeleteArgs(BaseModel):
+    deployment_name: str
 
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
@@ -152,6 +156,21 @@ async def list_resources(args: ListArgs):
         "ok": True,
     }
 
+
+@app.post("/delete")
+def delete_deployment(args: DeleteArgs):
+    deleted_deployment = kubernetes_service.delete_server_deployment(args.deployment_name)
+    if deleted_deployment is None:
+        return {
+            "res": None,
+            "ok": False,
+        }
+    encoded_deployment = jsonable_encoder(deleted_deployment)
+
+    return {
+        "res": encoded_deployment,
+        "ok": True,
+    }
 
 @app.post("/run-async")
 async def run_models_async(
