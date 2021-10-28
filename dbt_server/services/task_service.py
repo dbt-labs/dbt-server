@@ -1,4 +1,3 @@
-
 import uuid
 from enum import Enum
 
@@ -6,14 +5,15 @@ from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
 
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException
 import asyncio
 import io
 import json
 
+
 class LogStatus(str, Enum):
-    COMPLETE='Complete'
+    COMPLETE = 'Complete'
+
 
 def run_dbt(task_id, args, db):
     db_task = crud.get_task(db, task_id)
@@ -60,9 +60,9 @@ def run_async(background_tasks, db, args):
     background_tasks.add_task(run_dbt, task_id, args, db)
     return crud.create_task(db, task)
 
+
 async def _wait_for_file(path):
-    fh = None
-    for i in range(10):
+    for _ in range(10):
         try:
             return open(path)
         except FileNotFoundError:
@@ -71,8 +71,8 @@ async def _wait_for_file(path):
             await asyncio.sleep(0.5)
             continue
     else:
-        raise Exception("No log file appeared in designated timeout")
-    return fh
+        raise RuntimeError("No log file appeared in designated timeout")
+
 
 async def _read_until_empty(fh):
     while True:
@@ -81,6 +81,7 @@ async def _read_until_empty(fh):
             break
         else:
             yield line
+
 
 async def tail_logs_for_path(
     db,
@@ -106,7 +107,7 @@ async def tail_logs_for_path(
 
         # Drain any lines accumulated after end of task
         # If we didn't do this, some lines could be omitted
-        logger.info(f"Draining logs from file")
+        logger.info("Draining logs from file")
         async for log in _read_until_empty(fh):
             yield log
 

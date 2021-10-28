@@ -1,14 +1,9 @@
-
 import logging
 import logbook
 import logbook.queues
-import multiprocessing
 
 import dbt.logger as dbt_logger
 
-# from dbt.logger import GLOBAL_LOGGER as logger
-
-import logging
 import io
 
 from .services import filesystem_service
@@ -27,12 +22,12 @@ json_formatter = dbt_logger.JsonFormatter(
     format_string=dbt_logger.STDOUT_LOG_FORMAT
 )
 
+
 class LogManager(object):
     def __init__(self, log_path):
         self.log_path = log_path
 
         filesystem_service.ensure_dir_exists(self.log_path)
-
 
         logs_redirect_handler = logbook.FileHandler(
             filename=self.log_path,

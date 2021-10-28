@@ -1,12 +1,13 @@
+import os
+import json
+
 from sse_starlette.sse import EventSourceResponse
-import uvicorn
-from fastapi import FastAPI, WebSocket, BackgroundTasks, HTTPException, Depends
+from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional
 
-import json, os, io
 
 from .services import filesystem_service
 from .services import dbt_service
@@ -15,8 +16,8 @@ from .logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
-from . import crud, models, schemas
-from .database import SessionLocal, engine
+from . import crud
+from . import schemas
 
 app = FastAPI()
 
@@ -25,19 +26,21 @@ class UnparsedManifestBlob(BaseModel):
     state_id: str
     body: str
 
+
 class State(BaseModel):
     state_id: str
 
 
 class RunArgs(BaseModel):
     state_id: str
-    select: List[str] = None
-    exclude: List[str] = None
+    select: Optional[List[str]] = None
+    exclude: Optional[List[str]] = None
     single_threaded: bool = False
-    state: str = None
-    selector_name: str = None
-    defer: bool = None
+    state: Optional[str] = None
+    selector_name: Optional[str] = None
+    defer: Optional[bool] = None
     threads: int = 4
+
 
 class ListArgs(BaseModel):
     state_id: str
@@ -52,17 +55,21 @@ class ListArgs(BaseModel):
     output_keys: Optional[List[str]] = None
     threads: int = 4
 
+
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
     sql: str
+
 
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
 
+
 @app.post("/ready")
 async def ready():
     return {"ok": True}
+
 
 @app.post("/push")
 async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
@@ -98,7 +105,7 @@ def parse_project(state: State):
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
-    logger.info(f"Parsing manifest from filetree")
+    logger.info("Parsing manifest from filetree")
     manifest = dbt_service.parse_to_manifest(path)
 
     logger.info("Serializing as messagepack file")
@@ -126,6 +133,7 @@ async def run_models(args: RunArgs):
         "ok": True,
     }
 
+
 @app.post("/list")
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
@@ -144,8 +152,9 @@ async def list_resources(args: ListArgs):
         "ok": True,
     }
 
+
 @app.post("/run-async")
-async def run_models(
+async def run_models_async(
     args: RunArgs,
     background_tasks: BackgroundTasks,
     response_model=schemas.Task,
@@ -170,6 +179,7 @@ async def preview_sql(sql: SQLConfig):
         "res": jsonable_encoder(result),
     }
 
+
 @app.post("/compile")
 async def compile_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
@@ -189,6 +199,7 @@ async def compile_sql(sql: SQLConfig):
 
 class Task(BaseModel):
     task_id: str
+
 
 @app.get('/stream-logs/{task_id}')
 async def log_endpoint(

@@ -1,6 +1,5 @@
-
-from dbt_server.logging import GLOBAL_LOGGER as logger, CapturingLogManager
-from contextlib import contextmanager, ContextDecorator
+from dbt_server.logging import CapturingLogManager
+from contextlib import contextmanager
 
 
 @contextmanager
