@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 from dbt_server.database import SessionLocal
+
 from . import models, schemas
+
 
 def get_db():
     db = SessionLocal()

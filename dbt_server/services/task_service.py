@@ -117,7 +117,7 @@ async def tail_logs_for_path(
         logger.info("Draining logs from file")
         async for log in _read_until_empty(fh):
             yield log
-            
+
     finally:
         if db_task.state == TaskStatus.ERROR:
             yield json.dumps({"error": db_task.error, "status": LogStatus.ERROR})
