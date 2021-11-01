@@ -4,6 +4,7 @@ from enum import Enum
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
+from dbt_server.models import TaskStatus
 
 from fastapi import HTTPException
 import asyncio
@@ -13,6 +14,7 @@ import json
 
 class LogStatus(str, Enum):
     COMPLETE = 'Complete'
+    ERROR = 'Error'
 
 
 def run_dbt(task_id, args, db):
@@ -33,7 +35,12 @@ def run_dbt(task_id, args, db):
 
     logger.info(f"Running dbt ({task_id}) - kicking off task")
 
-    dbt_service.dbt_run_sync(path, args, manifest)
+    try:
+        dbt_service.dbt_run_sync(path, args, manifest)
+
+    except Exception as e:
+        crud.set_task_errored(db, db_task, str(e))
+        raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
 
@@ -96,7 +103,7 @@ async def tail_logs_for_path(
     if live:
         fh.seek(0, io.SEEK_END)
     try:
-        while db_task.state != 'finished':
+        while db_task.state not in (TaskStatus.ERROR, TaskStatus.FINISHED):
             if await request.is_disconnected():
                 logger.debug("Log request disconnected")
                 break
@@ -110,7 +117,10 @@ async def tail_logs_for_path(
         logger.info("Draining logs from file")
         async for log in _read_until_empty(fh):
             yield log
-
+            
     finally:
+        if db_task.state == TaskStatus.ERROR:
+            yield json.dumps({"error": db_task.error, "status": LogStatus.ERROR})
+
         yield json.dumps({"status": LogStatus.COMPLETE})
         fh.close()

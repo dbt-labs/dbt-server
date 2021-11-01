@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
 from dbt_server.database import SessionLocal
-
 from . import models, schemas
-
 
 def get_db():
     db = SessionLocal()
@@ -26,7 +24,7 @@ def create_task(db: Session, task: schemas.Task):
 
 def set_task_running(db: Session, task: schemas.Task):
     db_task = get_task(db, task.task_id)
-    db_task.state = 'running'
+    db_task.state = models.TaskStatus.RUNNING
     db.commit()
     db.refresh(db_task)
     return db_task
@@ -34,7 +32,15 @@ def set_task_running(db: Session, task: schemas.Task):
 
 def set_task_done(db: Session, task: schemas.Task):
     db_task = get_task(db, task.task_id)
-    db_task.state = 'finished'
+    db_task.state = models.TaskStatus.FINISHED
+    db.commit()
+    db.refresh(db_task)
+    return db_task
+
+def set_task_errored(db: Session, task: schemas.Task, error: str):
+    db_task = get_task(db, task.task_id)
+    db_task.state = models.TaskStatus.ERROR
+    db_task.error = error
     db.commit()
     db.refresh(db_task)
     return db_task
