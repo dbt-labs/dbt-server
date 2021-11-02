@@ -3,7 +3,7 @@ from enum import Enum
 
 from .database import Base
 
-class TaskStatus(str, Enum):
+class TaskState(str, Enum):
     PENDING = 'pending'
     RUNNING = 'running'
     FINISHED = 'finished'
@@ -13,7 +13,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     task_id = Column(String, primary_key=True, index=True)
-    state = Column(String, default=TaskStatus.PENDING)
+    state = Column(String, default=TaskState.PENDING)
     error = Column(String, default=None)
 
     command = Column(String)

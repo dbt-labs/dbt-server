@@ -1,15 +1,15 @@
+from os import error
 import uuid
 from enum import Enum
 from dbt.exceptions import RuntimeException
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
-from dbt_server.models import TaskStatus
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.models import TaskState
 
 from fastapi import HTTPException
 import asyncio
 import io
-import json
 
 
 def run_dbt(task_id, args, db):
@@ -50,7 +50,7 @@ def run_async(background_tasks, db, args):
 
     task = schemas.Task(
         task_id=task_id,
-        state=TaskStatus.PENDING,
+        state=TaskState.PENDING,
         command='dbt run',
         log_path=log_path
     )
@@ -98,7 +98,7 @@ async def tail_logs_for_path(
     if live:
         fh.seek(0, io.SEEK_END)
     try:
-        while db_task.state not in (TaskStatus.ERROR, TaskStatus.FINISHED):
+        while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
             if await request.is_disconnected():
                 logger.debug("Log request disconnected")
                 break
@@ -114,5 +114,5 @@ async def tail_logs_for_path(
             yield log
 
     finally:
-        yield json.dumps({"error": db_task.error, "status": db_task.state})
+        yield ServerLog(state=db_task.state, error=db_task.error).to_json()
         fh.close()
