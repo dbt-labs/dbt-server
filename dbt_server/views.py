@@ -31,6 +31,10 @@ class State(BaseModel):
     state_id: str
 
 
+class DepsArgs(BaseModel):
+    packages: Optional[str] = None
+
+
 class RunArgs(BaseModel):
     state_id: str
     select: Optional[List[str]] = None
@@ -196,6 +200,14 @@ async def compile_sql(sql: SQLConfig):
         "res": jsonable_encoder(result),
     }
 
+@app.post("/deps")
+async def tar_deps(args: DepsArgs):
+    package_data = dbt_service.render_package_data(args.packages)
+    tarballs = dbt_service.get_tarballs(package_data)
+    return {
+        "ok": True,
+        "res": jsonable_encoder(tarballs),
+    }
 
 class Task(BaseModel):
     task_id: str

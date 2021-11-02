@@ -1,5 +1,6 @@
+import json
 from . import filesystem_service
-
+from dbt.clients.registry import package_version
 from dbt.lib import (
     create_task,
     get_dbt_config,
@@ -50,3 +51,26 @@ def execute_sql(manifest, project_path, sql):
 
 def compile_sql(manifest, project_path, sql):
     return dbt_compile_sql(manifest, project_path, sql)
+
+
+def render_package_data(packages):
+    return json.loads(packages)
+
+def get_tarballs(package_data):
+    tarballs = []
+    for package in package_data.get('packages', {}):
+        name = package.get('package')
+        version = package.get('version')
+        tar_name = '{}.{}.tar.gz'.format(name, version)
+
+        package_details = package_version(name, version)
+        tarball = package_details.get('downloads', {}).get('tarball')
+        
+        tarballs.append({
+            "name": name,
+            "version": version,
+            "tar_name": tar_name,
+            "tarball": tarball
+        })         
+    
+    return tarballs
