@@ -1,12 +1,16 @@
+import json
 import logging
+from typing import Optional
 import logbook
 import logbook.queues
 
 import dbt.logger as dbt_logger
 
 import io
+from dataclasses import dataclass
 
 from .services import filesystem_service
+from .models import TaskState
 
 GLOBAL_LOGGER = logging.getLogger(__name__)
 GLOBAL_LOGGER.setLevel(logging.DEBUG)
@@ -21,6 +25,15 @@ logger = GLOBAL_LOGGER
 json_formatter = dbt_logger.JsonFormatter(
     format_string=dbt_logger.STDOUT_LOG_FORMAT
 )
+
+
+@dataclass
+class ServerLog:
+    state: TaskState
+    error: Optional[str]
+
+    def to_json(self):
+        return json.dumps(self.__dict__)
 
 
 class LogManager(object):

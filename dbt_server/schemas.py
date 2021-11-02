@@ -8,6 +8,7 @@ class Task(BaseModel):
     state: str
     command: Optional[str] = None
     log_path: Optional[str] = None
+    error: Optional[str] = None
 
     class Config:
         orm_mode = True
