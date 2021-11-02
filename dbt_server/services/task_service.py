@@ -1,6 +1,6 @@
 import uuid
 from enum import Enum
-
+from dbt.exceptions import RuntimeException
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
@@ -10,11 +10,6 @@ from fastapi import HTTPException
 import asyncio
 import io
 import json
-
-
-class LogStatus(str, Enum):
-    COMPLETE = 'Complete'
-    ERROR = 'Error'
 
 
 def run_dbt(task_id, args, db):
@@ -38,7 +33,7 @@ def run_dbt(task_id, args, db):
     try:
         dbt_service.dbt_run_sync(path, args, manifest)
 
-    except Exception as e:
+    except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
         raise e
 
@@ -55,7 +50,7 @@ def run_async(background_tasks, db, args):
 
     task = schemas.Task(
         task_id=task_id,
-        state='pending',
+        state=TaskStatus.PENDING,
         command='dbt run',
         log_path=log_path
     )
@@ -119,8 +114,5 @@ async def tail_logs_for_path(
             yield log
 
     finally:
-        if db_task.state == TaskStatus.ERROR:
-            yield json.dumps({"error": db_task.error, "status": LogStatus.ERROR})
-
-        yield json.dumps({"status": LogStatus.COMPLETE})
+        yield json.dumps({"error": db_task.error, "status": db_task.state})
         fh.close()
