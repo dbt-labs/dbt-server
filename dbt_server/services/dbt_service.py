@@ -10,6 +10,7 @@ from dbt.lib import (
     deserialize_manifest as dbt_deserialize_manifest,
     serialize_manifest as dbt_serialize_manifest
 )
+from dbt_server.logging import GLOBAL_LOGGER as logger
 
 
 def disable_tracking():
@@ -61,8 +62,15 @@ def get_tarballs(package_data):
     for package in package_data.get('packages', {}):
         name = package.get('package')
         version = package.get('version')
+        if not name or not version:
+            # TODO: Something better than this
+            logger.debug(
+                f'Skipping package: {package}. '
+                'Either non-hub package or missing package version.'
+            )
+            continue
         tar_name = '{}.{}.tar.gz'.format(name, version)
-
+        # TODO: Handle 404s for invalid packages
         package_details = package_version(name, version)
         tarball = package_details.get('downloads', {}).get('tarball')
         
