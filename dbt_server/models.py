@@ -3,11 +3,13 @@ from enum import Enum
 
 from .database import Base
 
+
 class TaskState(str, Enum):
     PENDING = 'pending'
     RUNNING = 'running'
     FINISHED = 'finished'
     ERROR = 'error'
+
 
 class Task(Base):
     __tablename__ = "tasks"

@@ -1,16 +1,14 @@
 import os
 import json
 from dbt.exceptions import RuntimeException
-from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional
-
+from typing import List, Optional, Union, Any, Dict
 
 from .services import filesystem_service
 from .services import dbt_service
@@ -38,29 +36,79 @@ class DepsArgs(BaseModel):
     packages: Optional[str] = None
 
 
+class BuildArgs(BaseModel):
+    state_id: str
+    single_threaded: bool = False
+    resource_types: Optional[List[str]] = None
+    select: Union[None, str, List[str]] = None
+    threads: Optional[int] = None
+    exclude: Union[None, str, List[str]] = None
+    selector_name: Optional[str] = None
+    state: Optional[str] = None
+    defer: Optional[bool] = None
+
+
 class RunArgs(BaseModel):
     state_id: str
-    select: Optional[List[str]] = None
-    exclude: Optional[List[str]] = None
     single_threaded: bool = False
-    state: Optional[str] = None
+    threads: Optional[int] = None
+    models: Union[None, str, List[str]] = None
+    select: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
+    state: Optional[str] = None
     defer: Optional[bool] = None
-    threads: int = 4
+
+
+class TestArgs(BaseModel):
+    state_id: str
+    single_threaded: bool = False
+    data_type: bool = Field(False, alias='data')
+    schema_type: bool = Field(False, alias='schema')
+    select: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
+    selector_name: Optional[str] = None
+    state: Optional[str] = None
+    defer: Optional[bool] = None
+
+
+class SeedArgs(BaseModel):
+    state_id: str
+    single_threaded: bool = False
+    threads: Optional[int] = None
+    select: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
+    selector_name: Optional[str] = None
+    show: bool = False
+    state: Optional[str] = None
 
 
 class ListArgs(BaseModel):
     state_id: str
-    models: Optional[List[str]] = None
-    exclude: Optional[List[str]] = None
     single_threaded: bool = False
-    output: str = 'path'
-    state: Optional[str] = None
-    select: Optional[str] = None
+    resource_types: Optional[List[str]] = None
+    models: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
+    select: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
-    resource_types: Optional[str] = None
+    output: Optional[str] = 'json'
     output_keys: Optional[List[str]] = None
-    threads: int = 4
+    state: Optional[str] = None
+
+
+class SnapshotArgs(BaseModel):
+    state_id: str
+    single_threaded: bool = False
+    threads: Optional[int] = None
+    select: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
+    selector_name: Optional[str] = None
+    state: Optional[str] = None
+
+
+class RunOperationArgs(BaseModel):
+    macro: str
+    args: Dict[str, Any] = Field(default_factory=dict)
 
 
 class SQLConfig(BaseModel):
@@ -75,15 +123,6 @@ async def runtime_exception_handler(request: Request, exc: RuntimeException):
     #  to use the same response structure for continuity
     return JSONResponse(
         status_code=400,
-        content={"message": str(exc)},
-    )
-
-
-@app.exception_handler(HTTPError)
-async def runtime_exception_handler(request: Request, exc: HTTPError):
-    logger.debug(str(exc))
-    return JSONResponse(
-        status_code=exc.response.status_code,
         content={"message": str(exc)},
     )
 
@@ -157,7 +196,7 @@ async def run_models(args: RunArgs):
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_run_sync(path, args, manifest)
+    results = dbt_service.dbt_run(path, args, manifest)
 
     encoded_results = jsonable_encoder(results)
 
@@ -169,6 +208,7 @@ async def run_models(args: RunArgs):
             "res": encoded_results,
         }
     )
+
 
 @app.post("/list")
 async def list_resources(args: ListArgs):
@@ -199,6 +239,56 @@ async def run_models_async(
     db: Session = Depends(crud.get_db)
 ):
     return task_service.run_async(background_tasks, db, args)
+
+
+@app.post("/test-async")
+async def test_async(
+    args: TestArgs,
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db)
+):
+    return task_service.test_async(background_tasks, db, args)
+
+
+@app.post("/seed-async")
+async def seed_async(
+    args: SeedArgs,
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db)
+):
+    return task_service.seed_async(background_tasks, db, args)
+
+
+@app.post("/build-async")
+async def build_async(
+    args: BuildArgs,
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db)
+):
+    return task_service.build_async(background_tasks, db, args)
+
+
+@app.post("/snapshot-async")
+async def snapshot_async(
+    args: SnapshotArgs,
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db)
+):
+    return task_service.snapshot_async(background_tasks, db, args)
+
+
+@app.post("/run-operation-async")
+async def run_operation_async(
+    args: RunOperationArgs,
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db)
+):
+    return task_service.run_operation_async(background_tasks, db, args)
 
 
 @app.post("/preview")
