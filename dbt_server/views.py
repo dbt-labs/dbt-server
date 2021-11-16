@@ -66,6 +66,8 @@ class SQLConfig(BaseModel):
 @app.exception_handler(RuntimeException)
 async def runtime_exception_handler(request: Request, exc: RuntimeException):
     logger.debug(str(exc))
+    # TODO: We should look at dbt-cloud's ResponseEnvelope and decide whether or not
+    #  to use the same response structure for continuity
     return JSONResponse(
         status_code=400,
         content={"message": str(exc)},
