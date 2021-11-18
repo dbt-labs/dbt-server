@@ -79,6 +79,14 @@ async def runtime_exception_handler(request: Request, exc: RuntimeException):
     )
 
 
+@app.exception_handler(HTTPError)
+async def runtime_exception_handler(request: Request, exc: HTTPError):
+    logger.debug(str(exc))
+    return JSONResponse(
+        status_code=exc.response.status_code,
+        content={"message": str(exc)},
+    )
+
 
 @app.get("/")
 async def test(tasks: BackgroundTasks):
@@ -232,27 +240,28 @@ async def compile_sql(sql: SQLConfig):
         }
     )
 
+
 @app.post("/deps")
 async def tar_deps(args: DepsArgs):
     package_data = dbt_service.render_package_data(args.packages)
     if not package_data:
-        return
-    try:
-        packages = dbt_service.get_package_details(package_data)
         return JSONResponse(
-            status_code=200,
+            status_code=400,
             content={
-                "res": jsonable_encoder(packages)
+                "message": (
+                    "No hub packages found for installation. "
+                    "\nPlease contact support if you are receiving this message in error."
+                )
             }
         )
-        
-    # Temporary solution for bubbling up client errors until we
-    # have more sophisticated response objects.
-    except HTTPError as e:
-        return {
-            "ok": False,
-            "error": str(e)
+    packages = dbt_service.get_package_details(package_data)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "res": jsonable_encoder(packages)
         }
+    )
+
 
 class Task(BaseModel):
     task_id: str
