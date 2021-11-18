@@ -1,5 +1,6 @@
 import os
 import json
+from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends
@@ -29,6 +30,10 @@ class UnparsedManifestBlob(BaseModel):
 
 class State(BaseModel):
     state_id: str
+
+
+class DepsArgs(BaseModel):
+    packages: Optional[str] = None
 
 
 class RunArgs(BaseModel):
@@ -196,6 +201,22 @@ async def compile_sql(sql: SQLConfig):
         "res": jsonable_encoder(result),
     }
 
+@app.post("/deps")
+async def tar_deps(args: DepsArgs):
+    package_data = dbt_service.render_package_data(args.packages)
+    try:
+        packages = dbt_service.get_package_details(package_data)
+        return {
+            "ok": True,
+            "res": jsonable_encoder(packages)
+        }
+    # Temporary solution for bubbling up client errors until we
+    # have more sophisticated response objects.
+    except HTTPError as e:
+        return {
+            "ok": False,
+            "error": str(e)
+        }
 
 class Task(BaseModel):
     task_id: str
