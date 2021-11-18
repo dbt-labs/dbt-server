@@ -79,6 +79,7 @@ async def runtime_exception_handler(request: Request, exc: RuntimeException):
     )
 
 
+
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
@@ -234,12 +235,17 @@ async def compile_sql(sql: SQLConfig):
 @app.post("/deps")
 async def tar_deps(args: DepsArgs):
     package_data = dbt_service.render_package_data(args.packages)
+    if not package_data:
+        return
     try:
         packages = dbt_service.get_package_details(package_data)
-        return {
-            "ok": True,
-            "res": jsonable_encoder(packages)
-        }
+        return JSONResponse(
+            status_code=200,
+            content={
+                "res": jsonable_encoder(packages)
+            }
+        )
+        
     # Temporary solution for bubbling up client errors until we
     # have more sophisticated response objects.
     except HTTPError as e:
