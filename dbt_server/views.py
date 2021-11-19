@@ -1,5 +1,6 @@
 import os
 import json
+from dbt.exceptions import RuntimeException
 from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
@@ -7,6 +8,7 @@ from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from typing import List, Optional
 
 
@@ -66,6 +68,26 @@ class SQLConfig(BaseModel):
     sql: str
 
 
+@app.exception_handler(RuntimeException)
+async def runtime_exception_handler(request: Request, exc: RuntimeException):
+    logger.debug(str(exc))
+    # TODO: We should look at dbt-cloud's ResponseEnvelope and decide whether or not
+    #  to use the same response structure for continuity
+    return JSONResponse(
+        status_code=400,
+        content={"message": str(exc)},
+    )
+
+
+@app.exception_handler(HTTPError)
+async def runtime_exception_handler(request: Request, exc: HTTPError):
+    logger.debug(str(exc))
+    return JSONResponse(
+        status_code=exc.response.status_code,
+        content={"message": str(exc)},
+    )
+
+
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
@@ -73,7 +95,10 @@ async def test(tasks: BackgroundTasks):
 
 @app.post("/ready")
 async def ready():
-    return {"ok": True}
+    return JSONResponse(
+        status_code=200,
+        content={}
+    )
 
 
 @app.post("/push")
@@ -95,13 +120,15 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
-    return {
-        "ok": True,
-        "state": state_id,
-        "bytes": len(body),
-        "reuse": reuse,
-        "path": path,
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "state": state_id,
+            "bytes": len(body),
+            "reuse": reuse,
+            "path": path,
+        }
+    )
 
 
 @app.post("/parse")
@@ -117,7 +144,10 @@ def parse_project(state: State):
     dbt_service.serialize_manifest(manifest, serialize_path)
     filesystem_service.update_state_id(state_id)
 
-    return {"parsing": state.state_id, "path": serialize_path}
+    return JSONResponse(
+        status_code=200,
+        content={"parsing": state.state_id, "path": serialize_path}
+    )
 
 
 @app.post("/run")
@@ -131,13 +161,14 @@ async def run_models(args: RunArgs):
 
     encoded_results = jsonable_encoder(results)
 
-    return {
-        "parsing": args.state_id,
-        "path": serialize_path,
-        "res": encoded_results,
-        "ok": True,
-    }
-
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": args.state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        }
+    )
 
 @app.post("/list")
 async def list_resources(args: ListArgs):
@@ -150,12 +181,14 @@ async def list_resources(args: ListArgs):
 
     encoded_results = jsonable_encoder(results)
 
-    return {
-        "parsing": args.state_id,
-        "path": serialize_path,
-        "res": encoded_results,
-        "ok": True,
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": args.state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        }
+    )
 
 
 @app.post("/run-async")
@@ -176,13 +209,16 @@ async def preview_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.execute_sql(manifest, path, sql.sql)
+    encoded_results = jsonable_encoder(result)
 
-    return {
-        "state": state_id,
-        "path": serialize_path,
-        "ok": True,
-        "res": jsonable_encoder(result),
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        }
+    )
 
 
 @app.post("/compile")
@@ -193,30 +229,39 @@ async def compile_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.compile_sql(manifest, path, sql.sql)
+    encoded_results = jsonable_encoder(result)
 
-    return {
-        "state": state_id,
-        "path": serialize_path,
-        "ok": True,
-        "res": jsonable_encoder(result),
-    }
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        }
+    )
+
 
 @app.post("/deps")
 async def tar_deps(args: DepsArgs):
     package_data = dbt_service.render_package_data(args.packages)
-    try:
-        packages = dbt_service.get_package_details(package_data)
-        return {
-            "ok": True,
+    if not package_data:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": (
+                    "No hub packages found for installation. "
+                    "\nPlease contact support if you are receiving this message in error."
+                )
+            }
+        )
+    packages = dbt_service.get_package_details(package_data)
+    return JSONResponse(
+        status_code=200,
+        content={
             "res": jsonable_encoder(packages)
         }
-    # Temporary solution for bubbling up client errors until we
-    # have more sophisticated response objects.
-    except HTTPError as e:
-        return {
-            "ok": False,
-            "error": str(e)
-        }
+    )
+
 
 class Task(BaseModel):
     task_id: str
