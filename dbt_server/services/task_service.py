@@ -1,5 +1,4 @@
 import uuid
-from enum import Enum
 from dbt.exceptions import RuntimeException
 
 from dbt_server import crud, schemas
@@ -10,10 +9,6 @@ from dbt_server.models import TaskState
 from fastapi import HTTPException
 import asyncio
 import io
-
-
-class LogStatus(str, Enum):
-    COMPLETE = 'Complete'
 
 
 def run_task(task_name, task_id, args, db):
