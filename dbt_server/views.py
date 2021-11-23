@@ -311,8 +311,13 @@ async def preview_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.execute_sql(manifest, path, sql.sql)
-    if type(result) == RemoteRunResult:
-        result = result.to_dict()
+    if type(result) != RemoteRunResult:
+        # Theoretically this shouldn't happen-- handling just in case
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Something went wrong with sql execution-- please contact support."},
+    )
+    result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 
     return JSONResponse(
@@ -333,8 +338,13 @@ async def compile_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.compile_sql(manifest, path, sql.sql)
-    if type(result) == RemoteCompileResult:
-        result = result.to_dict()
+    if type(result) != RemoteCompileResult:
+        # Theoretically this shouldn't happen-- handling just in case
+        return JSONResponse(
+            status_code=400,
+            content={"message": "Something went wrong with sql compilation-- please contact support."},
+    )
+    result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 
     return JSONResponse(
