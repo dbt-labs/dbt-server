@@ -2,6 +2,8 @@ import os
 import json
 from dbt.exceptions import RuntimeException
 
+from requests.exceptions import HTTPError
+
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
@@ -134,6 +136,8 @@ async def http_exception_handler(request: Request, exc: HTTPError):
         status_code=exc.response.status_code,
         content={"message": str(exc)},
     )
+
+
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
