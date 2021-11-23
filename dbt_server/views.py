@@ -1,6 +1,5 @@
 import os
 import json
-import re
 from dbt.exceptions import RuntimeException
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
 
