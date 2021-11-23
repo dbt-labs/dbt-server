@@ -39,6 +39,7 @@ def set_task_done(db: Session, task: schemas.Task):
     db.refresh(db_task)
     return db_task
 
+
 def set_task_errored(db: Session, task: schemas.Task, error: str):
     db_task = get_task(db, task.task_id)
     db_task.state = models.TaskState.ERROR

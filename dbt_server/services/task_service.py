@@ -1,7 +1,6 @@
-from os import error
 import uuid
-from enum import Enum
 from dbt.exceptions import RuntimeException
+
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
@@ -12,7 +11,7 @@ import asyncio
 import io
 
 
-def run_dbt(task_id, args, db):
+def run_task(task_name, task_id, args, db):
     db_task = crud.get_task(db, task_id)
 
     path = filesystem_service.get_root_path(args.state_id)
@@ -31,8 +30,20 @@ def run_dbt(task_id, args, db):
     logger.info(f"Running dbt ({task_id}) - kicking off task")
 
     try:
-        dbt_service.dbt_run_sync(path, args, manifest)
-
+        if task_name == 'run':
+            dbt_service.dbt_run(path, args, manifest)
+        elif task_name == 'seed':
+            dbt_service.dbt_seed(path, args, manifest)
+        elif task_name == 'test':
+            dbt_service.dbt_test(path, args, manifest)
+        elif task_name == 'build':
+            dbt_service.dbt_build(path, args, manifest)
+        elif task_name == 'snapshot':
+            dbt_service.dbt_snapshot(path, args, manifest)
+        elif task_name == 'run_operation':
+            dbt_service.dbt_run_operation(path, args, manifest)
+        else:
+            raise RuntimeException('Not an actual task')
     except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
         raise e
@@ -59,7 +70,102 @@ def run_async(background_tasks, db, args):
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(run_dbt, task_id, args, db)
+    background_tasks.add_task(run_task, 'run', task_id, args, db)
+    return crud.create_task(db, task)
+
+
+def test_async(background_tasks, db, args):
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, 'logs.stdout')
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command='dbt test',
+        log_path=log_path
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(run_task, 'test', task_id, args, db)
+    return crud.create_task(db, task)
+
+
+def seed_async(background_tasks, db, args):
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, 'logs.stdout')
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command='dbt seed',
+        log_path=log_path
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(run_task, 'seed', task_id, args, db)
+    return crud.create_task(db, task)
+
+
+def build_async(background_tasks, db, args):
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, 'logs.stdout')
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command='dbt build',
+        log_path=log_path
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(run_task, 'build', task_id, args, db)
+    return crud.create_task(db, task)
+
+
+def run_operation_async(background_tasks, db, args):
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, 'logs.stdout')
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command='dbt run-operation',
+        log_path=log_path
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(run_task, 'run_operation', task_id, args, db)
+    return crud.create_task(db, task)
+
+
+def snapshot_async(background_tasks, db, args):
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, 'logs.stdout')
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command='dbt snapshot',
+        log_path=log_path
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(run_task, 'snapshot', task_id, args, db)
     return crud.create_task(db, task)
 
 

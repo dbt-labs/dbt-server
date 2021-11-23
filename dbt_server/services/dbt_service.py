@@ -34,15 +34,45 @@ def deserialize_manifest(serialize_path):
     return dbt_deserialize_manifest(manifest_packed)
 
 
-def dbt_run_sync(project_path, args, manifest):
+def dbt_run(project_path, args, manifest):
     config = get_dbt_config(project_path)
     task = create_task('run', args, manifest, config)
+    return task.run()
+
+
+def dbt_test(project_path, args, manifest):
+    config = get_dbt_config(project_path)
+    task = create_task('test', args, manifest, config)
     return task.run()
 
 
 def dbt_list(project_path, args, manifest):
     config = get_dbt_config(project_path)
     task = create_task('list', args, manifest, config)
+    return task.run()
+
+
+def dbt_seed(project_path, args, manifest):
+    config = get_dbt_config(project_path)
+    task = create_task('seed', args, manifest, config)
+    return task.run()
+
+
+def dbt_build(project_path, args, manifest):
+    config = get_dbt_config(project_path)
+    task = create_task('build', args, manifest, config)
+    return task.run()
+
+
+def dbt_run_operation(project_path, args, manifest):
+    config = get_dbt_config(project_path)
+    task = create_task('run_operation', args, manifest, config)
+    return task.run()
+
+
+def dbt_snapshot(project_path, args, manifest):
+    config = get_dbt_config(project_path)
+    task = create_task('snapshot', args, manifest, config)
     return task.run()
 
 
@@ -56,6 +86,7 @@ def compile_sql(manifest, project_path, sql):
 
 def render_package_data(packages):
     return json.loads(packages)
+
 
 def get_package_details(package_data):
     packages = []
@@ -73,7 +104,6 @@ def get_package_details(package_data):
         package_details = package_version(full_name, version)
         tarball = package_details.get('downloads', {}).get('tarball')
         name = package_details.get('name')
-        
         packages.append({
             # Hack to imitate core package name
             "package": f'{full_name}@{version}',
@@ -81,6 +111,6 @@ def get_package_details(package_data):
             "version": version,
             "tar_name": tar_name,
             "tarball": tarball
-        })         
-    
+        })
     return packages
+
