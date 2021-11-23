@@ -10,7 +10,7 @@ from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
 from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Any, Dict
 
 from .services import filesystem_service
