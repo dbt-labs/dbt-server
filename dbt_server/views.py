@@ -319,7 +319,7 @@ async def preview_sql(sql: SQLConfig):
         status_code=200,
         content={
             "parsing": state_id,
-            "path": serialize_path, 
+            "path": serialize_path,
             "res": encoded_results,
         }
     )
