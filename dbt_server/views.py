@@ -1,6 +1,8 @@
 import os
 import json
+import re
 from dbt.exceptions import RuntimeException
+from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
 
 from requests.exceptions import HTTPError
 
@@ -9,7 +11,7 @@ from fastapi import FastAPI, BackgroundTasks, Depends
 from starlette.requests import Request
 from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from typing import List, Optional, Union, Any, Dict
 
 from .services import filesystem_service
@@ -310,13 +312,15 @@ async def preview_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.execute_sql(manifest, path, sql.sql)
+    if type(result) == RemoteRunResult:
+        result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 
     return JSONResponse(
         status_code=200,
         content={
             "parsing": state_id,
-            "path": serialize_path,
+            "path": serialize_path, 
             "res": encoded_results,
         }
     )
@@ -330,6 +334,8 @@ async def compile_sql(sql: SQLConfig):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     result = dbt_service.compile_sql(manifest, path, sql.sql)
+    if type(result) == RemoteCompileResult:
+        result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 
     return JSONResponse(
