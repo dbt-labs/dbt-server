@@ -127,6 +127,13 @@ async def runtime_exception_handler(request: Request, exc: RuntimeException):
     )
 
 
+@app.exception_handler(HTTPError)
+async def http_exception_handler(request: Request, exc: HTTPError):
+    logger.debug(str(exc))
+    return JSONResponse(
+        status_code=exc.response.status_code,
+        content={"message": str(exc)},
+    )
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
