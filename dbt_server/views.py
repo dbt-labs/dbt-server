@@ -110,7 +110,9 @@ class SnapshotArgs(BaseModel):
 
 
 class RunOperationArgs(BaseModel):
+    state_id: str
     macro: str
+    single_threaded: bool = False
     args: Dict[str, Any] = Field(default_factory=dict)
 
 
