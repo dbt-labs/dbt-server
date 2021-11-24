@@ -107,6 +107,7 @@ class SnapshotArgs(BaseModel):
     exclude: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
     state: Optional[str] = None
+    defer: Optional[bool] = None
 
 
 class RunOperationArgs(BaseModel):
