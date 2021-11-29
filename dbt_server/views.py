@@ -311,7 +311,7 @@ async def preview_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
     if state_id is None:
         return JSONResponse(
-            status_code=400,
+            status_code=422,
             content={
                 "message": "No historical record of a successfully parsed project for this user environment."
             },
@@ -345,7 +345,7 @@ async def compile_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
     if state_id is None:
         return JSONResponse(
-            status_code=400,
+            status_code=422,
             content={
                 "message": "No historical record of a successfully parsed project for this user environment."
             },
