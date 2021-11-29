@@ -107,10 +107,13 @@ class SnapshotArgs(BaseModel):
     exclude: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
     state: Optional[str] = None
+    defer: Optional[bool] = None
 
 
 class RunOperationArgs(BaseModel):
+    state_id: str
     macro: str
+    single_threaded: bool = False
     args: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -306,6 +309,13 @@ async def run_operation_async(
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    if state_id is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "No historical record of a successfully parsed project for this user environment."
+            },
+    )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
@@ -333,6 +343,13 @@ async def preview_sql(sql: SQLConfig):
 @app.post("/compile")
 async def compile_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    if state_id is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "No historical record of a successfully parsed project for this user environment."
+            },
+    )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
