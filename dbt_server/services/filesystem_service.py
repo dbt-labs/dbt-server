@@ -1,5 +1,6 @@
 import os
 import shutil
+from dbt_server.logging import GLOBAL_LOGGER as logger
 
 ROOT_PATH = "./working-dir"
 
@@ -49,6 +50,9 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
 def get_latest_state_id(state_id):
     if not state_id:
         path = os.path.abspath(get_latest_state_file_path())
+        if not os.path.exists(path):
+            logger.error("No state id included in request, no previous state id found.")
+            return None
         with open(path, 'r') as latest_path_file:
             state_id = latest_path_file.read()
     return state_id

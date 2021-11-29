@@ -309,6 +309,13 @@ async def run_operation_async(
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    if state_id is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "No historical record of a successfully parsed project for this user environment."
+            },
+    )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
@@ -336,6 +343,13 @@ async def preview_sql(sql: SQLConfig):
 @app.post("/compile")
 async def compile_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
+    if state_id is None:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "message": "No historical record of a successfully parsed project for this user environment."
+            },
+    )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
