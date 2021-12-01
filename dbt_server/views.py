@@ -114,7 +114,7 @@ class RunOperationArgs(BaseModel):
     state_id: str
     macro: str
     single_threaded: bool = False
-    args: str = '{}'
+    args: str = Field(default_factory='{}')
 
 
 class SQLConfig(BaseModel):
