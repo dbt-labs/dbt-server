@@ -26,6 +26,10 @@ inputs:
   registry-password:
     description: "The password to use when authenticating to the registry"
     required: true
+  push:
+    description: "Determines if image should be pushed to registry, `true` be default"
+    required: false
+    default: "true"
 runs:
   using: "composite"
   steps:
@@ -52,4 +56,4 @@ runs:
         target: ${{ inputs.docker-file-target }}
         ssh: ${{ inputs.docker-ssh-agents }}
         tags: ${{ github.event_name == 'push' && format('{0}, {1}', env.VERSION_TAG, env.LATEST_TAG) || env.VERSION_TAG }}
-        push: true
+        push: ${{ inputs.push }}
