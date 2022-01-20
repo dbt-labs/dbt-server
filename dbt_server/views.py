@@ -49,11 +49,7 @@ class BuildArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
-    version_check: bool = True
     full_refresh: bool = False
     store_failures: bool = False
     indirect_selection: str = 'eager'
@@ -69,11 +65,7 @@ class RunArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
-    version_check: bool = True
     full_refresh: bool = False
 
 
@@ -89,12 +81,8 @@ class TestArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
     store_failures: bool = False
-    version_check: bool = True
     full_refresh: bool = False
     indirect_selection: str = 'eager'
 
@@ -110,10 +98,6 @@ class SeedArgs(BaseModel):
     show: bool = False
     state: Optional[str] = None
     selector_name: Optional[str] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
-    version_check: bool = True
     full_refresh: bool = False
 
 
@@ -128,9 +112,6 @@ class ListArgs(BaseModel):
     output: Optional[str] = 'json'
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
     indirect_selection: str = 'eager'
 
 
@@ -145,18 +126,12 @@ class SnapshotArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
 
 
 class RunOperationArgs(BaseModel):
     state_id: str
     macro: str
     single_threaded: bool = False
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    vars: Optional[str] = Field(default_factory='{}')
     args: str = Field(default_factory='{}')
 
 
