@@ -53,7 +53,7 @@ class BuildArgs(BaseModel):
     target: Optional[str] = None
     vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
-    no_version_check: bool = False
+    version_check: bool = True
     full_refresh: bool = False
     store_failures: bool = False
     indirect_selection: str = 'eager'
@@ -73,7 +73,7 @@ class RunArgs(BaseModel):
     target: Optional[str] = None
     vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
-    no_version_check: bool = False
+    version_check: bool = True
     full_refresh: bool = False
 
 
@@ -94,7 +94,7 @@ class TestArgs(BaseModel):
     vars: Optional[str] = Field(default_factory='{}')
     fail_fast: bool = False
     store_failures: bool = False
-    no_version_check: bool = False
+    version_check: bool = True
     full_refresh: bool = False
     indirect_selection: str = 'eager'
 
@@ -113,7 +113,7 @@ class SeedArgs(BaseModel):
     profile: Optional[str] = None
     target: Optional[str] = None
     vars: Optional[str] = Field(default_factory='{}')
-    no_version_check: bool = False
+    version_check: bool = True
     full_refresh: bool = False
 
 
