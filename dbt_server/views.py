@@ -41,7 +41,7 @@ class DepsArgs(BaseModel):
 
 class BuildArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
     select: Union[None, str, List[str]] = None
     threads: Optional[int] = None
@@ -49,15 +49,15 @@ class BuildArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    fail_fast: bool = False
-    full_refresh: bool = False
-    store_failures: bool = False
-    indirect_selection: str = 'eager'
+    fail_fast: Optional[bool] = None
+    full_refresh: Optional[bool] = None
+    store_failures: Optional[bool] = None
+    indirect_selection: str = ''
 
 
 class RunArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     models: Union[None, str, List[str]] = None
     select: Union[None, str, List[str]] = None
@@ -65,13 +65,13 @@ class RunArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    fail_fast: bool = False
-    full_refresh: bool = False
+    fail_fast: Optional[bool] = None
+    full_refresh: Optional[bool] = None
 
 
 class TestArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     data_type: bool = Field(False, alias='data')
     schema_type: bool = Field(False, alias='schema')
@@ -81,43 +81,43 @@ class TestArgs(BaseModel):
     selector_name: Optional[str] = None
     state: Optional[str] = None
     defer: Optional[bool] = None
-    fail_fast: bool = False
-    store_failures: bool = False
-    full_refresh: bool = False
-    indirect_selection: str = 'eager'
+    fail_fast: Optional[bool] = None
+    store_failures: Optional[bool] = None
+    full_refresh: Optional[bool] = None
+    indirect_selection: str = ''
 
 
 class SeedArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     models: Union[None, str, List[str]] = None
     select: Union[None, str, List[str]] = None
     exclude: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
-    show: bool = False
+    show: Optional[bool] = None
     state: Optional[str] = None
     selector_name: Optional[str] = None
-    full_refresh: bool = False
+    full_refresh: Optional[bool] = None
 
 
 class ListArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
     models: Union[None, str, List[str]] = None
     exclude: Union[None, str, List[str]] = None
     select: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
-    output: Optional[str] = 'json'
+    output: Optional[str] = ''
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
-    indirect_selection: str = 'eager'
+    indirect_selection: str = ''
 
 
 class SnapshotArgs(BaseModel):
     state_id: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     resource_types: Optional[List[str]] = None
     models: Union[None, str, List[str]] = None
@@ -131,7 +131,7 @@ class SnapshotArgs(BaseModel):
 class RunOperationArgs(BaseModel):
     state_id: str
     macro: str
-    single_threaded: bool = False
+    single_threaded: Optional[bool] = None
     args: str = Field(default_factory='{}')
 
 
