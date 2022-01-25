@@ -19,8 +19,8 @@ def disable_tracking():
     dbt.tracking.disable_tracking()
 
 
-def parse_to_manifest(project_path):
-    config = get_dbt_config(project_path)
+def parse_to_manifest(project_path, args):
+    config = get_dbt_config(project_path, args)
     return dbt_parse_to_manifest(config)
 
 
@@ -35,43 +35,43 @@ def deserialize_manifest(serialize_path):
 
 
 def dbt_run(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('run', args, manifest, config)
     return task.run()
 
 
 def dbt_test(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('test', args, manifest, config)
     return task.run()
 
 
 def dbt_list(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('list', args, manifest, config)
     return task.run()
 
 
 def dbt_seed(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('seed', args, manifest, config)
     return task.run()
 
 
 def dbt_build(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('build', args, manifest, config)
     return task.run()
 
 
 def dbt_run_operation(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('run_operation', args, manifest, config)
     return task.run()
 
 
 def dbt_snapshot(project_path, args, manifest):
-    config = get_dbt_config(project_path)
+    config = get_dbt_config(project_path, args)
     task = create_task('snapshot', args, manifest, config)
     return task.run()
 
