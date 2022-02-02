@@ -15,7 +15,7 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 
 
 # Temporary default to match dbt-cloud behavior
-PROFILE_NAME = os.getenv('PROFILE_NAME', 'user')
+PROFILE_NAME = os.getenv('DBT_PROFILE_NAME', 'user')
 
 
 def create_dbt_config(project_path, args):
