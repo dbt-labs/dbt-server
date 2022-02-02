@@ -33,17 +33,20 @@ class UnparsedManifestBlob(BaseModel):
 
 class DepsArgs(BaseModel):
     packages: Optional[str] = None
+    profile: Optional[str] = None
     target: Optional[str] = None
 
 
 class ParseArgs(BaseModel):
     state_id: str
     version_check: Optional[bool] = None
+    profile: Optional[str] = None
     target: Optional[str] = None
 
 
 class BuildArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
@@ -62,6 +65,7 @@ class BuildArgs(BaseModel):
 
 class RunArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
@@ -78,6 +82,7 @@ class RunArgs(BaseModel):
 
 class TestArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
@@ -98,6 +103,7 @@ class TestArgs(BaseModel):
 
 class SeedArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
@@ -114,6 +120,7 @@ class SeedArgs(BaseModel):
 
 class ListArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
@@ -129,6 +136,7 @@ class ListArgs(BaseModel):
 
 class SnapshotArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
@@ -143,6 +151,7 @@ class SnapshotArgs(BaseModel):
 
 class RunOperationArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
     target: Optional[str] = None
     macro: str
     single_threaded: Optional[bool] = None
