@@ -31,16 +31,23 @@ class UnparsedManifestBlob(BaseModel):
     body: str
 
 
-class State(BaseModel):
-    state_id: str
-
-
 class DepsArgs(BaseModel):
     packages: Optional[str] = None
+    profile: Optional[str] = None
+    target: Optional[str] = None
+
+
+class ParseArgs(BaseModel):
+    state_id: str
+    version_check: Optional[bool] = None
+    profile: Optional[str] = None
+    target: Optional[str] = None
 
 
 class BuildArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
     select: Union[None, str, List[str]] = None
@@ -53,10 +60,13 @@ class BuildArgs(BaseModel):
     full_refresh: Optional[bool] = None
     store_failures: Optional[bool] = None
     indirect_selection: str = ''
+    version_check: Optional[bool] = None
 
 
 class RunArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     models: Union[None, str, List[str]] = None
@@ -67,10 +77,13 @@ class RunArgs(BaseModel):
     defer: Optional[bool] = None
     fail_fast: Optional[bool] = None
     full_refresh: Optional[bool] = None
+    version_check: Optional[bool] = None
 
 
 class TestArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     data_type: bool = Field(False, alias='data')
@@ -85,10 +98,13 @@ class TestArgs(BaseModel):
     store_failures: Optional[bool] = None
     full_refresh: Optional[bool] = None
     indirect_selection: str = ''
+    version_check: Optional[bool] = None
 
 
 class SeedArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     models: Union[None, str, List[str]] = None
@@ -99,10 +115,13 @@ class SeedArgs(BaseModel):
     state: Optional[str] = None
     selector_name: Optional[str] = None
     full_refresh: Optional[bool] = None
+    version_check: Optional[bool] = None
 
 
 class ListArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     resource_types: Optional[List[str]] = None
     models: Union[None, str, List[str]] = None
@@ -117,6 +136,8 @@ class ListArgs(BaseModel):
 
 class SnapshotArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     single_threaded: Optional[bool] = None
     threads: Optional[int] = None
     resource_types: Optional[List[str]] = None
@@ -130,6 +151,8 @@ class SnapshotArgs(BaseModel):
 
 class RunOperationArgs(BaseModel):
     state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
     macro: str
     single_threaded: Optional[bool] = None
     args: str = Field(default_factory='{}')
@@ -204,13 +227,13 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
 
 
 @app.post("/parse")
-def parse_project(state: State):
-    state_id = filesystem_service.get_latest_state_id(state.state_id)
+def parse_project(args: ParseArgs):
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     logger.info("Parsing manifest from filetree")
-    manifest = dbt_service.parse_to_manifest(path)
+    manifest = dbt_service.parse_to_manifest(path, args)
 
     logger.info("Serializing as messagepack file")
     dbt_service.serialize_manifest(manifest, serialize_path)
@@ -218,7 +241,7 @@ def parse_project(state: State):
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": state.state_id, "path": serialize_path}
+        content={"parsing": args.state_id, "path": serialize_path}
     )
 
 
