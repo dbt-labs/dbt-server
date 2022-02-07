@@ -1,7 +1,14 @@
 import json
 import os
+from struct import pack
 from . import filesystem_service
-from dbt.clients.registry import package_version
+from dbt.clients.registry import package_version, get_available_versions
+from dbt import semver
+from dbt.exceptions import (
+    VersionsNotCompatibleException,
+    DependencyException,
+    package_version_not_found
+)
 from dbt.lib import (
     create_task,
     get_dbt_config,
@@ -102,7 +109,7 @@ def get_package_details(package_data):
     packages = []
     for package in package_data.get('packages', {}):
         full_name = package.get('package')
-        version = package.get('version')
+        version = resolve_version(package)
         if not full_name or not version:
             # TODO: Something better than this for detecting Hub packages?
             logger.debug(
@@ -124,3 +131,29 @@ def get_package_details(package_data):
         })
     return packages
 
+
+def resolve_version(package) -> str:
+    versions = package.get('version')
+    install_prerelease = package.get('install-prerelease')
+    if not isinstance(versions, list):
+        return versions
+    try:
+        range_ = semver.reduce_versions(*versions)
+    except VersionsNotCompatibleException as e:
+        new_msg = ('Version error for package {}: {}'
+                    .format(package.get('package'), e))
+        raise DependencyException(new_msg) from e
+
+    available = get_available_versions(package.get('package'))
+    prerelease_version_specified = any(
+        bool(semver.VersionSpecifier.from_version_string(version).prerelease)
+        for version in versions
+    )
+    installable = semver.filter_installable(
+        available,
+        install_prerelease or prerelease_version_specified
+    )
+    target = semver.resolve_to_specific_version(range_, installable)
+    if not target:
+        package_version_not_found(package, range_, installable)
+    return target
