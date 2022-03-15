@@ -1,6 +1,6 @@
 import json
 import os
-from struct import pack
+
 from . import filesystem_service
 from dbt.clients.registry import package_version, get_available_versions
 from dbt import semver
@@ -10,6 +10,7 @@ from dbt.exceptions import (
     package_version_not_found
 )
 from dbt.lib import (
+    RuntimeArgs,
     create_task,
     get_dbt_config,
     parse_to_manifest as dbt_parse_to_manifest,
@@ -49,6 +50,36 @@ def serialize_manifest(manifest, serialize_path):
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_file(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
+
+
+def dbt_deps(project_path):
+    # TODO: add this to dbt lib
+    from dbt.task.deps import DepsTask
+    from dbt.config.runtime import UnsetProfileConfig
+    from dbt import flags
+    import dbt.adapters.factory
+    import dbt.events.functions
+
+    if os.getenv('DBT_PROFILES_DIR'):
+        profiles_dir = os.getenv('DBT_PROFILES_DIR')
+    else:
+        profiles_dir = os.path.expanduser("~/.dbt")
+
+    # Construct a phony config
+    config = UnsetProfileConfig.from_args(RuntimeArgs(
+        project_path, profiles_dir, True, 'user'
+    ))
+    # Clear previously registered adapters--
+    # this fixes cacheing behavior on the dbt-server
+    flags.set_from_args('', config)
+    dbt.adapters.factory.reset_adapters()
+    # Load the relevant adapter
+    dbt.adapters.factory.register_adapter(config)
+    # Set invocation id
+    dbt.events.functions.set_invocation_id()
+    task = DepsTask(None, config)
+
+    return task.run()
 
 
 def dbt_run(project_path, args, manifest):

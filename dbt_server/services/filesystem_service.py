@@ -42,9 +42,9 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
     if os.path.exists(root_path):
         shutil.rmtree(root_path)
 
-    for filename, body in filedict.items():
+    for filename, file_info in filedict.items():
         path = get_path(state_id, filename)
-        write_file(path, body['contents'])
+        write_file(path, file_info.contents)
 
 
 def get_latest_state_id(state_id):
