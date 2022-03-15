@@ -1,5 +1,4 @@
 import os
-import json
 from dbt.exceptions import RuntimeException
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
 
@@ -171,7 +170,7 @@ class SQLConfig(BaseModel):
 
 
 @app.exception_handler(RuntimeException)
-async def runtime_exception_handler(request: Request, exc: RuntimeException):
+async def runtime_exception_handler(_: Request, exc: RuntimeException):
     logger.debug(str(exc))
     # TODO: We should look at dbt-cloud's ResponseEnvelope and decide whether or not
     #  to use the same response structure for continuity
@@ -182,7 +181,7 @@ async def runtime_exception_handler(request: Request, exc: RuntimeException):
 
 
 @app.exception_handler(HTTPError)
-async def http_exception_handler(request: Request, exc: HTTPError):
+async def http_exception_handler(_: Request, exc: HTTPError):
     logger.debug(str(exc))
     return JSONResponse(
         status_code=exc.response.status_code,
@@ -301,7 +300,7 @@ async def list_resources(args: ListArgs):
 async def run_models_async(
     args: RunArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.run_async(background_tasks, db, args)
@@ -311,7 +310,7 @@ async def run_models_async(
 async def test_async(
     args: TestArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.test_async(background_tasks, db, args)
@@ -321,7 +320,7 @@ async def test_async(
 async def seed_async(
     args: SeedArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.seed_async(background_tasks, db, args)
@@ -331,7 +330,7 @@ async def seed_async(
 async def build_async(
     args: BuildArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.build_async(background_tasks, db, args)
@@ -341,7 +340,7 @@ async def build_async(
 async def snapshot_async(
     args: SnapshotArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.snapshot_async(background_tasks, db, args)
@@ -351,7 +350,7 @@ async def snapshot_async(
 async def run_operation_async(
     args: RunOperationArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
+    _=schemas.Task,
     db: Session = Depends(crud.get_db)
 ):
     return task_service.run_operation_async(background_tasks, db, args)
@@ -366,7 +365,7 @@ async def preview_sql(sql: SQLConfig):
             content={
                 "message": "No historical record of a successfully parsed project for this user environment."
             },
-    )
+        )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
@@ -377,7 +376,7 @@ async def preview_sql(sql: SQLConfig):
         return JSONResponse(
             status_code=400,
             content={"message": "Something went wrong with sql execution-- please contact support."},
-    )
+        )
     result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 

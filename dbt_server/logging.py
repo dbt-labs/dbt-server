@@ -59,7 +59,7 @@ class LogManager(object):
 
         dbt_logger.log_manager.set_path(None)
 
-    def _dbt_logs_only_filter(self, record, handler):
+    def _dbt_logs_only_filter(self, record, _):
         """
         DUPLICATE OF LogbookStepLogsStreamWriter._dbt_logs_only_filter
         """
