@@ -5,6 +5,9 @@ FROM $BASE_IMAGE
 ARG DBT_CORE_PACKAGE
 ARG DBT_DATABASE_ADAPTER_PACKAGE
 
+# install git and tzdata for time zone info see:
+RUN apk update && apk add --no-cache git openssh
+
 WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app
