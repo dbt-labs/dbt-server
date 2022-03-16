@@ -219,6 +219,7 @@ async def push_unparsed_manifest(args: PushProjectArgs):
         filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
 
     if args.install_deps:
+        logger.info("Installing deps")
         path = filesystem_service.get_root_path(state_id)
         dbt_service.dbt_deps(path)
 
