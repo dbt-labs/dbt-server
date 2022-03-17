@@ -11,7 +11,7 @@ from starlette.requests import Request
 from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Union, Any, Dict
+from typing import List, Optional, Union, Dict
 
 from .services import filesystem_service
 from .services import dbt_service
@@ -26,9 +26,16 @@ from . import schemas
 app = FastAPI()
 
 
-class UnparsedManifestBlob(BaseModel):
+class FileInfo(BaseModel):
+    contents: str
+    hash: str
+    path: str
+
+
+class PushProjectArgs(BaseModel):
     state_id: str
-    body: str
+    body: Dict[str, FileInfo]
+    install_deps: Optional[bool] = False
 
 
 class DepsArgs(BaseModel):
@@ -155,7 +162,7 @@ class RunOperationArgs(BaseModel):
     target: Optional[str] = None
     macro: str
     single_threaded: Optional[bool] = None
-    args: str = Field(default_factory='{}')
+    args: str = Field(default='{}')
 
 
 class SQLConfig(BaseModel):
@@ -197,12 +204,11 @@ async def ready():
 
 
 @app.post("/push")
-async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
+async def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
-    state_id = filesystem_service.get_latest_state_id(manifest.state_id)
-    body = manifest.body
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
 
-    logger.info(f"Recieved manifest {len(body)} bytes")
+    logger.info(f"Recieved manifest {len(args.body)} bytes")
 
     path = filesystem_service.get_root_path(state_id)
     reuse = True
@@ -210,8 +216,12 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
     # Stupid example of reusing an existing manifest
     if not os.path.exists(path):
         reuse = False
-        unparsed_manifest_dict = json.loads(body)
-        filesystem_service.write_unparsed_manifest_to_disk(state_id, unparsed_manifest_dict)
+        filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
+
+    if args.install_deps:
+        logger.info("Installing deps")
+        path = filesystem_service.get_root_path(state_id)
+        dbt_service.dbt_deps(path)
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
@@ -219,7 +229,7 @@ async def push_unparsed_manifest(manifest: UnparsedManifestBlob):
         status_code=200,
         content={
             "state": state_id,
-            "bytes": len(body),
+            "bytes": len(args.body),
             "reuse": reuse,
             "path": path,
         }
@@ -390,7 +400,7 @@ async def compile_sql(sql: SQLConfig):
             content={
                 "message": "No historical record of a successfully parsed project for this user environment."
             },
-    )
+        )
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
@@ -401,7 +411,7 @@ async def compile_sql(sql: SQLConfig):
         return JSONResponse(
             status_code=400,
             content={"message": "Something went wrong with sql compilation-- please contact support."},
-    )
+        )
     result = result.to_dict()
     encoded_results = jsonable_encoder(result)
 

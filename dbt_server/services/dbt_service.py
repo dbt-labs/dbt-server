@@ -1,6 +1,10 @@
 import json
 import os
-from struct import pack
+from collections import namedtuple
+from typing import Optional
+
+from pydantic import BaseModel
+
 from . import filesystem_service
 from dbt.clients.registry import package_version, get_available_versions
 from dbt import semver
@@ -49,6 +53,50 @@ def serialize_manifest(manifest, serialize_path):
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_file(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
+
+
+def dbt_deps(project_path):
+    # TODO: add this to dbt lib! this is not great
+    from dbt.task.deps import DepsTask
+    from dbt.config.runtime import UnsetProfileConfig
+    from dbt import flags
+    import dbt.adapters.factory
+    import dbt.events.functions
+    disable_tracking()
+
+    class Args(BaseModel):
+        profile: Optional[str] = None
+        target: Optional[str] = None
+        single_threaded: Optional[bool] = None
+        threads: Optional[int] = None
+
+    if os.getenv('DBT_PROFILES_DIR'):
+        profiles_dir = os.getenv('DBT_PROFILES_DIR')
+    else:
+        profiles_dir = os.path.expanduser("~/.dbt")
+
+    RuntimeArgs = namedtuple(
+        'RuntimeArgs', 'project_dir profiles_dir single_threaded profile_name which'
+    )
+
+    # Construct a phony config
+    config = UnsetProfileConfig.from_args(RuntimeArgs(
+        project_path, profiles_dir, True, "user", "deps"
+    ))
+    # Clear previously registered adapters--
+    # this fixes cacheing behavior on the dbt-server
+    flags.set_from_args("", config)
+    dbt.adapters.factory.reset_adapters()
+    # Load the relevant adapter
+    dbt.adapters.factory.register_adapter(config)
+    # Set invocation id
+    dbt.events.functions.set_invocation_id()
+    task = DepsTask(Args(), config)
+
+    # TODO: 🤦 reach into dbt-core
+    task.config.packages_install_path = os.path.join(project_path, 'dbt_packages')
+
+    return task.run()
 
 
 def dbt_run(project_path, args, manifest):

@@ -5,6 +5,14 @@ FROM $BASE_IMAGE
 ARG DBT_CORE_PACKAGE
 ARG DBT_DATABASE_ADAPTER_PACKAGE
 
+RUN apt-get -y update && apt-get -y upgrade && \
+  apt-get -y update --fix-missing && \
+  apt-get -y install && apt-get -y upgrade && \
+  apt-get -y install software-properties-common && \
+  apt-get -y install git libpq-dev openssh-client openssl && \
+  apt-get -y autoremove && \
+  rm -rf /var/lib/apt/lists/*
+
 WORKDIR /usr/src/app
 
 COPY requirements.txt /usr/src/app
