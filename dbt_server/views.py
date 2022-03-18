@@ -222,6 +222,7 @@ async def push_unparsed_manifest(args: PushProjectArgs):
         logger.info("Installing deps")
         path = filesystem_service.get_root_path(state_id)
         dbt_service.dbt_deps(path)
+        logger.info("Done installing deps")
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
