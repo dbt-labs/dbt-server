@@ -76,19 +76,17 @@ def dbt_deps(project_path):
         profiles_dir = os.path.expanduser("~/.dbt")
 
     RuntimeArgs = namedtuple(
-        'RuntimeArgs', 'project_dir profiles_dir single_threaded profile_name which'
+        'RuntimeArgs', 'project_dir profiles_dir single_threaded which'
     )
 
     # Construct a phony config
     config = UnsetProfileConfig.from_args(RuntimeArgs(
-        project_path, profiles_dir, True, "user", "deps"
+        project_path, profiles_dir, True, "deps"
     ))
     # Clear previously registered adapters--
     # this fixes cacheing behavior on the dbt-server
     flags.set_from_args("", config)
     dbt.adapters.factory.reset_adapters()
-    # Load the relevant adapter
-    dbt.adapters.factory.register_adapter(config)
     # Set invocation id
     dbt.events.functions.set_invocation_id()
     task = DepsTask(Args(), config)
