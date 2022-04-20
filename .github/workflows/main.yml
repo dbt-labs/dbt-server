@@ -102,9 +102,5 @@ jobs:
           image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
           staging-notifier-passphrase: ${{ secrets.STAGING_NOTIFIER_PASSPHRASE }}
           staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
-          staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
-          staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
           production-notifier-passphrase: ${{ secrets.INFRA_ROOT_NOTIFIER_PASSPHRASE }}
           production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
-          production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
-          production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
