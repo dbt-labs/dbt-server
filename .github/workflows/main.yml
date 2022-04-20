@@ -29,6 +29,7 @@ jobs:
     name: build and push dbt server images
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         dbt-core:
           - version: "1.0.0"
