@@ -25,10 +25,11 @@ jobs:
   #     - name: checkout code
   #       uses: actions/checkout@v2
 
-  build-staging-image:
-    name: build and publish staging image
+  build-push:
+    name: build and push dbt server images
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         dbt-core:
           - version: "1.0.0"
@@ -62,7 +63,7 @@ jobs:
               package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
             dbt-database-adapter:
               name: redshift
-              package: https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift
+              package: "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift"
           - dbt-core:
               version: head
               package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
@@ -73,75 +74,34 @@ jobs:
       - name: checkout code
         uses: actions/checkout@v2
 
-      - uses: ./.github/actions/docker-build-and-push
+      - name: registry login
+        uses: dbt-labs/internal-actions/registry-login-action@v1
+        with:
+          staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+          staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+          staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+          production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
+          production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
+
+      - name: build and push dbt server images
+        uses: dbt-labs/internal-actions/docker-build-publish@v1
         with:
           image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
           docker-file-path: Dockerfile
           docker-build-args: |
             DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
             DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
-          registry-endpoint: ${{ secrets.STAGING_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
-          registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
-          registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+          staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
           push: ${{ github.event_name == 'push' }}
 
-  build-production-image:
-    name: build and publish production image
-    needs: [build-staging-image]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dbt-core:
-          - version: "1.0.0"
-            package: "dbt-core==1.0.0"
-          - version: "1.0.1"
-            package: "dbt-core==1.0.1"
-        dbt-database-adapter:
-          - name: snowflake
-            package: dbt-snowflake
-          - name: bigquery
-            package: dbt-bigquery
-          - name: postgres
-            package: dbt-postgres
-          - name: redshift
-            package: dbt-redshift
-        include:
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: snowflake
-              package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: postgres
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: redshift
-              package: https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: bigquery
-              package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
-    steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-
-      - uses: ./.github/actions/docker-build-and-push
+      - name: notify runtime of new images
+        uses: dbt-labs/internal-actions/notify-dbt-runtime@v1
+        if: ${{ github.event_name == 'push' }}
         with:
           image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
-          docker-file-path: Dockerfile
-          docker-build-args: |
-            DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
-            DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
-          registry-endpoint: ${{ secrets.INFRA_ROOT_FROM_ACCOUNT }}.dkr.ecr.us-east-1.amazonaws.com
-          registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
-          registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
-          push: ${{ github.event_name == 'push' }}
+          staging-notifier-passphrase: ${{ secrets.STAGING_NOTIFIER_PASSPHRASE }}
+          staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+          production-notifier-passphrase: ${{ secrets.INFRA_ROOT_NOTIFIER_PASSPHRASE }}
+          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
