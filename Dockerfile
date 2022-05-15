@@ -18,5 +18,6 @@ WORKDIR /usr/src/app
 COPY requirements.txt /usr/src/app
 
 RUN pip install --no-cache-dir --upgrade -r requirements.txt $DBT_CORE_PACKAGE $DBT_DATABASE_ADAPTER_PACKAGE
+RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for this
 
 COPY ./dbt_server /usr/src/app/dbt_server
