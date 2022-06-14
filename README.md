@@ -9,7 +9,10 @@
 ```console
 pip install -r requirements.txt
 ```
-
+If running without a docker container, you will also need to install dbt with the appropriate adapter (we currently only support snowflake)
+```console
+pip install dbt-snowflake
+```
 **Run the server**
 
 From the root of the repo, with the virtualenv sourced:
