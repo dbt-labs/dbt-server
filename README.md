@@ -17,6 +17,12 @@ From the root of the repo, with the virtualenv sourced:
 ```console
 uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
 ```
+To run in `WORKSPACE_MODE`, set the env var:
+```console
+WORKSPACE_MODE=1 uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
+```
+`WORKSPACE_MODE` overrides the signal handling for `SIGINT` and `SIGTERM` to allow the server to continue accepting requests after receiving either signal. A second signal will terminate the server normally.
+`WORKSPACE_MODE` also enables the `POST /workspace-shutdown` endpoint, which is intended to be called by the Workspace Controller in a Workspace pod to forcefully shutdown the server, when there is no more work to process.
 
 ### Building docker container locally
 ```console
