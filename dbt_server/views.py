@@ -203,11 +203,16 @@ async def test(tasks: BackgroundTasks):
 if WORKSPACE_MODE:
     @app.post("/workspace-shutdown")
     async def workspace_shutdown():
-        # this is an intentional shutdown,
-        # we know there is nothing in progress
-        # when this is called, SIGKILL makes
-        # sure that the container doesn't linger
-        signal.raise_signal(signal.SIGKILL)
+        # raise 2 SIGTERM signals, just to
+        # make sure this really shuts down.
+        # raising a SIGKILL logs some
+        # warnings about leaked semaphores
+        signal.raise_signal(signal.SIGTERM)
+        signal.raise_signal(signal.SIGTERM)
+        return JSONResponse(
+            status_code=200,
+            content={},
+        )
 
 
 @app.post("/ready")
