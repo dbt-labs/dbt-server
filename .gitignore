@@ -12,4 +12,5 @@ working-dir/
 target/
 sql_app.db
 /env
+/venv
 dbt-core-server-exploration/

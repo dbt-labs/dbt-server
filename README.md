@@ -18,6 +18,19 @@ From the root of the repo, with the virtualenv sourced:
 uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
 ```
 
+### Workspace Mode
+`WORKSPACE_MODE` overrides the signal handling for `SIGINT` and `SIGTERM` to allow the server to continue accepting requests after receiving either signal. A second signal will terminate the server normally.
+`WORKSPACE_MODE` also enables the `POST /workspace-shutdown` endpoint, which is intended to be called by the Workspace Controller in a Workspace pod to forcefully shutdown the server, when there is no more work to process.
+
+**NOTE: `WORKSPACE_MODE` is the default mode that dbt-server will run in, since it is how it should run in deployed environments.**
+
+**NOTE: The signal handling overrides do not work properly with the `--reload` flag, so be sure to remove it to test or iterate on this functionality (everything else works fine and the server will restart as expected).**
+
+To run without `WORKSPACE_MODE`, set the env var `WORKSPACE_MODE=off`:
+```console
+WORKSPACE_MODE=off uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
+```
+
 ### Building docker container locally
 ```console
 docker build -f Dockerfile . -t dbt-server-<dbt-core-version>:latest --build-arg DBT_CORE_VERSION=<dbt-core-version> --build-arg DBT_DATABASE_ADAPTER_PACKAGE=dbt-<database-adapter>

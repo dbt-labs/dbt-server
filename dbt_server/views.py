@@ -1,5 +1,5 @@
 import os
-import json
+import signal
 from dbt.exceptions import RuntimeException
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
 
@@ -22,6 +22,11 @@ from .logging import GLOBAL_LOGGER as logger
 from sqlalchemy.orm import Session
 from . import crud
 from . import schemas
+
+# Enable WORKSPACE_MODE to run dbt server in a runtime workspace pod,
+# which overrides os signal handling to allow the workspace controller
+# to send remaining tasks on shutdown
+WORKSPACE_MODE = os.environ.get('WORKSPACE_MODE', '1').lower() in ('true', '1', 'on')
 
 app = FastAPI()
 
@@ -193,6 +198,16 @@ async def http_exception_handler(request: Request, exc: HTTPError):
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
+
+
+if WORKSPACE_MODE:
+    @app.post("/workspace-shutdown")
+    async def workspace_shutdown():
+        # this is an intentional shutdown,
+        # we know there is nothing in progress
+        # when this is called, SIGKILL makes
+        # sure that the container doesn't linger
+        signal.raise_signal(signal.SIGKILL)
 
 
 @app.post("/ready")

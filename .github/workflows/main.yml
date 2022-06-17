@@ -17,13 +17,28 @@ jobs:
   #     - name: checkout code
   #       uses: actions/checkout@v2
 
-  # TODO: add automated testing
-  # test:
-  #   name: test code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: checkout code
-  #       uses: actions/checkout@v2
+  test:
+    name: test code
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: setup ssh
+        uses: dbt-labs/internal-actions/private-repo-ssh-setup@v1
+        with:
+          ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+
+      - name: run unit tests
+        run: |
+          pip install -r requirements.txt -r dev-requirements.txt
+          pytest
 
   build-push:
     name: build and push dbt server images

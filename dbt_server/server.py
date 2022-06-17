@@ -1,6 +1,10 @@
+import asyncio
+import os
+import signal
+
 from . import models
 from .database import engine
-from .views import app
+from .views import WORKSPACE_MODE, app
 from .services import dbt_service
 
 # Where... does this actually go?
@@ -13,9 +17,43 @@ dbt_service.disable_tracking()
 
 @app.on_event("startup")
 async def startup_event():
-    pass
+    if WORKSPACE_MODE:
+        override_signal_handlers()
 
 
 @app.on_event("shutdown")
 def shutdown_event():
     pass
+
+
+def override_signal_handlers():
+    # avoid circular import
+    from .logging import GLOBAL_LOGGER as logger
+
+    logger.info('Setting up signal handling....')
+    block_count = 0
+
+
+    def handle_exit(signum, frame):
+        nonlocal block_count
+        if block_count > 0:
+            logger.info(
+                'Received multiple SIGINT or SIGTERM signals, '
+                'calling the original signal handler.',
+            )
+            if signum == signal.SIGINT and original_sigint_handler:
+                original_sigint_handler._run()
+            elif signum == signal.SIGTERM and original_sigterm_handler:
+                original_sigterm_handler._run()
+        else:
+            logger.info('Press CTRL+C again to quit.')
+            block_count += 1
+
+
+    loop = asyncio.get_running_loop()
+    original_sigint_handler = loop._signal_handlers.get(signal.SIGINT)
+    original_sigterm_handler = loop._signal_handlers.get(signal.SIGTERM)
+    loop.remove_signal_handler(signal.SIGINT)
+    loop.remove_signal_handler(signal.SIGTERM)
+    loop.add_signal_handler(signal.SIGINT, handle_exit, signal.SIGINT, None)
+    loop.add_signal_handler(signal.SIGTERM, handle_exit, signal.SIGTERM, None)
