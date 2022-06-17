@@ -26,7 +26,7 @@ from . import schemas
 # Enable WORKSPACE_MODE to run dbt server in a runtime workspace pod,
 # which overrides os signal handling to allow the workspace controller
 # to send remaining tasks on shutdown
-WORKSPACE_MODE = os.environ.get('WORKSPACE_MODE', '').lower() in ('true', '1')
+WORKSPACE_MODE = os.environ.get('WORKSPACE_MODE', '1').lower() in ('true', '1', 'on')
 
 app = FastAPI()
 
