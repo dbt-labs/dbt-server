@@ -23,6 +23,7 @@ WORKSPACE_MODE=1 uvicorn dbt_server.server:app --host=127.0.0.1 --port 8580
 ```
 `WORKSPACE_MODE` overrides the signal handling for `SIGINT` and `SIGTERM` to allow the server to continue accepting requests after receiving either signal. A second signal will terminate the server normally.
 `WORKSPACE_MODE` also enables the `POST /workspace-shutdown` endpoint, which is intended to be called by the Workspace Controller in a Workspace pod to forcefully shutdown the server, when there is no more work to process.
+
 **NOTE: The signal handling overrides do not work properly with the `--reload` flag, so be sure to remove it to test or iterate on this functionality.**
 
 ### Building docker container locally
