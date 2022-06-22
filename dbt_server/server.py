@@ -1,10 +1,11 @@
 import asyncio
 import os
 import signal
+from tkinter import ALL
 
 from . import models
 from .database import engine
-from .views import WORKSPACE_MODE, app
+from .views import ALLOW_ORCHESTRATED_SHUTDOWN, app
 from .services import dbt_service
 
 # Where... does this actually go?
@@ -17,7 +18,7 @@ dbt_service.disable_tracking()
 
 @app.on_event("startup")
 async def startup_event():
-    if WORKSPACE_MODE:
+    if ALLOW_ORCHESTRATED_SHUTDOWN:
         override_signal_handlers()
 
 
