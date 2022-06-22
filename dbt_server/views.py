@@ -23,10 +23,9 @@ from sqlalchemy.orm import Session
 from . import crud
 from . import schemas
 
-# Enable WORKSPACE_MODE to run dbt server in a runtime workspace pod,
-# which overrides os signal handling to allow the workspace controller
-# to send remaining tasks on shutdown
-WORKSPACE_MODE = os.environ.get('WORKSPACE_MODE', '1').lower() in ('true', '1', 'on')
+# Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
+# ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
+ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get('ALLOW_ORCHESTRATED_SHUTDOWN', '0').lower() in ('true', '1', 'on')
 
 app = FastAPI()
 
@@ -200,14 +199,19 @@ async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
 
 
-if WORKSPACE_MODE:
-    @app.post("/workspace-shutdown")
-    async def workspace_shutdown():
-        # this is an intentional shutdown,
-        # we know there is nothing in progress
-        # when this is called, SIGKILL makes
-        # sure that the container doesn't linger
-        signal.raise_signal(signal.SIGKILL)
+if ALLOW_ORCHESTRATED_SHUTDOWN:
+    @app.post("/shutdown")
+    async def shutdown():
+        # raise 2 SIGTERM signals, just to
+        # make sure this really shuts down.
+        # raising a SIGKILL logs some
+        # warnings about leaked semaphores
+        signal.raise_signal(signal.SIGTERM)
+        signal.raise_signal(signal.SIGTERM)
+        return JSONResponse(
+            status_code=200,
+            content={},
+        )
 
 
 @app.post("/ready")
