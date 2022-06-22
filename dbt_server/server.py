@@ -1,7 +1,6 @@
 import asyncio
 import os
 import signal
-from tkinter import ALL
 
 from . import models
 from .database import engine
