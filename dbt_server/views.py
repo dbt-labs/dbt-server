@@ -6,7 +6,8 @@ from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
 from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
-from fastapi import FastAPI, BackgroundTasks, Depends
+from fastapi import FastAPI, BackgroundTasks, Depends, status
+from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
@@ -172,6 +173,14 @@ class RunOperationArgs(BaseModel):
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
     sql: str
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+	exc_str = f'{exc}'.replace('\n', ' ').replace('   ', ' ')
+	logger.error(f"Request to {request.url} failed validation: {exc_str}")
+	content = {'status_code': 422, 'message': exc_str, 'data': None}
+	return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
 @app.exception_handler(RuntimeException)
