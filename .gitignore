@@ -2,6 +2,7 @@
 /.coverage
 /.coverage.*
 /.nox/
+/.pytest_cache
 /.python-version
 /.pytype/
 /dist/
