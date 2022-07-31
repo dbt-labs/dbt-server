@@ -23,11 +23,11 @@ def test_dependent_private_event_loop_values_exist() -> None:
     package. This test gives us confidence that new versions of
     Python maintain those fields.
     """
+
     async def assert_event_loop_values():
         loop = asyncio.get_event_loop()
-        assert hasattr(loop, '_signal_handlers')
-        assert isinstance(getattr(loop, '_signal_handlers'), dict)
-
+        assert hasattr(loop, "_signal_handlers")
+        assert isinstance(getattr(loop, "_signal_handlers"), dict)
 
     asyncio.run(assert_event_loop_values())
 
@@ -39,13 +39,14 @@ def test_dependent_private_handle_values_exist() -> None:
     package. This test gives us confidence that new versions of
     Python maintain those fields.
     """
+
     async def assert_asyncio_handle_values():
         # import this inline to prevent the test
         # module from blowing up on load, jic this
         # is removed in a future version of python
         from asyncio.events import Handle
-        assert hasattr(Handle, '_run')
-        assert callable(getattr(Handle, '_run'))
 
+        assert hasattr(Handle, "_run")
+        assert callable(getattr(Handle, "_run"))
 
     asyncio.run(assert_asyncio_handle_values())
