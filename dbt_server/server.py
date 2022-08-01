@@ -1,11 +1,11 @@
 import asyncio
-import os
 import signal
 
 from . import models
 from .database import engine
-from .views import ALLOW_ORCHESTRATED_SHUTDOWN, app
 from .services import dbt_service
+from .views import ALLOW_ORCHESTRATED_SHUTDOWN
+from .views import app
 
 # Where... does this actually go?
 # And what the heck do we do about migrations?
@@ -30,25 +30,23 @@ def override_signal_handlers():
     # avoid circular import
     from .logging import GLOBAL_LOGGER as logger
 
-    logger.info('Setting up signal handling....')
+    logger.info("Setting up signal handling....")
     block_count = 0
-
 
     def handle_exit(signum, frame):
         nonlocal block_count
         if block_count > 0:
             logger.info(
-                'Received multiple SIGINT or SIGTERM signals, '
-                'calling the original signal handler.',
+                "Received multiple SIGINT or SIGTERM signals, "
+                "calling the original signal handler.",
             )
             if signum == signal.SIGINT and original_sigint_handler:
                 original_sigint_handler._run()
             elif signum == signal.SIGTERM and original_sigterm_handler:
                 original_sigterm_handler._run()
         else:
-            logger.info('Press CTRL+C again to quit.')
+            logger.info("Press CTRL+C again to quit.")
             block_count += 1
-
 
     loop = asyncio.get_running_loop()
     original_sigint_handler = loop._signal_handlers.get(signal.SIGINT)

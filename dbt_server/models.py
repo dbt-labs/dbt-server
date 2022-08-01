@@ -5,10 +5,10 @@ from .database import Base
 
 
 class TaskState(str, Enum):
-    PENDING = 'pending'
-    RUNNING = 'running'
-    FINISHED = 'finished'
-    ERROR = 'error'
+    PENDING = "pending"
+    RUNNING = "running"
+    FINISHED = "finished"
+    ERROR = "error"
 
 
 class Task(Base):

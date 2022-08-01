@@ -9,13 +9,32 @@ on:
       - main
 
 jobs:
-  # TODO: add code linting
-  # lint:
-  #   name: lint code
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: checkout code
-  #       uses: actions/checkout@v2
+  hygiene:
+    name: Run "code hyiene" checks (linter, formatter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: setup ssh
+        uses: dbt-labs/internal-actions/private-repo-ssh-setup@v1
+        with:
+          ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
+
+      - name: setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
+
+      - name: install dependencies
+        run: pip install -r requirements.txt -r dev-requirements.txt
+
+      - name: Check formatting with black
+        run: black --check .
+
+      - name: Check lint errors with flake8
+        run: flake8 ./tests ./dbt_server
 
   test:
     name: test code
