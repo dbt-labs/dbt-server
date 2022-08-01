@@ -284,7 +284,7 @@ def parse_project(args: ParseArgs):
         logger.error(msg)
         return JSONResponse(
             status_code=500,
-            content=msg,
+            content={"msg": msg},
         )
 
     return JSONResponse(
