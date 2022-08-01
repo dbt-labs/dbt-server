@@ -272,11 +272,20 @@ def parse_project(args: ParseArgs):
     serialize_path = filesystem_service.get_path(state_id, 'manifest.msgpack')
 
     logger.info("Parsing manifest from filetree")
-    manifest = dbt_service.parse_to_manifest(path, args)
+    logger.info(f"{state_id=}")
+    try:
+        manifest = dbt_service.parse_to_manifest(path, args)
 
-    logger.info("Serializing as messagepack file")
-    dbt_service.serialize_manifest(manifest, serialize_path)
-    filesystem_service.update_state_id(state_id)
+        logger.info("Serializing as messagepack file")
+        dbt_service.serialize_manifest(manifest, serialize_path)
+        filesystem_service.update_state_id(state_id)
+    except Exception as e:
+        msg = f"Failed to parse manifest. {args=} {e=}"
+        logger.error(msg)
+        return JSONResponse(
+            status_code=500,
+            content={"msg": msg},
+        )
 
     return JSONResponse(
         status_code=200,
