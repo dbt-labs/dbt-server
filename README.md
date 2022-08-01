@@ -28,19 +28,9 @@ Now, every time you work on this project, you should activate the virtual enviro
 source venv/bin/activate
 ```
 
-### ⚙️ Create a dbt project for dbt-server to reference
-
-`dbt-server` expects for their to be a dbt project inside of `./working-dir`. This is the project that `dbt-server` allows clients to remotely interact with.
-
-If you aren't sure where to start with this, we recommend that you clone the [`jaffle_shop`](https://github.com/dbt-labs/jaffle_shop) example dbt project into `working-dir`.
-
-```bash
-git clone https://github.com/dbt-labs/jaffle_shop.git ./working-dir
-```
-
-In order for your machine to run this `dbt` project, you need to configure a `~/.dbt/profiles.yml`. Make sure to set
-
 ### 📌 Install dependencies
+
+#### Install requirements
 
 For development, you need to install production and dev dependencies.
 
@@ -48,20 +38,35 @@ For development, you need to install production and dev dependencies.
 pip install -r requirements.txt -r dev-requirements.txt
 ```
 
-Additionally, `dbt-server` expects that `dbt` is available in the Python environment.
+#### Install dbt and adapter
 
-It is easy to work with Postgres locally. So, with your virtual environment activated, install `dbt-postgres`, which will install `dbt-core` along with it.
+Additionally, `dbt-server` expects that `dbt` is available in the Python environment. You can install dbt by first picking the adapter you want to work with and installing that. `dbt-core` will be installed alongside the adapter automatically.
+
+If you don't have a particular database you want to work with, Postgres is a good choice. The adapter is well-used, has first-party support, and you can run Postgres locally.
 
 ```bash
-pip install dbt-postgres
+pip install dbt-postgres # This installs dbt-core as well
 ```
 
 More information on installing `dbt` can be found [here](https://docs.getdbt.com/dbt-cli/install/overview).
 
+You will also need Postgres installed on your machine in order to use `dbt-postgres` locally. There a number of ways to install / run Postgres on your machine (homebrew, asdf, docker). If you don't have a preference, you can pick your platform and download from the [official download page](https://www.postgresql.org/download/).
+
+### ⚙️ Create a dbt project for dbt-server to reference
+
+`dbt-server` expects for a client to "push" a project to it, so to manually interact with `dbt-server`, you need a dbt project on your machine.
+If you don't have a particular project that you want to work with, we recommend using [dbt-labs/jaffle_shop_metrics](https://github.com/dbt-labs/jaffle_shop_metrics) as an approachable sample project.
+
+Make sure that you set up the dbt project is _outside_ of of this repository. The dbt project should be on your machine, but in a different directory.
+
+```bash
+# From somewhere on your machine that you want this project to live. Perhaps ~/repos.
+git clone https://github.com/dbt-labs/jaffle_shop_metrics.git
+```
+
 ### 👩‍🔬 Run tests
 
 This project uses `pytest` for testing, which is installed with your development dependencies.
-
 To run all tests, simply run `pytest` in the root directory of this project.
 
 ```bash
