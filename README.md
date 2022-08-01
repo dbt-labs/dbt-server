@@ -45,8 +45,7 @@ In order for your machine to run this `dbt` project, you need to configure a `~/
 For development, you need to install production and dev dependencies.
 
 ```bash
-pip install -r requirements.txt
-pip install -r dev-requirements.txt
+pip install -r requirements.txt -r dev-requirements.txt
 ```
 
 Additionally, `dbt-server` expects that `dbt` is available in the Python environment.
