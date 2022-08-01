@@ -11,7 +11,7 @@ from dbt import semver
 from dbt.exceptions import (
     VersionsNotCompatibleException,
     DependencyException,
-    package_version_not_found
+    package_version_not_found,
 )
 from dbt.lib import (
     create_task,
@@ -20,13 +20,13 @@ from dbt.lib import (
     execute_sql as dbt_execute_sql,
     compile_sql as dbt_compile_sql,
     deserialize_manifest as dbt_deserialize_manifest,
-    serialize_manifest as dbt_serialize_manifest
+    serialize_manifest as dbt_serialize_manifest,
 )
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 
 # Temporary default to match dbt-cloud behavior
-PROFILE_NAME = os.getenv('DBT_PROFILE_NAME', 'user')
+PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 
 
 def create_dbt_config(project_path, args):
@@ -37,6 +37,7 @@ def create_dbt_config(project_path, args):
 def disable_tracking():
     # TODO: why does this mess with stuff
     import dbt.tracking
+
     dbt.tracking.disable_tracking()
 
 
@@ -62,6 +63,7 @@ def dbt_deps(project_path):
     from dbt import flags
     import dbt.adapters.factory
     import dbt.events.functions
+
     disable_tracking()
 
     class Args(BaseModel):
@@ -70,19 +72,19 @@ def dbt_deps(project_path):
         single_threaded: Optional[bool] = None
         threads: Optional[int] = None
 
-    if os.getenv('DBT_PROFILES_DIR'):
-        profiles_dir = os.getenv('DBT_PROFILES_DIR')
+    if os.getenv("DBT_PROFILES_DIR"):
+        profiles_dir = os.getenv("DBT_PROFILES_DIR")
     else:
         profiles_dir = os.path.expanduser("~/.dbt")
 
     RuntimeArgs = namedtuple(
-        'RuntimeArgs', 'project_dir profiles_dir single_threaded which'
+        "RuntimeArgs", "project_dir profiles_dir single_threaded which"
     )
 
     # Construct a phony config
-    config = UnsetProfileConfig.from_args(RuntimeArgs(
-        project_path, profiles_dir, True, "deps"
-    ))
+    config = UnsetProfileConfig.from_args(
+        RuntimeArgs(project_path, profiles_dir, True, "deps")
+    )
     # Clear previously registered adapters--
     # this fixes cacheing behavior on the dbt-server
     flags.set_from_args("", config)
@@ -92,50 +94,50 @@ def dbt_deps(project_path):
     task = DepsTask(Args(), config)
 
     # TODO: 🤦 reach into dbt-core
-    task.config.packages_install_path = os.path.join(project_path, 'dbt_packages')
+    task.config.packages_install_path = os.path.join(project_path, "dbt_packages")
 
     return task.run()
 
 
 def dbt_run(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('run', args, manifest, config)
+    task = create_task("run", args, manifest, config)
     return task.run()
 
 
 def dbt_test(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('test', args, manifest, config)
+    task = create_task("test", args, manifest, config)
     return task.run()
 
 
 def dbt_list(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('list', args, manifest, config)
+    task = create_task("list", args, manifest, config)
     return task.run()
 
 
 def dbt_seed(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('seed', args, manifest, config)
+    task = create_task("seed", args, manifest, config)
     return task.run()
 
 
 def dbt_build(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('build', args, manifest, config)
+    task = create_task("build", args, manifest, config)
     return task.run()
 
 
 def dbt_run_operation(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('run_operation', args, manifest, config)
+    task = create_task("run_operation", args, manifest, config)
     return task.run()
 
 
 def dbt_snapshot(project_path, args, manifest):
     config = create_dbt_config(project_path, args)
-    task = create_task('snapshot', args, manifest, config)
+    task = create_task("snapshot", args, manifest, config)
     return task.run()
 
 
@@ -153,51 +155,51 @@ def render_package_data(packages):
 
 def get_package_details(package_data):
     packages = []
-    for package in package_data.get('packages', {}):
-        full_name = package.get('package')
+    for package in package_data.get("packages", {}):
+        full_name = package.get("package")
         version = resolve_version(package)
         if not full_name or not version:
             # TODO: Something better than this for detecting Hub packages?
             logger.debug(
-                f'Skipping package: {package}. '
-                'Either non-hub package or missing package version.'
+                f"Skipping package: {package}. "
+                "Either non-hub package or missing package version."
             )
             continue
-        tar_name = '{}.{}.tar.gz'.format(full_name, version)
+        tar_name = "{}.{}.tar.gz".format(full_name, version)
         package_details = package_version(full_name, version)
-        tarball = package_details.get('downloads', {}).get('tarball')
-        name = package_details.get('name')
-        packages.append({
-            # Hack to imitate core package name
-            "package": f'{full_name}@{version}',
-            "name": name,
-            "version": version,
-            "tar_name": tar_name,
-            "tarball": tarball
-        })
+        tarball = package_details.get("downloads", {}).get("tarball")
+        name = package_details.get("name")
+        packages.append(
+            {
+                # Hack to imitate core package name
+                "package": f"{full_name}@{version}",
+                "name": name,
+                "version": version,
+                "tar_name": tar_name,
+                "tarball": tarball,
+            }
+        )
     return packages
 
 
 def resolve_version(package) -> str:
-    versions = package.get('version')
-    install_prerelease = package.get('install-prerelease')
+    versions = package.get("version")
+    install_prerelease = package.get("install-prerelease")
     if not isinstance(versions, list):
         return versions
     try:
         range_ = semver.reduce_versions(*versions)
     except VersionsNotCompatibleException as e:
-        new_msg = ('Version error for package {}: {}'
-                    .format(package.get('package'), e))
+        new_msg = "Version error for package {}: {}".format(package.get("package"), e)
         raise DependencyException(new_msg) from e
 
-    available = get_available_versions(package.get('package'))
+    available = get_available_versions(package.get("package"))
     prerelease_version_specified = any(
         bool(semver.VersionSpecifier.from_version_string(version).prerelease)
         for version in versions
     )
     installable = semver.filter_installable(
-        available,
-        install_prerelease or prerelease_version_specified
+        available, install_prerelease or prerelease_version_specified
     )
     target = semver.resolve_to_specific_version(range_, installable)
     if not target:
