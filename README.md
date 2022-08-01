@@ -57,7 +57,7 @@ You will also need Postgres installed on your machine in order to use `dbt-postg
 `dbt-server` expects for a client to "push" a project to it, so to manually interact with `dbt-server`, you need a dbt project on your machine.
 If you don't have a particular project that you want to work with, we recommend using [dbt-labs/jaffle_shop_metrics](https://github.com/dbt-labs/jaffle_shop_metrics) as an approachable sample project.
 
-Make sure that you set up the dbt project is _outside_ of of this repository. The dbt project should be on your machine, but in a different directory.
+Make sure that you set up / clone the dbt project _outside_ of this repository. The dbt project should be on your machine, but in a different directory than dbt-server.
 
 ```bash
 # From somewhere on your machine that you want this project to live. Perhaps ~/repos.
