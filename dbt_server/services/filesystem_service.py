@@ -26,14 +26,14 @@ def ensure_dir_exists(path):
 def write_file(path, contents):
     ensure_dir_exists(path)
 
-    with open(path, 'wb') as fh:
+    with open(path, "wb") as fh:
         if isinstance(contents, str):
-            contents = contents.encode('utf-8')
+            contents = contents.encode("utf-8")
         fh.write(contents)
 
 
 def read_file(path):
-    with open(path, 'rb') as fh:
+    with open(path, "rb") as fh:
         return fh.read()
 
 
@@ -53,12 +53,12 @@ def get_latest_state_id(state_id):
         if not os.path.exists(path):
             logger.error("No state id included in request, no previous state id found.")
             return None
-        with open(path, 'r') as latest_path_file:
+        with open(path, "r") as latest_path_file:
             state_id = latest_path_file.read()
     return state_id
 
 
 def update_state_id(state_id):
     path = os.path.abspath(get_latest_state_file_path())
-    with open(path, 'w+') as latest_path_file:
+    with open(path, "w+") as latest_path_file:
         latest_path_file.write(state_id)
