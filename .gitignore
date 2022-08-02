@@ -2,8 +2,10 @@
 /.coverage
 /.coverage.*
 /.nox/
+/.pytest_cache
 /.python-version
 /.pytype/
+/.vscode
 /dist/
 /docs/_build/
 /src/*.egg-info/
