@@ -1,9 +1,6 @@
 import os
 import signal
-from dbt.exceptions import RuntimeException
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
-
-from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
@@ -31,6 +28,13 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 ).lower() in ("true", "1", "on")
 
 app = FastAPI()
+
+
+@app.middleware("http")
+async def log_request_start(request: Request, call_next):
+    logger.debug(f"Received request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    return response
 
 
 class FileInfo(BaseModel):
@@ -187,26 +191,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
 
 
-@app.exception_handler(RuntimeException)
-async def runtime_exception_handler(request: Request, exc: RuntimeException):
-    logger.debug(str(exc))
-    # TODO: We should look at dbt-cloud's ResponseEnvelope and decide whether or not
-    #  to use the same response structure for continuity
-    return JSONResponse(
-        status_code=400,
-        content={"message": str(exc)},
-    )
-
-
-@app.exception_handler(HTTPError)
-async def http_exception_handler(request: Request, exc: HTTPError):
-    logger.debug(str(exc))
-    return JSONResponse(
-        status_code=exc.response.status_code,
-        content={"message": str(exc)},
-    )
-
-
 @app.get("/")
 async def test(tasks: BackgroundTasks):
     return {"abc": 123, "tasks": tasks.tasks}
@@ -238,7 +222,9 @@ async def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
-    logger.info(f"Recieved manifest {len(args.body)} bytes")
+    size_in_files = len(args.body)
+    size_in_bytes = sum(len(file.contents) for file in args.body.values())
+    logger.info(f"Recieved manifest {size_in_files} files, {size_in_bytes} bytes")
 
     path = filesystem_service.get_root_path(state_id)
     reuse = True
@@ -283,7 +269,7 @@ def parse_project(args: ParseArgs):
         filesystem_service.update_state_id(state_id)
     except Exception as e:
         msg = f"Failed to parse manifest. {args=} {e=}"
-        logger.error(msg)
+        logger.exception(msg)
         return JSONResponse(
             status_code=500,
             content={"msg": msg},
