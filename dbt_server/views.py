@@ -1,9 +1,6 @@
 import os
 import signal
-from dbt.exceptions import RuntimeException
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
-
-from requests.exceptions import HTTPError
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
