@@ -254,7 +254,7 @@ async def push_unparsed_manifest(args: PushProjectArgs):
 
 
 @app.post("/parse")
-def parse_project(args: ParseArgs):
+async def parse_project(args: ParseArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
