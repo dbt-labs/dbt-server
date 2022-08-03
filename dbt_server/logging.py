@@ -16,13 +16,20 @@ GLOBAL_LOGGER = logging.getLogger(__name__)
 GLOBAL_LOGGER.setLevel(logging.DEBUG)
 stdout = logging.StreamHandler()
 stdout.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+formatter = logging.Formatter(
+    "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
+)
 stdout.setFormatter(formatter)
 GLOBAL_LOGGER.addHandler(stdout)
 logger = GLOBAL_LOGGER
 
 
 json_formatter = dbt_logger.JsonFormatter(format_string=dbt_logger.STDOUT_LOG_FORMAT)
+
+
+logger_instance = logging.root.manager.loggerDict.get("uvicorn")
+if logger_instance:
+    logger_instance.handlers = [stdout]
 
 
 @dataclass

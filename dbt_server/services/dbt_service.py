@@ -24,6 +24,10 @@ from dbt.lib import (
 )
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
+import dbt
+import dbt.adapters
+import dbt.adapters.factory
+
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
@@ -31,7 +35,16 @@ PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 
 def create_dbt_config(project_path, args):
     args.profile = PROFILE_NAME
-    return get_dbt_config(project_path, args)
+
+    before_adapters = dbt.adapters.factory.get_adapter_type_names(name=None)
+    logger.debug(f"Before dbt-core config setup: {before_adapters}")
+
+    config = get_dbt_config(project_path, args)
+
+    after_adapters = dbt.adapters.factory.get_adapter_type_names(name=None)
+    logger.debug(f"After dbt-core config setup: {after_adapters}")
+
+    return config
 
 
 def disable_tracking():
