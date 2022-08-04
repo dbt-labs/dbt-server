@@ -16,9 +16,7 @@ from .services import dbt_service
 from .services import task_service
 from .logging import GLOBAL_LOGGER as logger
 
-from dbt_server.exceptions import (
-    InvalidConfigurationException
-)
+from dbt_server.exceptions import InvalidConfigurationException
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -186,7 +184,9 @@ class SQLConfig(BaseModel):
 
 
 @app.exception_handler(InvalidConfigurationException)
-async def configuration_exception_handler(request: Request, exc: InvalidConfigurationException):
+async def configuration_exception_handler(
+    request: Request, exc: InvalidConfigurationException
+):
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
     content = {"status_code": 422, "message": exc_str, "data": None}

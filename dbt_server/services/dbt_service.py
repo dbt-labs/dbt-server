@@ -6,9 +6,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from dbt_server.services import filesystem_service
-from dbt_server.exceptions import (
-    InvalidConfigurationException
-)
+from dbt_server.exceptions import InvalidConfigurationException
 
 from dbt.clients.registry import package_version, get_available_versions
 from dbt import semver
