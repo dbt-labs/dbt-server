@@ -16,6 +16,8 @@ from .services import dbt_service
 from .services import task_service
 from .logging import GLOBAL_LOGGER as logger
 
+from dbt_server.exceptions import InvalidConfigurationException
+
 # ORM stuff
 from sqlalchemy.orm import Session
 from . import crud
@@ -181,6 +183,18 @@ class SQLConfig(BaseModel):
     sql: str
 
 
+@app.exception_handler(InvalidConfigurationException)
+async def configuration_exception_handler(
+    request: Request, exc: InvalidConfigurationException
+):
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    logger.error(f"Request to {request.url} failed validation: {exc_str}")
+    content = {"status_code": 422, "message": exc_str, "data": None}
+    return JSONResponse(
+        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
@@ -261,19 +275,11 @@ async def parse_project(args: ParseArgs):
 
     logger.info("Parsing manifest from filetree")
     logger.info(f"{state_id=}")
-    try:
-        manifest = dbt_service.parse_to_manifest(path, args)
+    manifest = dbt_service.parse_to_manifest(path, args)
 
-        logger.info("Serializing as messagepack file")
-        dbt_service.serialize_manifest(manifest, serialize_path)
-        filesystem_service.update_state_id(state_id)
-    except Exception as e:
-        msg = f"Failed to parse manifest. {args=} {e=}"
-        logger.exception(msg)
-        return JSONResponse(
-            status_code=500,
-            content={"msg": msg},
-        )
+    logger.info("Serializing as messagepack file")
+    dbt_service.serialize_manifest(manifest, serialize_path)
+    filesystem_service.update_state_id(state_id)
 
     return JSONResponse(
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}

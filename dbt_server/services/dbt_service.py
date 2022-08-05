@@ -5,11 +5,14 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from . import filesystem_service
+from dbt_server.services import filesystem_service
+from dbt_server.exceptions import InvalidConfigurationException
+
 from dbt.clients.registry import package_version, get_available_versions
 from dbt import semver
 from dbt.exceptions import (
     VersionsNotCompatibleException,
+    ValidationException,
     DependencyException,
     package_version_not_found,
 )
@@ -24,10 +27,6 @@ from dbt.lib import (
 )
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
-import dbt
-import dbt.adapters
-import dbt.adapters.factory
-
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
@@ -36,15 +35,17 @@ PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 def create_dbt_config(project_path, args):
     args.profile = PROFILE_NAME
 
-    before_adapters = dbt.adapters.factory.get_adapter_type_names(name=None)
-    logger.debug(f"Before dbt-core config setup: {before_adapters}")
-
-    config = get_dbt_config(project_path, args)
-
-    after_adapters = dbt.adapters.factory.get_adapter_type_names(name=None)
-    logger.debug(f"After dbt-core config setup: {after_adapters}")
-
-    return config
+    # Some types of dbt config exceptions may contain sensitive information
+    # eg. contents of a profiles.yml file for invalid/malformed yml.
+    # Raise a new exception to mask the original backtrace and suppress
+    # potentially sensitive information.
+    try:
+        return get_dbt_config(project_path, args)
+    except ValidationException:
+        raise InvalidConfigurationException(
+            "Invalid dbt config provided. Check that your credentials are configured"
+            " correctly and a valid dbt project is present"
+        )
 
 
 def disable_tracking():
