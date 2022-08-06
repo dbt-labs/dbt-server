@@ -35,7 +35,7 @@ source venv/bin/activate
 For development, you need to install production and dev dependencies.
 
 ```bash
-pip install -r requirements.txt -r dev-requirements.txt
+pip install -r requirements.txt -r dev-requirements.txt -r test-requirements.txt
 ```
 
 #### Install dbt and adapter
@@ -72,6 +72,11 @@ To run all tests, simply run `pytest` in the root directory of this project.
 ```bash
 pytest
 ```
+
+Tests are organized into multiple suites under the `tests` directory.
+
+- `unit`: The unit test suite is for tests that can be run in isolation. These are typically testing code with well-defined inputs and outputs and no (or few) side-effects.
+- `feature`: These tests boot the web server and operate on top of the file system. The tests are written by making calls to the web server via the [test client](https://fastapi.tiangolo.com/tutorial/testing/#using-testclient) and making assertions against the result.
 
 ### 💻 Run the server in development mode
 
