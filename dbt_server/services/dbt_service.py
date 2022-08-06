@@ -96,9 +96,15 @@ def dbt_deps(project_path):
     )
 
     # Construct a phony config
-    config = UnsetProfileConfig.from_args(
-        RuntimeArgs(project_path, profiles_dir, True, "deps")
-    )
+    try:
+        config = UnsetProfileConfig.from_args(
+            RuntimeArgs(project_path, profiles_dir, True, "deps")
+        )
+    except ValidationException:
+        raise InvalidConfigurationException(
+            "Invalid dbt config provided. Check that your credentials are configured"
+            " correctly and a valid dbt project is present"
+        )
     # Clear previously registered adapters--
     # this fixes cacheing behavior on the dbt-server
     flags.set_from_args("", config)
