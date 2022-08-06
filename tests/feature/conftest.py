@@ -1,5 +1,4 @@
 import os
-import zipfile
 
 import pytest
 import yaml
@@ -17,7 +16,6 @@ def test_client() -> TestClient:
     delete_working_dir = _create_working_dir()
     delete_profile_directory = _setup_dbt_profile()
     restore_environment_variables = _setup_environment_variables()
-    teardown_client_dbt_project = _setup_client_dbt_project()
 
     yield TestClient(app)
 
@@ -26,7 +24,6 @@ def test_client() -> TestClient:
     _reset_database()
     delete_profile_directory()
     restore_environment_variables()
-    teardown_client_dbt_project()
 
 
 def _reset_database() -> None:
@@ -57,22 +54,6 @@ def _create_working_dir():
                 )
 
     return _delete_working_dir
-
-
-def _setup_client_dbt_project():
-    dbt_project = open_fs("temp://")
-
-    with open_fs(".") as root:
-        with zipfile.ZipFile(
-            root.getospath("tests/feature/test_data/jaffle_shop_metrics.zip").decode(),
-            "r",
-        ) as zip_ref:
-            zip_ref.extractall(dbt_project.getospath(".").decode())
-
-    def _teardown_client_dbt_project():
-        dbt_project.close()
-
-    return _teardown_client_dbt_project
 
 
 def _setup_dbt_profile():
