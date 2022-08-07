@@ -1,6 +1,8 @@
 import os
+from contextlib import contextmanager
+from dataclasses import dataclass
+from typing import Generator
 
-import pytest
 import yaml
 from dbt_server.server import app
 from fastapi.testclient import TestClient
@@ -10,14 +12,20 @@ from fs import open_fs
 client = TestClient(app)
 
 
-@pytest.fixture
-def test_client() -> TestClient:
+@dataclass
+class FeatureTestContext:
+    client: TestClient
+
+
+@contextmanager
+def test_context() -> Generator[FeatureTestContext, None, None]:
     # Setup
     delete_working_dir = _create_working_dir()
     delete_profile_directory = _setup_dbt_profile()
     restore_environment_variables = _setup_environment_variables()
 
-    yield TestClient(app)
+    context = FeatureTestContext(client=TestClient(app))
+    yield context
 
     # Teardown
     delete_working_dir()

@@ -10,7 +10,7 @@ from fs.tempfs import TempFS
 @pytest.mark.parametrize(
     "path", ["some_file.txt", "abc/some_file.txt", "abc/def/123/some_file.txt"]
 )
-def test_filesystem_put_read_delet(path):
+def test_filesystem_put_read_delet(path: str):
     with test_filesystem_client() as client:
         assert client.get(path) is None
         client.put(path, "contents")
