@@ -1,12 +1,14 @@
 import json
 from typing import Literal
 
+from clients.filesystem import FilesystemClient
 from dbt_server.views import FileInfo
-from fs import open_fs
 
 
 def get_unparsed_manifest(name: Literal["jaffle_shop_metrics"]) -> FileInfo:
-    with open_fs(".") as root:
-        return json.loads(
-            root.readtext(f"tests/feature/test_data/unparsed_manifests/{name}.json")
-        )
+    root = FilesystemClient(".")
+    path = f"tests/feature/test_data/unparsed_manifests/{name}.json"
+    text = root.get(path)
+    if text is None:
+        raise Exception(f"Unable to find unparsed manifest: {path}")
+    return json.loads(text)
