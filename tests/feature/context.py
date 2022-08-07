@@ -10,9 +10,6 @@ from fastapi.testclient import TestClient
 from tests.context import temp_dir
 
 
-client = TestClient(app)
-
-
 @dataclass
 class FeatureTestContext:
     client: TestClient
