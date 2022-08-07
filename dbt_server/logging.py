@@ -1,6 +1,8 @@
+import io
 import json
 import logging
 import os
+from dataclasses import dataclass
 from typing import Optional
 import logbook
 import logbook.queues
@@ -8,10 +10,8 @@ import logbook.queues
 import dbt.logger as dbt_logger
 from pythonjsonlogger import jsonlogger
 
-import io
-from dataclasses import dataclass
 
-#from .services import filesystem_service
+from .services import filesystem_service
 from .models import TaskState
 
 # setup json logging
