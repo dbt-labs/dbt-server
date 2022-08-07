@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from xmlrpc.client import boolean
+from typing import Union
 
 from fs import open_fs
 
@@ -9,7 +9,7 @@ from fs import open_fs
 class FilesystemClient:
     directory: str
 
-    def get(self, path: str) -> str | None:
+    def get(self, path: str) -> Union[str, None]:
         with open_fs(self.directory) as root:
             if root.exists(path):
                 return root.readtext(path)
@@ -23,7 +23,7 @@ class FilesystemClient:
                 root.makedirs(path_dirname, recreate=True)
             root.writetext(path, contents)
 
-    def delete(self, path: str, force: boolean = False) -> None:
+    def delete(self, path: str, force: bool = False) -> None:
         """
         Deletes the node at a path.
         If a file, deletes the file.
