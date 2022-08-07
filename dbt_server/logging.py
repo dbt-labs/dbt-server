@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from pickle import GLOBAL
 from typing import Optional
 import logbook
 import logbook.queues
