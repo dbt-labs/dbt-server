@@ -19,7 +19,7 @@ from .models import TaskState
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 stdout = logging.StreamHandler()
-if os.environ.get("APPLICATION_ENVIRONMENT") not in ("dev", None):
+if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
     formatter = logging.Formatter(
         "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
     )
