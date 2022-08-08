@@ -20,6 +20,10 @@ async def startup_event():
     if ALLOW_ORCHESTRATED_SHUTDOWN:
         override_signal_handlers()
 
+    # avoid circular import
+    from .logging import configure_uvicorn_access_log
+    configure_uvicorn_access_log()
+
 
 @app.on_event("shutdown")
 def shutdown_event():
