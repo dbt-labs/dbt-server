@@ -17,8 +17,13 @@ dbt_service.disable_tracking()
 
 @app.on_event("startup")
 async def startup_event():
+    # avoid circular import
+    from .logging import configure_uvicorn_access_log
+
     if ALLOW_ORCHESTRATED_SHUTDOWN:
         override_signal_handlers()
+
+    configure_uvicorn_access_log()
 
 
 @app.on_event("shutdown")

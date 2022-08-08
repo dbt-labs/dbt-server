@@ -7,6 +7,7 @@ from typing import Optional
 import logbook
 import logbook.queues
 
+from dbt.events.functions import STDOUT_LOG, FILE_LOG
 import dbt.logger as dbt_logger
 from pythonjsonlogger import jsonlogger
 
@@ -16,10 +17,8 @@ from .models import TaskState
 
 # setup json logging
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logger.propagate = False
+logger.setLevel(logging.INFO)
 stdout = logging.StreamHandler()
-stdout.setLevel(logging.DEBUG)
 if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
     formatter = logging.Formatter(
         "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
@@ -28,18 +27,46 @@ else:
     formatter = jsonlogger.JsonFormatter(
         "%(asctime)s %(created)f %(filename)s %(funcName)s %(levelname)s "
         "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
-        "%(processName)s %(thread)s %(threadName)s"
+        "%(processName)s %(thread)s %(threadName)s %(name)s"
     )
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
-GLOBAL_LOGGER = logger
+dbt_server_logger = logging.getLogger("dbt-server")
+dbt_server_logger.setLevel(logging.DEBUG)
+GLOBAL_LOGGER = dbt_server_logger
 
-json_formatter = dbt_logger.JsonFormatter(format_string=dbt_logger.STDOUT_LOG_FORMAT)
+# remove handlers from these loggers, so
+# that they propagate up to the root logger
+# for json formatting
+STDOUT_LOG.handlers = []
+FILE_LOG.handlers = []
 
-
+# make sure uvicorn is deferring to the root
+# logger to format logs
 logger_instance = logging.root.manager.loggerDict.get("uvicorn")
 if logger_instance:
-    logger_instance.handlers = [stdout]
+    logger.propagate = True
+    logger_instance.handlers = []
+logger_instance = logging.root.manager.loggerDict.get("uvicorn.error")
+if logger_instance:
+    logger.propagate = True
+    logger_instance.handlers = []
+
+
+def configure_uvicorn_access_log():
+    """Configure uvicorn access log.
+
+    This is in a dedicated function because it
+    needes to be configured via the application
+    startup event, otherwise uvicorn will overrride
+    our desired configuration.
+    """
+    ual = logging.getLogger("uvicorn.access")
+    ual.propagate = True
+    ual.handlers = []
+
+
+json_formatter = dbt_logger.JsonFormatter(format_string=dbt_logger.STDOUT_LOG_FORMAT)
 
 
 @dataclass
