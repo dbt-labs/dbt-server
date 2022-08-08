@@ -1,28 +1,38 @@
+import io
 import json
 import logging
+import os
+from dataclasses import dataclass
 from typing import Optional
 import logbook
 import logbook.queues
 
 import dbt.logger as dbt_logger
+from pythonjsonlogger import jsonlogger
 
-import io
-from dataclasses import dataclass
 
 from .services import filesystem_service
 from .models import TaskState
 
-GLOBAL_LOGGER = logging.getLogger(__name__)
-GLOBAL_LOGGER.setLevel(logging.DEBUG)
+# setup json logging
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.propagate = False
 stdout = logging.StreamHandler()
 stdout.setLevel(logging.DEBUG)
-formatter = logging.Formatter(
-    "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
-)
+if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
+    formatter = logging.Formatter(
+        "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
+    )
+else:
+    formatter = jsonlogger.JsonFormatter(
+        "%(asctime)s %(created)f %(filename)s %(funcName)s %(levelname)s "
+        "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
+        "%(processName)s %(thread)s %(threadName)s"
+    )
 stdout.setFormatter(formatter)
-GLOBAL_LOGGER.addHandler(stdout)
-logger = GLOBAL_LOGGER
-
+logger.addHandler(stdout)
+GLOBAL_LOGGER = logger
 
 json_formatter = dbt_logger.JsonFormatter(format_string=dbt_logger.STDOUT_LOG_FORMAT)
 
