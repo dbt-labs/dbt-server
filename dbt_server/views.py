@@ -445,7 +445,7 @@ def compile_sql(sql: SQLConfig):
     except CompilationException as e:
         return JSONResponse(
             status_code=400,
-            content={"message": str(e)},
+            content={"message": repr(e)},
         )
 
     if type(result) != RemoteCompileResult:
