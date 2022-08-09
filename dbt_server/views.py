@@ -1,6 +1,7 @@
 import os
 import signal
 from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
+from dbt.exceptions import CompilationException
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
@@ -438,7 +439,15 @@ def compile_sql(sql: SQLConfig):
     serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
-    result = dbt_service.compile_sql(manifest, path, sql.sql)
+
+    try:
+        result = dbt_service.compile_sql(manifest, path, sql.sql)
+    except CompilationException as e:
+        return JSONResponse(
+            status_code=400,
+            content={"message": repr(e)},
+        )
+
     if type(result) != RemoteCompileResult:
         # Theoretically this shouldn't happen-- handling just in case
         return JSONResponse(
