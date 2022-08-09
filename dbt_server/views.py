@@ -425,7 +425,7 @@ async def preview_sql(sql: SQLConfig):
 
 
 @app.post("/compile")
-async def compile_sql(sql: SQLConfig):
+def compile_sql(sql: SQLConfig):
     state_id = filesystem_service.get_latest_state_id(sql.state_id)
     if state_id is None:
         return JSONResponse(
