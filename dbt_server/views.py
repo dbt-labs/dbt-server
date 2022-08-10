@@ -221,7 +221,10 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
         # warnings about leaked semaphores
         signal.raise_signal(signal.SIGTERM)
         signal.raise_signal(signal.SIGTERM)
-        return JSONResponse(status_code=200, content={},)
+        return JSONResponse(
+            status_code=200,
+            content={},
+        )
 
 
 @app.post("/ready")
@@ -414,7 +417,11 @@ async def preview_sql(sql: SQLConfig):
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": state_id, "path": serialize_path, "res": encoded_results,},
+        content={
+            "parsing": state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        },
     )
 
 
@@ -439,7 +446,10 @@ def compile_sql(sql: SQLConfig):
         logger.error(
             f"Failed to compile sql for state_id: {state_id}. Compilation Error: {repr(e)}"
         )
-        return JSONResponse(status_code=400, content={"message": repr(e)},)
+        return JSONResponse(
+            status_code=400,
+            content={"message": repr(e)},
+        )
 
     if type(result) != RemoteCompileResult:
         # Theoretically this shouldn't happen-- handling just in case
@@ -454,7 +464,11 @@ def compile_sql(sql: SQLConfig):
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": state_id, "path": serialize_path, "res": encoded_results,},
+        content={
+            "parsing": state_id,
+            "path": serialize_path,
+            "res": encoded_results,
+        },
     )
 
 
@@ -481,7 +495,9 @@ class Task(BaseModel):
 
 @app.get("/stream-logs/{task_id}")
 async def log_endpoint(
-    task_id: str, request: Request, db: Session = Depends(crud.get_db),
+    task_id: str,
+    request: Request,
+    db: Session = Depends(crud.get_db),
 ):
     event_generator = task_service.tail_logs_for_path(db, task_id, request)
     return EventSourceResponse(event_generator, ping=2)
