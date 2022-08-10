@@ -443,6 +443,9 @@ def compile_sql(sql: SQLConfig):
     try:
         result = dbt_service.compile_sql(manifest, path, sql.sql)
     except CompilationException as e:
+        logger.error(
+            f"Failed to compile sql for state_id: {state_id}. Compilation Error: {repr(e)}"
+        )
         return JSONResponse(
             status_code=400,
             content={"message": repr(e)},
