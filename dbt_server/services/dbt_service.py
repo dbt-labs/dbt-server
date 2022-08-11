@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 from collections import namedtuple
 from typing import Optional
 
@@ -31,6 +32,8 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 
+CONFIG_GLOBAL_LOCK = threading.Lock()
+
 
 def create_dbt_config(project_path, args):
     args.profile = PROFILE_NAME
@@ -40,7 +43,8 @@ def create_dbt_config(project_path, args):
     # Raise a new exception to mask the original backtrace and suppress
     # potentially sensitive information.
     try:
-        return get_dbt_config(project_path, args)
+        with CONFIG_GLOBAL_LOCK:
+            return get_dbt_config(project_path, args)
     except ValidationException:
         raise InvalidConfigurationException(
             "Invalid dbt config provided. Check that your credentials are configured"
