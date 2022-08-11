@@ -34,6 +34,7 @@ PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
+
 def create_dbt_config(project_path, args):
     args.profile = PROFILE_NAME
 
