@@ -1,6 +1,7 @@
 import os
 import shutil
 from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.exceptions import StateNotFoundException
 
 ROOT_PATH = "./working-dir"
 
@@ -33,8 +34,11 @@ def write_file(path, contents):
 
 
 def read_file(path):
-    with open(path, "rb") as fh:
-        return fh.read()
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except FileNotFoundError as e:
+        raise StateNotFoundException(e)
 
 
 def write_unparsed_manifest_to_disk(state_id, filedict):

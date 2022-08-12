@@ -1,7 +1,5 @@
 import os
 import signal
-from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
-from dbt.exceptions import CompilationException
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
@@ -12,17 +10,26 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
-from .services import filesystem_service
-from .services import dbt_service
-from .services import task_service
-from .logging import GLOBAL_LOGGER as logger
+from dbt_server.state import StateController
+from dbt_server import crud, schemas, helpers
 
-from dbt_server.exceptions import InvalidConfigurationException
+from dbt_server.services import (
+    filesystem_service,
+    dbt_service,
+    task_service,
+)
+
+from dbt_server.exceptions import (
+    InvalidConfigurationException,
+    InvalidRequestException,
+    InternalException,
+    StateNotFoundException,
+)
+
+from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
-from . import crud
-from . import schemas
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
 # ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
@@ -188,22 +195,45 @@ class SQLConfig(BaseModel):
 async def configuration_exception_handler(
     request: Request, exc: InvalidConfigurationException
 ):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
-    content = {"status_code": 422, "message": exc_str, "data": None}
-    return JSONResponse(
-        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
-    )
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
-    content = {"status_code": 422, "message": exc_str, "data": None}
-    return JSONResponse(
-        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
-    )
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
+
+
+@app.exception_handler(InternalException)
+async def unhandled_internal_error(request: Request, exc: InternalException):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    logger.error(f"Request to {request.url} failed with an internal error: {exc_str}")
+
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
+
+
+@app.exception_handler(InvalidRequestException)
+async def handled_dbt_error(request: Request, exc: InvalidRequestException):
+    # Missing states get a 422, otherwise they get a 400
+    if isinstance(exc, StateNotFoundException):
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    else:
+        status_code = status.HTTP_400_BAD_REQUEST
+
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    logger.error(f"Request to {request.url} was invalid: {exc_str}")
+
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
 
 
 @app.get("/")
@@ -391,83 +421,34 @@ async def run_operation_async(
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state_id = filesystem_service.get_latest_state_id(sql.state_id)
-    if state_id is None:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "No historical record of a successfully parsed project for this user environment."
-            },
-        )
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    result = dbt_service.execute_sql(manifest, path, sql.sql)
-    if type(result) != RemoteRunResult:
-        # Theoretically this shouldn't happen-- handling just in case
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": "Something went wrong with sql execution-- please contact support."
-            },
-        )
-    result = result.to_dict()
-    encoded_results = jsonable_encoder(result)
+    state = StateController(sql.state_id)
+    result = state.execute_query(sql.sql)
+    compiled_code = helpers.extract_compiled_code_from_node(result)
 
     return JSONResponse(
         status_code=200,
         content={
-            "parsing": state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": compiled_code,
         },
     )
 
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state_id = filesystem_service.get_latest_state_id(sql.state_id)
-    if state_id is None:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "No historical record of a successfully parsed project for this user environment."
-            },
-        )
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-
-    try:
-        result = dbt_service.compile_sql(manifest, path, sql.sql)
-    except CompilationException as e:
-        logger.error(
-            f"Failed to compile sql for state_id: {state_id}. Compilation Error: {repr(e)}"
-        )
-        return JSONResponse(
-            status_code=400,
-            content={"message": repr(e)},
-        )
-
-    if type(result) != RemoteCompileResult:
-        # Theoretically this shouldn't happen-- handling just in case
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": "Something went wrong with sql compilation-- please contact support."
-            },
-        )
-    result = result.to_dict()
-    encoded_results = jsonable_encoder(result)
+    state = StateController(sql.state_id)
+    result = state.compile_query(sql.sql)
+    compiled_code = helpers.extract_compiled_code_from_node(result)
 
     return JSONResponse(
         status_code=200,
         content={
-            "parsing": state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": compiled_code,
         },
     )
 
