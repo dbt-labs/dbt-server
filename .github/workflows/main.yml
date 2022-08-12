@@ -134,6 +134,7 @@ jobs:
           docker-build-args: |
             DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
             DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
+            DATADOG_PACKAGE=ddtrace==1.3.2
           staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
           production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
           push: ${{ github.event_name == 'push' }}
