@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from dbt_server.services import filesystem_service
 from dbt_server.exceptions import InvalidConfigurationException
+from dbt_server import tracer
 
 from dbt.clients.registry import package_version, get_available_versions
 from dbt import semver
@@ -35,6 +36,13 @@ PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
 
+@tracer.wrap
+def _get_dbt_config(project_path, args):
+    # This function exists to trace the underlying dbt call
+    return get_dbt_config(project_path, args)
+
+
+@tracer.wrap
 def create_dbt_config(project_path, args):
     args.profile = PROFILE_NAME
 
@@ -44,7 +52,7 @@ def create_dbt_config(project_path, args):
     # potentially sensitive information.
     try:
         with CONFIG_GLOBAL_LOCK:
-            return get_dbt_config(project_path, args)
+            return _get_dbt_config(project_path, args)
     except ValidationException:
         raise InvalidConfigurationException(
             "Invalid dbt config provided. Check that your credentials are configured"
@@ -59,16 +67,19 @@ def disable_tracking():
     dbt.tracking.disable_tracking()
 
 
+@tracer.wrap
 def parse_to_manifest(project_path, args):
     config = create_dbt_config(project_path, args)
     return dbt_parse_to_manifest(config)
 
 
+@tracer.wrap
 def serialize_manifest(manifest, serialize_path):
     manifest_msgpack = dbt_serialize_manifest(manifest)
     filesystem_service.write_file(serialize_path, manifest_msgpack)
 
 
+@tracer.wrap
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_file(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
@@ -165,10 +176,12 @@ def dbt_snapshot(project_path, args, manifest):
     return task.run()
 
 
+@tracer.wrap
 def execute_sql(manifest, project_path, sql):
     return dbt_execute_sql(manifest, project_path, sql)
 
 
+@tracer.wrap
 def compile_sql(manifest, project_path, sql):
     return dbt_compile_sql(manifest, project_path, sql)
 
