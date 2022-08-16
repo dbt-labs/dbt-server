@@ -1,6 +1,7 @@
 import os
 import shutil
 from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server import tracer
 
 ROOT_PATH = "./working-dir"
 
@@ -17,12 +18,14 @@ def get_path(state_id, *path_parts):
     return os.path.join(get_root_path(state_id), *path_parts)
 
 
+@tracer.wrap
 def ensure_dir_exists(path):
     dirname = os.path.dirname(path)
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
 
+@tracer.wrap
 def write_file(path, contents):
     ensure_dir_exists(path)
 
@@ -32,11 +35,13 @@ def write_file(path, contents):
         fh.write(contents)
 
 
+@tracer.wrap
 def read_file(path):
     with open(path, "rb") as fh:
         return fh.read()
 
 
+@tracer.wrap
 def write_unparsed_manifest_to_disk(state_id, filedict):
     root_path = get_root_path(state_id)
     if os.path.exists(root_path):
@@ -47,6 +52,7 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
         write_file(path, file_info.contents)
 
 
+@tracer.wrap
 def get_latest_state_id(state_id):
     if not state_id:
         path = os.path.abspath(get_latest_state_file_path())
@@ -58,6 +64,7 @@ def get_latest_state_id(state_id):
     return state_id
 
 
+@tracer.wrap
 def update_state_id(state_id):
     path = os.path.abspath(get_latest_state_file_path())
     with open(path, "w+") as latest_path_file:
