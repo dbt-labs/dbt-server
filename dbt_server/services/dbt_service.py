@@ -7,7 +7,11 @@ from typing import Optional
 from pydantic import BaseModel
 
 from dbt_server.services import filesystem_service
-from dbt_server.exceptions import InvalidConfigurationException
+from dbt_server.exceptions import (
+    InvalidConfigurationException,
+    InternalException,
+    dbtCoreCompilationException,
+)
 from dbt_server import tracer
 
 from dbt.clients.registry import package_version, get_available_versions
@@ -17,6 +21,7 @@ from dbt.exceptions import (
     ValidationException,
     DependencyException,
     package_version_not_found,
+    CompilationException,
 )
 from dbt.lib import (
     create_task,
@@ -27,6 +32,11 @@ from dbt.lib import (
     deserialize_manifest as dbt_deserialize_manifest,
     serialize_manifest as dbt_serialize_manifest,
 )
+from dbt.contracts.sql import (
+    RemoteRunResult,
+    RemoteCompileResult,
+)
+
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 
@@ -34,6 +44,17 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
+
+
+def handle_dbt_compilation_error(func):
+    def inner(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.exception("Unhandled error from dbt Core")
+            raise dbtCoreCompilationException(str(e))
+
+    return inner
 
 
 @tracer.wrap
@@ -69,8 +90,14 @@ def disable_tracking():
 
 @tracer.wrap
 def parse_to_manifest(project_path, args):
-    config = create_dbt_config(project_path, args)
-    return dbt_parse_to_manifest(config)
+    try:
+        config = create_dbt_config(project_path, args)
+        return dbt_parse_to_manifest(config)
+    except CompilationException as e:
+        logger.error(
+            f"Failed to parse manifest at {project_path}. Compilation Error: {repr(e)}"
+        )
+        raise dbtCoreCompilationException(e)
 
 
 @tracer.wrap
@@ -176,14 +203,44 @@ def dbt_snapshot(project_path, args, manifest):
     return task.run()
 
 
+@handle_dbt_compilation_error
 @tracer.wrap
 def execute_sql(manifest, project_path, sql):
-    return dbt_execute_sql(manifest, project_path, sql)
+    try:
+        result = dbt_execute_sql(manifest, project_path, sql)
+    except CompilationException as e:
+        logger.error(
+            f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
+        )
+        raise dbtCoreCompilationException(e)
+
+    if type(result) != RemoteRunResult:
+        # Theoretically this shouldn't happen-- handling just in case
+        raise InternalException(
+            f"Got unexpected result type ({type(result)}) from dbt Core"
+        )
+
+    return result.to_dict()
 
 
+@handle_dbt_compilation_error
 @tracer.wrap
 def compile_sql(manifest, project_path, sql):
-    return dbt_compile_sql(manifest, project_path, sql)
+    try:
+        result = dbt_compile_sql(manifest, project_path, sql)
+    except CompilationException as e:
+        logger.error(
+            f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
+        )
+        raise dbtCoreCompilationException(e)
+
+    if type(result) != RemoteCompileResult:
+        # Theoretically this shouldn't happen-- handling just in case
+        raise InternalException(
+            f"Got unexpected result type ({type(result)}) from dbt Core"
+        )
+
+    return result.to_dict()
 
 
 def render_package_data(packages):

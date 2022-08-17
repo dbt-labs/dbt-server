@@ -1,6 +1,7 @@
 import os
 import shutil
 from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
 ROOT_PATH = "./working-dir"
@@ -37,8 +38,11 @@ def write_file(path, contents):
 
 @tracer.wrap
 def read_file(path):
-    with open(path, "rb") as fh:
-        return fh.read()
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except FileNotFoundError as e:
+        raise StateNotFoundException(e)
 
 
 @tracer.wrap

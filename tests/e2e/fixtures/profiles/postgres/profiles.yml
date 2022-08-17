@@ -1,0 +1,13 @@
+user:
+  target: postgres
+  outputs:
+    postgres:
+      type: postgres
+      database: analytics
+      host: localhost
+      user: root
+      password: password
+      port: 5432
+      schema: analytics
+      threads: 4
+

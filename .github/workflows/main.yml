@@ -54,9 +54,10 @@ jobs:
         with:
           python-version: "3.8"
 
-      - name: run unit tests
+      - name: run tests
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
+          pip install dbt-core dbt-postgres
           pytest
 
   build-push:
