@@ -236,11 +236,6 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
     return JSONResponse(content=content, status_code=status_code)
 
 
-@app.get("/")
-async def test(tasks: BackgroundTasks):
-    return {"abc": 123, "tasks": tasks.tasks}
-
-
 if ALLOW_ORCHESTRATED_SHUTDOWN:
 
     @app.post("/shutdown")
@@ -263,7 +258,7 @@ async def ready():
 
 
 @app.post("/push")
-async def push_unparsed_manifest(args: PushProjectArgs):
+def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
@@ -299,7 +294,7 @@ async def push_unparsed_manifest(args: PushProjectArgs):
 
 
 @app.post("/parse")
-async def parse_project(args: ParseArgs):
+def parse_project(args: ParseArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
