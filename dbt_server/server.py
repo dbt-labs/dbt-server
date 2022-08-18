@@ -1,64 +1,58 @@
 # Need to run this as early in the server's startup as possible
-from . import tracer  # noqa
+from dbt_server import tracer  # noqa
 
-import asyncio
-import signal
+from dbt_server import models
+from dbt_server.database import engine
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.views import app
+from dbt_server.logging import GLOBAL_LOGGER as logger, configure_uvicorn_access_log
+from dbt_server.state import LAST_PARSED
+from dbt_server.exceptions import StateNotFoundException
 
-from . import models
-from .database import engine
-from .services import dbt_service
-from .views import app
 
-# Where... does this actually go?
-# And what the heck do we do about migrations?
 models.Base.metadata.create_all(bind=engine)
-
-# TODO : This messes with stuff
 dbt_service.disable_tracking()
+
+
+def startup_cache_initialize():
+    """
+    Initialize the manifest cache at startup. The cache will only be populated if there is
+    a latest-state-id.txt file pointing to a state folder with a pre-compiled manifest.
+    If any step fails (the latest-state-id.txt file is missing, there's no compiled manifest,
+    or it can't be deserialized) then continue without caching.
+    """
+
+    # If an exception is raised in this method, the dbt-server will fail to start up.
+    # Be careful here :)
+
+    latest_state_id = filesystem_service.get_latest_state_id(None)
+    if latest_state_id is None:
+        logger.info("[STARTUP] No latest state found - not loading manifest into cache")
+        return
+
+    manifest_path = filesystem_service.get_path(latest_state_id, "manifest.msgpack")
+    logger.info(
+        f"[STARTUP] Loading manifest from file system (state_id={latest_state_id})"
+    )
+
+    try:
+        manifest = dbt_service.deserialize_manifest(manifest_path)
+    except (TypeError, ValueError) as e:
+        logger.error(f"[STARTUP] Could not deserialize manifest: {str(e)}")
+        return
+    except (StateNotFoundException):
+        logger.error(
+            f"[STARTUP] Specified latest state not found - not loading manifest (state_id={latest_state_id})"
+        )
+        return
+
+    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest)
+    logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
 
 
 @app.on_event("startup")
 async def startup_event():
-    # avoid circular import
-    from .logging import configure_uvicorn_access_log
-
-    # if ALLOW_ORCHESTRATED_SHUTDOWN:
-    #     override_signal_handlers()
+    # This method is `async` intentionally to block serving until startup is complete
 
     configure_uvicorn_access_log()
-
-
-@app.on_event("shutdown")
-def shutdown_event():
-    pass
-
-
-def override_signal_handlers():
-    # avoid circular import
-    from .logging import GLOBAL_LOGGER as logger
-
-    logger.info("Setting up signal handling....")
-    block_count = 0
-
-    def handle_exit(signum, frame):
-        nonlocal block_count
-        if block_count > 0:
-            logger.info(
-                "Received multiple SIGINT or SIGTERM signals, "
-                "calling the original signal handler.",
-            )
-            if signum == signal.SIGINT and original_sigint_handler:
-                original_sigint_handler._run()
-            elif signum == signal.SIGTERM and original_sigterm_handler:
-                original_sigterm_handler._run()
-        else:
-            logger.info("Press CTRL+C again to quit.")
-            block_count += 1
-
-    loop = asyncio.get_running_loop()
-    original_sigint_handler = loop._signal_handlers.get(signal.SIGINT)
-    original_sigterm_handler = loop._signal_handlers.get(signal.SIGTERM)
-    loop.remove_signal_handler(signal.SIGINT)
-    loop.remove_signal_handler(signal.SIGTERM)
-    loop.add_signal_handler(signal.SIGINT, handle_exit, signal.SIGINT, None)
-    loop.add_signal_handler(signal.SIGTERM, handle_exit, signal.SIGTERM, None)
+    startup_cache_initialize()

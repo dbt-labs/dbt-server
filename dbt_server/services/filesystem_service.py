@@ -41,7 +41,7 @@ def write_file(path, contents):
 
 
 @tracer.wrap
-def read_file(path):
+def read_serialized_manifest(path):
     try:
         with open(path, "rb") as fh:
             return fh.read()
@@ -68,7 +68,7 @@ def get_latest_state_id(state_id):
             logger.error("No state id included in request, no previous state id found.")
             return None
         with open(path, "r") as latest_path_file:
-            state_id = latest_path_file.read()
+            state_id = latest_path_file.read().strip()
     return state_id
 
 
