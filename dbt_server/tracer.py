@@ -24,6 +24,7 @@ def setup_tracing():
 
     if ENV_HAS_DDTRACE and APM_ENABLED:
         TRACING_ENABLED = True
+        ddtrace.patch(logging=True)
         ddtrace.patch_all()
 
 
