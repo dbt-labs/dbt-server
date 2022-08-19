@@ -94,9 +94,9 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
 
     def test_valid_model_reference(self):
         # Compile a query which results in a dbt compilation error
-        invalid_query = "select * from {{ ref('model_1') }}"
+        valid_query = "select * from {{ ref('model_1') }}"
         with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, invalid_query)
+            resp = self.compile_against_state(self.state_id, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 200)
         compiled = 'select * from "analytics"."analytics"."model_1"'

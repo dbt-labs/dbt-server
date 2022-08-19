@@ -300,7 +300,8 @@ def parse_project(args: ParseArgs):
     state.update_state_id()
 
     return JSONResponse(
-        status_code=200, content={"parsing": args.state_id, "path": state.serialize_path}
+        status_code=200,
+        content={"parsing": args.state_id, "path": state.serialize_path},
     )
 
 
