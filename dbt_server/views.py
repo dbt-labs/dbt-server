@@ -236,11 +236,6 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
     return JSONResponse(content=content, status_code=status_code)
 
 
-@app.get("/")
-async def test(tasks: BackgroundTasks):
-    return {"abc": 123, "tasks": tasks.tasks}
-
-
 if ALLOW_ORCHESTRATED_SHUTDOWN:
 
     @app.post("/shutdown")
