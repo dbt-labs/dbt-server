@@ -27,7 +27,9 @@ else:
     formatter = jsonlogger.JsonFormatter(
         "%(asctime)s %(created)f %(filename)s %(funcName)s %(levelname)s "
         "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
-        "%(processName)s %(thread)s %(threadName)s %(name)s"
+        "%(processName)s %(thread)s %(threadName)s %(name)s "
+        "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
+        "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
     )
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
