@@ -2,27 +2,44 @@ from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server import tracer
+
+from dataclasses import dataclass
+from typing import Optional, Any
 import threading
 
 
-LAST_PARSED_LOCK = threading.Lock()
-LAST_PARSED = {"manifest": None, "state_id": None}
+MANIFEST_LOCK = threading.Lock()
 
 
-def set_last_parsed_manifest(state_id, manifest):
-    with LAST_PARSED_LOCK:
-        LAST_PARSED["state_id"] = state_id
-        LAST_PARSED["manifest"] = manifest
+@dataclass
+class CachedManifest:
+    state_id: Optional[str] = None
+    manifest: Optional[Any] = None
+
+    def set_last_parsed_manifest(self, state_id, manifest):
+        with MANIFEST_LOCK:
+            self.state_id = state_id
+            self.manifest = manifest
+
+    def lookup(self, state_id):
+        with MANIFEST_LOCK:
+            if self.manifest is None:
+                return None
+            elif state_id in (None, self.state_id):
+                return CachedManifest(
+                    state_id=self.state_id, manifest=self.manifest.deepcopy()
+                )
+            else:
+                return None
+
+    # used for testing...
+    def reset(self):
+        with MANIFEST_LOCK:
+            self.state_id = None
+            self.manifest = None
 
 
-def get_cached_manifest(state_id):
-    with LAST_PARSED_LOCK:
-        if LAST_PARSED["manifest"] is None:
-            return None
-        elif state_id in (None, LAST_PARSED["state_id"]):
-            return LAST_PARSED
-        else:
-            return None
+LAST_PARSED = CachedManifest()
 
 
 class StateController(object):
@@ -45,7 +62,7 @@ class StateController(object):
         logger.info(f"Parsing manifest from filetree (state_id={state_id})")
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
         # Every parse updates the in-memory manifest cache
-        set_last_parsed_manifest(state_id, manifest)
+        LAST_PARSED.set_last_parsed_manifest(state_id, manifest)
         return cls(state_id, manifest.deepcopy())
 
     @classmethod
@@ -63,12 +80,10 @@ class StateController(object):
         If the cached manifest is mutated by a single request, then it will likely
         cause confusing and hard-to-debug problems for other subsequent requests
         """
-        cached = get_cached_manifest(state_id)
+        cached = LAST_PARSED.lookup(state_id)
         if cached:
-            state_id = cached["state_id"]
-            manifest = cached["manifest"]
-            logger.info(f"Loading manifest from cache ({state_id})")
-            return cls(state_id, manifest.deepcopy())
+            logger.info(f"Loading manifest from cache ({cached.state_id})")
+            return cls(cached.state_id, cached.manifest)
 
         # Not in cache - need to go to filesystem to deserialize it
         state_id = filesystem_service.get_latest_state_id(state_id)

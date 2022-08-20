@@ -3,9 +3,9 @@ import unittest
 from unittest.mock import patch, ANY, Mock
 
 from dbt_server.server import app
-from dbt_server.state import StateController
+from dbt_server.state import StateController, CachedManifest
 
-from dbt_server.exceptions import dbtCoreCompilationException
+from dbt_server.exceptions import dbtCoreCompilationException, StateNotFoundException
 
 
 client = TestClient(app)
@@ -13,7 +13,7 @@ client = TestClient(app)
 
 class CompilationInterfaceTests(unittest.TestCase):
     def test_compilation_interface_no_sql(self):
-        with patch("dbt_server.views.StateController.load_state") as state:
+        with patch("dbt_server.state.StateController.load_state") as state:
             response = client.post(
                 "/compile",
                 json={
@@ -48,7 +48,7 @@ class CompilationInterfaceTests(unittest.TestCase):
         query_mock = Mock(return_value={"compiled_code": compiled_query})
 
         with patch.multiple(
-            "dbt_server.views.StateController",
+            "dbt_server.state.StateController",
             load_state=state_mock,
             compile_query=query_mock,
         ):
@@ -77,7 +77,7 @@ class CompilationInterfaceTests(unittest.TestCase):
         query = "select {{ exceptions.raise_compiler_error('bad')}}"
 
         with patch(
-            "dbt_server.views.StateController.load_state",
+            "dbt_server.state.StateController.load_state",
             side_effect=dbtCoreCompilationException("Compilation error"),
         ) as state:
             response = client.post(
@@ -98,15 +98,56 @@ class CompilationInterfaceTests(unittest.TestCase):
             }
             assert response.json() == expected
 
-    @patch("dbt.lib.compile_sql", side_effect=ZeroDivisionError)
-    def test_compilation_interface_unhandled_dbt_error(self, compile_sql):
-        # TODO
-        pass
-
     def test_compilation_interface_use_cache(self):
-        # TODO
-        pass
+        # Cache hit for load_state
+        with patch("dbt_server.state.LAST_PARSED") as last_parsed:
+            state = StateController.load_state("abc123")
+            last_parsed.lookup.assert_called_once_with("abc123")
+            assert state.manifest is not None
+
+        # Cache misses for load_state do not update cache
+        with patch("dbt_server.state.LAST_PARSED.lookup", return_value=None) as lookup:
+            # We expect this to raise because abc123 is not a real state...
+            # that's fine for this test, we just want to make sure that we go to disk
+            with self.assertRaises(StateNotFoundException):
+                state = StateController.load_state("abc123")
+
+            lookup.assert_called_once_with("abc123")
 
     def test_compilation_interface_cache_mutation(self):
-        # TODO
-        pass
+        cached = CachedManifest()
+        assert cached.state_id is None
+        assert cached.manifest is None
+
+        cache_miss = cached.lookup("abc123")
+        assert cache_miss is None
+
+        cache_miss = cached.lookup(None)
+        assert cache_miss is None
+
+        # Update cache (ie. on /parse)
+        manifest_mock = Mock()
+        cached.set_last_parsed_manifest("abc123", manifest_mock)
+        assert cached.state_id == "abc123"
+        assert cached.manifest is not None
+
+        assert cached.lookup(None) is not None
+        manifest_mock.deepcopy.assert_called_once()
+        manifest_mock.reset_mock()
+
+        assert cached.lookup("abc123") is not None
+        manifest_mock.deepcopy.assert_called_once()
+        manifest_mock.reset_mock()
+
+        assert cached.lookup("def456") is None
+        assert not manifest_mock.deepcopy.called
+
+        # Re-update cache (ie. on subsequent /parse)
+        new_manifest_mock = Mock()
+        cached.set_last_parsed_manifest("def456", new_manifest_mock)
+        assert cached.state_id == "def456"
+        assert cached.manifest is not None
+
+        assert cached.lookup(None) is not None
+        assert cached.lookup("def456") is not None
+        assert cached.lookup("abc123") is None
