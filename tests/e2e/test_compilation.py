@@ -2,16 +2,28 @@ from fastapi.testclient import TestClient
 from unittest import TestCase
 
 from dbt_server.server import app
+from dbt_server.services import filesystem_service
+from .helpers import profiles_dir
+from .fixtures import simple, invalid, Profiles
 
 import hashlib
 import json
-from .helpers import profiles_dir
-from .fixtures import simple, invalid, Profiles
+import tempfile
 
 client = TestClient(app)
 
 
 class ManifestBuildingTestCase(TestCase):
+    def setUp(self):
+        # Override working-dir path to keep things clean in dev...
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.old_root_path = filesystem_service.ROOT_PATH
+        filesystem_service.ROOT_PATH = self.temp_dir.name
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        filesystem_service.ROOT_PATH = self.old_root_path
+
     @classmethod
     def push_fixture_data(cls, file_dict):
         manifest = {
@@ -56,23 +68,19 @@ class ManifestBuildingTestCase(TestCase):
 
 
 class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        super().setUp()
         # Stub out profiles.yml file
         with profiles_dir(Profiles.Postgres):
             # Push project code
-            cls.resp_push = cls.push_fixture_data(simple.FILES)
-            data = cls.resp_push.json()
-            cls.state_id = data["state"]
+            resp_push = self.push_fixture_data(simple.FILES)
+            self.assertEqual(resp_push.status_code, 200)
+            data = resp_push.json()
+            self.state_id = data["state"]
 
             # parse project code
-            cls.resp_parse = cls.parse_fixture_data(cls.state_id)
-
-    def test_push_parse_ok(self):
-        # Test that push and parse worked...
-        # If we got here, it probably did though!
-        self.assertEqual(self.resp_push.status_code, 200)
-        self.assertEqual(self.resp_parse.status_code, 200)
+            resp_parse = self.parse_fixture_data(self.state_id)
+            self.assertEqual(resp_parse.status_code, 200)
 
     def test_valid_query(self):
         # Compile a query with state
@@ -94,9 +102,9 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
 
     def test_valid_model_reference(self):
         # Compile a query which results in a dbt compilation error
-        invalid_query = "select * from {{ ref('model_1') }}"
+        valid_query = "select * from {{ ref('model_1') }}"
         with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, invalid_query)
+            resp = self.compile_against_state(self.state_id, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 200)
         compiled = 'select * from "analytics"."analytics"."model_1"'
@@ -154,38 +162,32 @@ Compilation Error in sql operation name (from remote system) macro \
 
 
 class InvalidManifestBuildingTestCase(ManifestBuildingTestCase):
-    @classmethod
-    def setUpClass(cls):
+    def test_compilation_with_invalid_manifest(self):
         # Stub out profiles.yml file
         with profiles_dir(Profiles.Postgres):
             # Push project code
-            cls.resp_push = cls.push_fixture_data(invalid.FILES)
-            data = cls.resp_push.json()
-            cls.state_id = data["state"]
+            resp_push = self.push_fixture_data(invalid.FILES)
+            self.assertEqual(resp_push.status_code, 200)
+            data = resp_push.json()
+            state_id = data["state"]
 
             # parse project code
-            cls.resp_parse = cls.parse_fixture_data(cls.state_id)
+            resp_parse = self.parse_fixture_data(state_id)
 
-    def test_push_parse_failed(self):
-        # Test that push worked and parse failed...
-        self.assertEqual(self.resp_push.status_code, 200)
-
-        self.assertEqual(self.resp_parse.status_code, 400)
-        data = self.resp_parse.json()
-        self.assertEqual(
-            data["message"],
-            """\
+            self.assertEqual(resp_parse.status_code, 400)
+            data = resp_parse.json()
+            self.assertEqual(
+                data["message"],
+                """\
 Compilation Error in model model_2 (models/model_2.sql) Model \
 'model.my_new_project.model_2' (models/model_2.sql) depends on a \
 node named 'notfound' which was not found""",
-        )
+            )
 
-    def test_compilation_with_invalid_manifest(self):
-        valid_query = "select {{ 1 + 1 }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, valid_query)
-        data = resp.json()
-        self.assertEqual(resp.status_code, 422)
-        self.assertTrue(
-            data["message"].startswith("[Errno 2] No such file or directory")
-        )
+            valid_query = "select {{ 1 + 1 }}"
+            resp = self.compile_against_state(state_id, valid_query)
+            data = resp.json()
+            self.assertEqual(resp.status_code, 422)
+            self.assertTrue(
+                data["message"].startswith("[Errno 2] No such file or directory")
+            )
