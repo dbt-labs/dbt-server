@@ -12,14 +12,9 @@ TRACING_ENABLED = False
 
 try:
     import ddtrace
+    import ddtrace.profiling.auto
 
     ENV_HAS_DDTRACE = True
-
-    # Importing this kicks of tracing. Only import
-    # it if APM_ENABLED is truthy
-    if APM_ENABLED:
-        import ddtrace.profiling.auto
-
 except (ModuleNotFoundError, ImportError):
     pass
 

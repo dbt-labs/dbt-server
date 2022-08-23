@@ -295,13 +295,20 @@ def push_unparsed_manifest(args: PushProjectArgs):
 
 @app.post("/parse")
 def parse_project(args: ParseArgs):
-    state = StateController.parse_from_source(args.state_id, args)
-    state.serialize_manifest()
-    state.update_state_id()
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+
+    logger.info("Parsing manifest from filetree")
+    logger.info(f"{state_id=}")
+    manifest = dbt_service.parse_to_manifest(path, args)
+
+    logger.info("Serializing as messagepack file")
+    dbt_service.serialize_manifest(manifest, serialize_path)
+    filesystem_service.update_state_id(state_id)
 
     return JSONResponse(
-        status_code=200,
-        content={"parsing": args.state_id, "path": state.serialize_path},
+        status_code=200, content={"parsing": args.state_id, "path": serialize_path}
     )
 
 
@@ -409,7 +416,7 @@ async def run_operation_async(
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id)
+    state = StateController(sql.state_id)
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
@@ -426,7 +433,7 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id)
+    state = StateController(sql.state_id)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 

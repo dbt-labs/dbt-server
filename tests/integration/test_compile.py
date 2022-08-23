@@ -1,11 +1,18 @@
 from fastapi.testclient import TestClient
 import unittest
-from unittest.mock import patch, ANY, Mock
+from unittest.mock import patch, ANY
 
 from dbt_server.server import app
-from dbt_server.state import StateController, CachedManifest
 
-from dbt_server.exceptions import dbtCoreCompilationException, StateNotFoundException
+from dbt_server.exceptions import dbtCoreCompilationException
+
+from .fixtures import (
+    get_state_mock,
+    FIXTURE_SERIALIZE_PATH,
+    FIXTURE_STATE_ID,
+    FIXTURE_SOURCE_CODE,
+    FIXTURE_COMPILED_CODE,
+)
 
 
 client = TestClient(app)
@@ -13,7 +20,10 @@ client = TestClient(app)
 
 class CompilationInterfaceTests(unittest.TestCase):
     def test_compilation_interface_no_sql(self):
-        with patch("dbt_server.state.StateController.load_state") as state:
+        with patch(
+            "dbt_server.views.StateController",
+            return_value=get_state_mock(),
+        ) as state:
             response = client.post(
                 "/compile",
                 json={
@@ -37,48 +47,41 @@ class CompilationInterfaceTests(unittest.TestCase):
         assert response.status_code == 422
 
     def test_compilation_interface_valid_state_id(self):
-        state_id = "goodid"
-        source_query = "select {{ 1 + 1 }}"
-        compiled_query = "select 2 as id"
+        state_id = FIXTURE_STATE_ID
+        path = FIXTURE_SERIALIZE_PATH
+        query = FIXTURE_SOURCE_CODE
 
-        state_mock = Mock(
-            return_value=StateController(state_id=state_id, manifest=None)
-        )
-
-        query_mock = Mock(return_value={"compiled_code": compiled_query})
-
-        with patch.multiple(
-            "dbt_server.state.StateController",
-            load_state=state_mock,
-            compile_query=query_mock,
-        ):
+        with patch(
+            "dbt_server.views.StateController",
+            return_value=get_state_mock(),
+        ) as state:
             response = client.post(
                 "/compile",
                 json={
-                    "sql": source_query,
+                    "sql": query,
                     "state_id": state_id,
                 },
             )
 
-            state_mock.assert_called_once_with(state_id)
-            query_mock.assert_called_once_with(source_query)
+            state.assert_called_once_with(state_id)
             assert response.status_code == 200
 
             expected = {
                 "parsing": state_id,
-                "path": "./working-dir/state-goodid/manifest.msgpack",
+                "path": path,
                 "res": ANY,
-                "compiled_code": compiled_query,
+                "compiled_code": FIXTURE_COMPILED_CODE,
             }
             assert response.json() == expected
 
     def test_compilation_interface_compilation_error(self):
-        state_id = "badid"
-        query = "select {{ exceptions.raise_compiler_error('bad')}}"
+        state_id = FIXTURE_STATE_ID
+        query = FIXTURE_SOURCE_CODE
+        exc = dbtCoreCompilationException("Compilation error")
 
         with patch(
-            "dbt_server.state.StateController.load_state",
-            side_effect=dbtCoreCompilationException("Compilation error"),
+            "dbt_server.views.StateController",
+            return_value=get_state_mock(exception=exc),
         ) as state:
             response = client.post(
                 "/compile",
@@ -98,56 +101,6 @@ class CompilationInterfaceTests(unittest.TestCase):
             }
             assert response.json() == expected
 
-    def test_compilation_interface_use_cache(self):
-        # Cache hit for load_state
-        with patch("dbt_server.state.LAST_PARSED") as last_parsed:
-            state = StateController.load_state("abc123")
-            last_parsed.lookup.assert_called_once_with("abc123")
-            assert state.manifest is not None
-
-        # Cache misses for load_state do not update cache
-        with patch("dbt_server.state.LAST_PARSED.lookup", return_value=None) as lookup:
-            # We expect this to raise because abc123 is not a real state...
-            # that's fine for this test, we just want to make sure that we go to disk
-            with self.assertRaises(StateNotFoundException):
-                state = StateController.load_state("abc123")
-
-            lookup.assert_called_once_with("abc123")
-
-    def test_compilation_interface_cache_mutation(self):
-        cached = CachedManifest()
-        assert cached.state_id is None
-        assert cached.manifest is None
-
-        cache_miss = cached.lookup("abc123")
-        assert cache_miss is None
-
-        cache_miss = cached.lookup(None)
-        assert cache_miss is None
-
-        # Update cache (ie. on /parse)
-        manifest_mock = Mock()
-        cached.set_last_parsed_manifest("abc123", manifest_mock)
-        assert cached.state_id == "abc123"
-        assert cached.manifest is not None
-
-        assert cached.lookup(None) is not None
-        manifest_mock.deepcopy.assert_called_once()
-        manifest_mock.reset_mock()
-
-        assert cached.lookup("abc123") is not None
-        manifest_mock.deepcopy.assert_called_once()
-        manifest_mock.reset_mock()
-
-        assert cached.lookup("def456") is None
-        assert not manifest_mock.deepcopy.called
-
-        # Re-update cache (ie. on subsequent /parse)
-        new_manifest_mock = Mock()
-        cached.set_last_parsed_manifest("def456", new_manifest_mock)
-        assert cached.state_id == "def456"
-        assert cached.manifest is not None
-
-        assert cached.lookup(None) is not None
-        assert cached.lookup("def456") is not None
-        assert cached.lookup("abc123") is None
+    @patch("dbt.lib.compile_sql", side_effect=ZeroDivisionError)
+    def test_compilation_interface_unhandled_dbt_error(self, compile_sql):
+        pass
