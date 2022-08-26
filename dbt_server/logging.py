@@ -21,12 +21,12 @@ from .models import TaskState
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
-        if not log_record.get('timestamp'):
+        if not log_record.get("timestamp"):
             created = datetime.utcnow()
             if record.created:
                 created = datetime.utcfromtimestamp(record.created)
-            now = created.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-            log_record['timestamp'] = now
+            now = created.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            log_record["timestamp"] = now
 
 
 # setup json logging
