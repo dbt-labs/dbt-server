@@ -3,7 +3,9 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
+
 import logbook
 import logbook.queues
 
@@ -15,6 +17,18 @@ from pythonjsonlogger import jsonlogger
 from .services import filesystem_service
 from .models import TaskState
 
+
+class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    def add_fields(self, log_record, record, message_dict):
+        super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
+        if not log_record.get("timestamp"):
+            created = datetime.utcnow()
+            if record.created:
+                created = datetime.utcfromtimestamp(record.created)
+            now = created.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            log_record["timestamp"] = now
+
+
 # setup json logging
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -24,8 +38,8 @@ if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
         "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
     )
 else:
-    formatter = jsonlogger.JsonFormatter(
-        "%(asctime)s %(created)f %(filename)s %(funcName)s %(levelname)s "
+    formatter = CustomJsonFormatter(
+        "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
         "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
         "%(processName)s %(thread)s %(threadName)s %(name)s "
         "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
