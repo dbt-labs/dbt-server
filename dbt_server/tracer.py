@@ -9,6 +9,7 @@ APM_ENABLED = os.getenv("APPLICATION_TRACING_ENABLED", "") not in (
 
 ENV_HAS_DDTRACE = False
 TRACING_ENABLED = False
+DBT_VERSION = os.getenv("DBT_VERSION")
 
 try:
     import ddtrace
@@ -39,7 +40,8 @@ def wrap(func):
 
     def dd_trace(*args, **kwargs):
         name = f"{func.__module__}.{func.__name__}"
-        with ddtrace.tracer.trace(name):
+        with ddtrace.tracer.trace(name) as span:
+            span.set_tag("dbt_version", DBT_VERSION)
             return func(*args, **kwargs)
 
     if ENV_HAS_DDTRACE and APM_ENABLED:
