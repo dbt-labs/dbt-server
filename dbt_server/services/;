@@ -62,8 +62,7 @@ def hack_dbt_compile(manifest, runtime_config, adapter, sql):
     process_node(runtime_config, manifest, sql_node)
 
     runner = SqlCompileRunner(runtime_config, adapter, sql_node, 1, 1)
-    res = runner.safe_run(manifest)
-    return res.to_dict()
+    return runner.safe_run(manifest)
 
 def handle_dbt_compilation_error(func):
     def inner(*args, **kwargs):
@@ -128,12 +127,19 @@ def serialize_manifest(manifest, serialize_path):
 def serialize_config(config, serialize_path):
     import json
     with open(serialize_path, "w") as fh:
-        config_dict = config.serialize()
-        config_dict['credentials']['type'] = config.credentials.type
-        fh.write(json.dumps(config_dict))
+        import pdb; pdb.set_trace()
+        fh.write(json.dumps(config.serialize()))
+
+def deserialize_config(serialize_path):
+    import json
+    from dbt.config.runtime import RuntimeConfig
+    with open(serialize_path, "r") as fh:
+        config = json.loads(fh.read())
+        return RuntimeConfig(**config)
 
 @tracer.wrap
 def deserialize_manifest(serialize_path):
+    import pdb; pdb.set_trace()
     manifest_packed = filesystem_service.read_file(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
 
@@ -325,87 +331,3 @@ def resolve_version(package) -> str:
     if not target:
         package_version_not_found(package, range_, installable)
     return target
-
-
-def deserialize_config(path, user, password):
-    import json
-    with open(path, 'r') as fh:
-        config = json.loads(fh.read())
-
-    from dbt.config.project import Project, VarProvider, RenderComponents, package_config_from_data
-    from dbt.contracts.connection import QueryComment
-    from dbt.semver import VersionSpecifier
-
-    dbt_version = [VersionSpecifier.from_version_string(i) for i in config['require-dbt-version']]
-    query_comment = QueryComment(
-        comment=config['query-comment']['comment'],
-        append=config['query-comment']['append'],
-        job_label=config['query-comment']['job-label'],
-    )
-
-    project = Project(
-        project_name=config['name'],
-        version=config['version'],
-        project_root=config['project-root'],
-        profile_name=config['profile'],
-        model_paths=config['model-paths'],
-        macro_paths=config['macro-paths'],
-        seed_paths=config['seed-paths'],
-        test_paths=config['test-paths'],
-        analysis_paths=config['analysis-paths'],
-        docs_paths=config['docs-paths'],
-        asset_paths=config['asset-paths'],
-        target_path=config['target-path'],
-        snapshot_paths=config['snapshot-paths'],
-        clean_targets=config['clean-targets'],
-        log_path=config['log-path'],
-        packages_install_path="dbt_packages",
-        quoting=config['quoting'],
-        models=config['models'],
-        on_run_start=config['on-run-start'],
-        on_run_end=config['on-run-end'],
-        dispatch=config['dispatch'],
-        seeds=config['seeds'],
-        snapshots=config['snapshots'],
-        sources=config['sources'],
-        tests=config['tests'],
-        vars=VarProvider(config['vars']),
-        dbt_version=dbt_version,
-        packages=package_config_from_data({"packages": config['packages']}),
-        manifest_selectors=config.get('manifest-selectors', {}),
-        selectors=config.get('selectors', {}),
-        query_comment=query_comment,
-        config_version=config['config-version'],
-        unrendered=RenderComponents(project_dict={}, packages_dict={}, selectors_dict={}),
-        project_env_vars={},
-    )
-
-    from dbt.config.profile import Profile
-    from dbt.contracts.project import UserConfig
-    from dbt.contracts.connection import Credentials
-    from dbt.adapters.factory import load_plugin
-    # Construct a credentials object using the specified type....?
-    creds_type = config['credentials'].pop('type')
-    CredentialsType = load_plugin(creds_type)
-    credentials = CredentialsType(
-        **config['credentials']
-    )
-
-    if user and password:
-        credentials.user = user
-        credentials.password = password
-
-    profile = Profile(
-        profile_name=config['profile_name'],
-        target_name=config['target_name'],
-        user_config=UserConfig(**config['user_config']),
-        threads=config['threads'],
-        credentials=credentials,
-    )
-
-    from dbt.config.runtime import RuntimeConfig
-    return RuntimeConfig.from_parts(
-        project=project,
-        profile=profile,
-        args=None
-    )

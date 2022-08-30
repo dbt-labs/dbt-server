@@ -188,6 +188,8 @@ class RunOperationArgs(BaseModel):
 
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
+    user: Optional[str] = None
+    password: Optional[str] = None
     sql: str
 
 
@@ -297,18 +299,21 @@ def push_unparsed_manifest(args: PushProjectArgs):
 def parse_project(args: ParseArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+
+    manifest_serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    config_serialize_path = filesystem_service.get_path(state_id, "config.json")
 
     logger.info("Parsing manifest from filetree")
     logger.info(f"{state_id=}")
-    manifest = dbt_service.parse_to_manifest(path, args)
+    config, manifest = dbt_service.parse_to_manifest(path, args)
 
     logger.info("Serializing as messagepack file")
-    dbt_service.serialize_manifest(manifest, serialize_path)
+    dbt_service.serialize_manifest(manifest, manifest_serialize_path)
+    dbt_service.serialize_config(config, config_serialize_path)
     filesystem_service.update_state_id(state_id)
 
     return JSONResponse(
-        status_code=200, content={"parsing": args.state_id, "path": serialize_path}
+        status_code=200, content={"parsing": args.state_id, "path": manifest_serialize_path}
     )
 
 
@@ -434,8 +439,8 @@ async def preview_sql(sql: SQLConfig):
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController(sql.state_id)
-    result = state.compile_query(sql.sql)
-    compiled_code = helpers.extract_compiled_code_from_node(result)
+    result = state.compile_query(sql.sql, sql.user, sql.password)
+    #compiled_code = helpers.extract_compiled_code_from_node(result)
 
     return JSONResponse(
         status_code=200,
@@ -443,7 +448,7 @@ def compile_sql(sql: SQLConfig):
             "parsing": state.state_id,
             "path": state.serialize_path,
             "res": jsonable_encoder(result),
-            "compiled_code": compiled_code,
+            #"compiled_code": compiled_code,
         },
     )
 
