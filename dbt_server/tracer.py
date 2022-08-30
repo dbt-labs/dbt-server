@@ -10,7 +10,7 @@ APM_ENABLED = os.getenv("APPLICATION_TRACING_ENABLED", "") not in (
 
 ENV_HAS_DDTRACE = False
 TRACING_ENABLED = False
-DBT_VERSION = str(version.installed).lstrip('=')
+DBT_VERSION = str(version.installed).lstrip("=")
 
 try:
     import ddtrace
