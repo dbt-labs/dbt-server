@@ -4,7 +4,7 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
-ROOT_PATH = "./working-dir"
+ROOT_PATH = os.environ.get('WORKING_DIR', './working-dir')
 
 
 def get_root_path(state_id):
