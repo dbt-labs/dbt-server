@@ -11,7 +11,8 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
 from dbt_server.state import StateController
-from dbt_server import crud, schemas, helpers
+from dbt_server import crud, schemas, helpers, trace_memory
+import psutil
 
 from dbt_server.services import (
     filesystem_service,
@@ -256,10 +257,22 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
 async def ready():
     return JSONResponse(status_code=200, content={})
 
+# SNAPSHOT = trace_memory.Snapshot()
+
+@app.get("/")
+def root():
+    process = psutil.Process(os.getpid())
+    logger.debug('$' * 100)
+    logger.debug(process.memory_info().rss)
+    return JSONResponse(status_code=200, content={})
+
 
 @app.post("/push")
 def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
+    process = psutil.Process(os.getpid())
+    logger.debug('0' * 100)
+    logger.debug(process.memory_info().rss)
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
     size_in_files = len(args.body)
@@ -279,7 +292,9 @@ def push_unparsed_manifest(args: PushProjectArgs):
         path = filesystem_service.get_root_path(state_id)
         dbt_service.dbt_deps(path)
         logger.info("Done installing deps")
-
+    process = psutil.Process(os.getpid())
+    logger.debug('1' * 100)
+    logger.debug(process.memory_info().rss)
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
@@ -295,6 +310,9 @@ def push_unparsed_manifest(args: PushProjectArgs):
 
 @app.post("/parse")
 def parse_project(args: ParseArgs):
+    process = psutil.Process(os.getpid())
+    logger.debug('2' * 100)
+    logger.debug(process.memory_info().rss)
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
     serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
@@ -306,7 +324,9 @@ def parse_project(args: ParseArgs):
     logger.info("Serializing as messagepack file")
     dbt_service.serialize_manifest(manifest, serialize_path)
     filesystem_service.update_state_id(state_id)
-
+    # process = psutil.Process(os.getpid())
+    # logger.debug('3' * 100)
+    # logger.debug(process.memory_info().rss)
     return JSONResponse(
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}
     )

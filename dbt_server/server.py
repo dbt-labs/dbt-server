@@ -9,6 +9,8 @@ from .database import engine
 from .services import dbt_service
 from .views import ALLOW_ORCHESTRATED_SHUTDOWN
 from .views import app
+import os, psutil
+
 
 # Where... does this actually go?
 # And what the heck do we do about migrations?
@@ -16,13 +18,17 @@ models.Base.metadata.create_all(bind=engine)
 
 # TODO : This messes with stuff
 dbt_service.disable_tracking()
-
+process = psutil.Process(os.getpid())
+print('$' * 100)
+print(process.memory_info().rss)
 
 @app.on_event("startup")
 async def startup_event():
     # avoid circular import
     from .logging import configure_uvicorn_access_log
-
+    process = psutil.Process(os.getpid())
+    print('*' * 100)
+    print(process.memory_info().rss)
     if ALLOW_ORCHESTRATED_SHUTDOWN:
         override_signal_handlers()
 
