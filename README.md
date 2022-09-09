@@ -78,7 +78,7 @@ pytest
 From the root of this repository, make sure your virutal environment is activated.
 
 ```bash
-uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
+gunicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
 ```
 
 This will start the [Fast API](https://fastapi.tiangolo.com) server in development mode, with hot-code reloading.
@@ -95,7 +95,7 @@ This will start the [Fast API](https://fastapi.tiangolo.com) server in developme
 To run with `ALLOW_ORCHESTRATED_SHUTDOWN`, set the env var `ALLOW_ORCHESTRATED_SHUTDOWN=on`:
 
 ```bash
-ALLOW_ORCHESTRATED_SHUTDOWN=on uvicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
+ALLOW_ORCHESTRATED_SHUTDOWN=on gunicorn dbt_server.server:app --reload --host=127.0.0.1 --port 8580
 ```
 
 ### 🐳 Building docker container locally

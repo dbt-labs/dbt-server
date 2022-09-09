@@ -1,5 +1,6 @@
 import os
 import signal
+import psutil
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
@@ -250,6 +251,18 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
             status_code=200,
             content={},
         )
+
+@app.get("/")
+def root():
+    process = psutil.Process(os.getpid())
+    print(f'process: {process}')
+    # logger.debug('$' * 100)
+    # logger.debug(process.memory_info().rss)
+    # tr.print_diff()
+    
+    return JSONResponse(status_code=200, content={
+        "memory": process.memory_info().rss,
+    })
 
 
 @app.post("/ready")
