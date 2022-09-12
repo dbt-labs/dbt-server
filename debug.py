@@ -10,10 +10,10 @@ print("GET UNPARSED", req.status_code)
 
 # POST /push
 
-SERVER_HOST_PUSH    = 'http://127.0.0.1:8585/push'
-SERVER_HOST_PARSE   = 'http://127.0.0.1:8585/parse'
-SERVER_HOST_COMPILE = 'http://127.0.0.1:8585/compile'
-SERVER_HOST_MEM     = 'http://127.0.0.1:8585/'
+SERVER_HOST_PUSH    = 'http://0.0.0.0:8585/push'
+SERVER_HOST_PARSE   = 'http://0.0.0.0:8585/parse'
+SERVER_HOST_COMPILE = 'http://0.0.0.0:8585/compile'
+SERVER_HOST_MEM     = 'http://0.0.0.0:8585/'
 
 if len(sys.argv) > 1:
     loops = int(sys.argv[1])
@@ -39,4 +39,4 @@ for i in range(loops):
     print("COMPILE", req.status_code)
 
     req = requests.get(SERVER_HOST_MEM)
-    print("MEMORY", req.content)
+    print("MEMORY", req.status_code)

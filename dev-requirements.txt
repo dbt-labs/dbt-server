@@ -6,3 +6,4 @@ pre-commit==2.20.0
 pre-commit-hooks==4.3.0
 reorder_python_imports==3.8.2
 requests==2.26.0
+logbook

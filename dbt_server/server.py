@@ -1,5 +1,5 @@
 # Need to run this as early in the server's startup as possible
-from . import tracer  # noqa
+# from . import tracer  # noqa
 
 import asyncio
 import signal
@@ -23,8 +23,8 @@ async def startup_event():
     # avoid circular import
     from .logging import configure_uvicorn_access_log
 
-    if ALLOW_ORCHESTRATED_SHUTDOWN:
-        override_signal_handlers()
+    # if ALLOW_ORCHESTRATED_SHUTDOWN:
+    #     override_signal_handlers()
 
     configure_uvicorn_access_log()
 
