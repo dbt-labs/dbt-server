@@ -1,36 +1,38 @@
 import os
 import signal
+
 from collections import deque
-from typing import Dict
-from typing import List
-from typing import Optional
-from typing import Union
+from sse_starlette.sse import EventSourceResponse
+from fastapi import FastAPI, BackgroundTasks, Depends, status
+from fastapi.exceptions import RequestValidationError
+from starlette.requests import Request
+from pydantic import BaseModel, Field
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
+from typing import List, Optional, Union, Dict
+
+from dbt_server.state import StateController
+from dbt_server import crud, schemas, helpers
+
+from dbt_server.services import (
+    filesystem_service,
+    dbt_service,
+    task_service,
+)
+
+from dbt_server.exceptions import (
+    InvalidConfigurationException,
+    InvalidRequestException,
+    InternalException,
+    StateNotFoundException,
+)
 
 import dbt.events.functions
-from dbt_server import crud
-from dbt_server import helpers
-from dbt_server import schemas
-from dbt_server.exceptions import InternalException
-from dbt_server.exceptions import InvalidConfigurationException
-from dbt_server.exceptions import InvalidRequestException
-from dbt_server.exceptions import StateNotFoundException
+
 from dbt_server.logging import GLOBAL_LOGGER as logger
-from dbt_server.services import dbt_service
-from dbt_server.services import filesystem_service
-from dbt_server.services import task_service
-from dbt_server.state import StateController
-from fastapi import BackgroundTasks
-from fastapi import Depends
-from fastapi import FastAPI
-from fastapi import status
-from fastapi.encoders import jsonable_encoder
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-from pydantic import Field
+
+# ORM stuff
 from sqlalchemy.orm import Session
-from sse_starlette.sse import EventSourceResponse
-from starlette.requests import Request
 
 # We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
