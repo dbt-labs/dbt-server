@@ -32,7 +32,7 @@ from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 from starlette.requests import Request
 
-# We need to override the EVENT_HOSTORY queue to store
+# We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
 # from being used.
 dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
