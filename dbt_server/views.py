@@ -1,3 +1,4 @@
+from collections import deque
 import os
 import signal
 
@@ -30,6 +31,14 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
+
+
+import dbt.events.functions
+# We need to override the EVENT_HOSTORY queue to store
+# only a small amount of events to prevent too much memory
+# from being used.
+dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
+
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
 # ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
@@ -250,7 +259,6 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
             status_code=200,
             content={},
         )
-
 
 @app.post("/ready")
 async def ready():
