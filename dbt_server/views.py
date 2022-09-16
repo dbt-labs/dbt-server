@@ -1,6 +1,7 @@
 import os
 import signal
 
+from collections import deque
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
 from fastapi.exceptions import RequestValidationError
@@ -26,10 +27,18 @@ from dbt_server.exceptions import (
     StateNotFoundException,
 )
 
+import dbt.events.functions
+
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
+
+# We need to override the EVENT_HISTORY queue to store
+# only a small amount of events to prevent too much memory
+# from being used.
+dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
+
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
 # ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
