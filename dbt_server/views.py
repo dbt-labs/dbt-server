@@ -65,13 +65,6 @@ class FileInfo(BaseModel):
 class PushProjectArgs(BaseModel):
     state_id: str
     body: Dict[str, FileInfo]
-    install_deps: Optional[bool] = False
-
-
-class DepsArgs(BaseModel):
-    packages: Optional[str] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
 
 
 class ParseArgs(BaseModel):
@@ -283,12 +276,6 @@ def push_unparsed_manifest(args: PushProjectArgs):
         reuse = False
         filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
 
-    if args.install_deps:
-        logger.info("Installing deps")
-        path = filesystem_service.get_root_path(state_id)
-        dbt_service.dbt_deps(path)
-        logger.info("Done installing deps")
-
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
@@ -455,23 +442,6 @@ def compile_sql(sql: SQLConfig):
             "compiled_code": compiled_code,
         },
     )
-
-
-@app.post("/deps")
-async def tar_deps(args: DepsArgs):
-    package_data = dbt_service.render_package_data(args.packages)
-    if not package_data:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": (
-                    "No hub packages found for installation. "
-                    "\nPlease contact support if you are receiving this message in error."
-                )
-            },
-        )
-    packages = dbt_service.get_package_details(package_data)
-    return JSONResponse(status_code=200, content={"res": jsonable_encoder(packages)})
 
 
 class Task(BaseModel):

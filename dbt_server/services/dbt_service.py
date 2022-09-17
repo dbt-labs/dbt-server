@@ -1,10 +1,6 @@
 import json
 import os
 import threading
-from collections import namedtuple
-from typing import Optional
-
-from pydantic import BaseModel
 
 from dbt_server.services import filesystem_service
 from dbt_server.exceptions import (
@@ -14,7 +10,13 @@ from dbt_server.exceptions import (
 )
 from dbt_server import tracer
 
-from dbt.clients.registry import package_version, get_available_versions
+from dbt.clients.registry import package_version
+
+try:
+    from dbt.clients.registry import get_compatible_versions
+except ImportError:
+    from dbt.clients.registry import get_available_versions as get_compatible_versions
+
 from dbt import semver
 from dbt.exceptions import (
     VersionsNotCompatibleException,
@@ -110,55 +112,6 @@ def serialize_manifest(manifest, serialize_path):
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_file(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
-
-
-def dbt_deps(project_path):
-    # TODO: add this to dbt lib! this is not great
-    from dbt.task.deps import DepsTask
-    from dbt.config.runtime import UnsetProfileConfig
-    from dbt import flags
-    import dbt.adapters.factory
-    import dbt.events.functions
-
-    disable_tracking()
-
-    class Args(BaseModel):
-        profile: Optional[str] = None
-        target: Optional[str] = None
-        single_threaded: Optional[bool] = None
-        threads: Optional[int] = None
-
-    if os.getenv("DBT_PROFILES_DIR"):
-        profiles_dir = os.getenv("DBT_PROFILES_DIR")
-    else:
-        profiles_dir = os.path.expanduser("~/.dbt")
-
-    RuntimeArgs = namedtuple(
-        "RuntimeArgs", "project_dir profiles_dir single_threaded which"
-    )
-
-    # Construct a phony config
-    try:
-        config = UnsetProfileConfig.from_args(
-            RuntimeArgs(project_path, profiles_dir, True, "deps")
-        )
-    except ValidationException:
-        raise InvalidConfigurationException(
-            "Invalid dbt config provided. Check that your credentials are configured"
-            " correctly and a valid dbt project is present"
-        )
-    # Clear previously registered adapters--
-    # this fixes cacheing behavior on the dbt-server
-    flags.set_from_args("", config)
-    dbt.adapters.factory.reset_adapters()
-    # Set invocation id
-    dbt.events.functions.set_invocation_id()
-    task = DepsTask(Args(), config)
-
-    # TODO: 🤦 reach into dbt-core
-    task.config.packages_install_path = os.path.join(project_path, "dbt_packages")
-
-    return task.run()
 
 
 def dbt_run(project_path, args, manifest):
@@ -287,7 +240,7 @@ def resolve_version(package) -> str:
         new_msg = "Version error for package {}: {}".format(package.get("package"), e)
         raise DependencyException(new_msg) from e
 
-    available = get_available_versions(package.get("package"))
+    available = get_compatible_versions(package.get("package"))
     prerelease_version_specified = any(
         bool(semver.VersionSpecifier.from_version_string(version).prerelease)
         for version in versions
