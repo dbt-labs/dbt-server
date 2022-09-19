@@ -1,4 +1,3 @@
-import json
 import os
 import threading
 
@@ -10,19 +9,8 @@ from dbt_server.exceptions import (
 )
 from dbt_server import tracer
 
-from dbt.clients.registry import package_version
-
-try:
-    from dbt.clients.registry import get_compatible_versions
-except ImportError:
-    from dbt.clients.registry import get_available_versions as get_compatible_versions
-
-from dbt import semver
 from dbt.exceptions import (
-    VersionsNotCompatibleException,
     ValidationException,
-    DependencyException,
-    package_version_not_found,
     CompilationException,
 )
 from dbt.lib import (
