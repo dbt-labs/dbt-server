@@ -11,10 +11,16 @@ from dbt_server.exceptions import (
     InvalidConfigurationException,
     InternalException,
     dbtCoreCompilationException,
+    UnsupportedQueryException
 )
 from dbt_server import tracer
 
-from dbt.clients.registry import package_version, get_available_versions
+from dbt.clients.registry import package_version
+try:
+    from dbt.clients.registry import get_compatible_versions
+except ImportError:
+    from dbt.clients.registry import get_available_versions as get_compatible_versions
+
 from dbt import semver
 from dbt.exceptions import (
     VersionsNotCompatibleException,
@@ -38,10 +44,14 @@ from dbt.contracts.sql import (
 )
 
 from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt.exceptions import InvalidConnectionException
+from fastapi.responses import JSONResponse
 
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
+ALLOW_INTROSPECTION = os.getenv("__DBT_ALLOW_INTROSPECTION", 1)
+
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
@@ -50,6 +60,12 @@ def handle_dbt_compilation_error(func):
     def inner(*args, **kwargs):
         try:
             return func(*args, **kwargs)
+        except InvalidConnectionException as e:
+            if not ALLOW_INTROSPECTION:
+                print('*' * 100)
+                msg = "This dbt server environment does not support introspective queries \n Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes that command"
+                logger.exception(msg)
+                raise UnsupportedQueryException(msg)
         except Exception as e:
             logger.exception("Unhandled error from dbt Core")
             raise dbtCoreCompilationException(str(e))
@@ -287,7 +303,7 @@ def resolve_version(package) -> str:
         new_msg = "Version error for package {}: {}".format(package.get("package"), e)
         raise DependencyException(new_msg) from e
 
-    available = get_available_versions(package.get("package"))
+    available = get_compatible_versions(package.get("package"))
     prerelease_version_specified = any(
         bool(semver.VersionSpecifier.from_version_string(version).prerelease)
         for version in versions

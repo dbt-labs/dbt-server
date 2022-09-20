@@ -27,17 +27,19 @@ from dbt_server.exceptions import (
     StateNotFoundException,
 )
 
-import dbt.events.functions
+# import dbt.events.functions
+from dbt.exceptions import InvalidConnectionException
 
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
+import psutil
 
 # We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
 # from being used.
-dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
+# dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
 
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
@@ -48,6 +50,14 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 
 app = FastAPI()
 
+@app.get("/")
+def root():
+    process = psutil.Process(os.getpid())
+    print(f'process: {process}')
+
+    return JSONResponse(status_code=200, content={
+        "memory": process.memory_info().rss,
+    }) 
 
 @app.middleware("http")
 async def log_request_start(request: Request, call_next):
@@ -443,18 +453,41 @@ async def preview_sql(sql: SQLConfig):
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController(sql.state_id)
-    result = state.compile_query(sql.sql)
-    compiled_code = helpers.extract_compiled_code_from_node(result)
+    try:
+        result = state.compile_query(sql.sql)
+    except InvalidConnectionException as e:
+        print('*' * 100)
+        return JSONResponse(
+            status_code=400,
+            content={},
+        )
+        # result
+    # compiled_code = helpers.extract_compiled_code_from_node(result)
 
     return JSONResponse(
         status_code=200,
-        content={
-            "parsing": state.state_id,
-            "path": state.serialize_path,
-            "res": jsonable_encoder(result),
-            "compiled_code": compiled_code,
-        },
+        content={},
     )
+
+# @app.post("/compile")
+# def compile_sql(sql: SQLConfig):
+#     state = StateController(sql.state_id)
+#     try:
+#         result = state.compile_query(sql.sql)
+#     except Exception as e:
+#         print('error: ', str(e))
+#         result
+#     compiled_code = helpers.extract_compiled_code_from_node(result)
+
+#     return JSONResponse(
+#         status_code=200,
+#         content={
+#             "parsing": state.state_id,
+#             "path": state.serialize_path,
+#             "res": jsonable_encoder(result),
+#             "compiled_code": compiled_code,
+#         },
+#     )
 
 
 @app.post("/deps")
