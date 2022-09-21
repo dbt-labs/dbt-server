@@ -13,7 +13,7 @@ class StateController(object):
 
         self.path = filesystem_service.get_root_path(self.state_id)
         self.serialize_path = filesystem_service.get_path(
-            self.state_id, "manifest.msgpack"
+            self.state_id, "target", "partial_parse.msgpack"
         )
         self.manifest = self.load_manifest(self.serialize_path)
 

@@ -37,7 +37,11 @@ from sqlalchemy.orm import Session
 # We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
 # from being used.
-dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
+dbt.events.functions.EVENT_HISTORY = deque(maxlen=1)
+
+
+def clear_event_history():
+    dbt.events.functions.EVENT_HISTORY.clear()
 
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
@@ -72,6 +76,7 @@ class ParseArgs(BaseModel):
     version_check: Optional[bool] = None
     profile: Optional[str] = None
     target: Optional[str] = None
+    partial_parse: bool = False
 
 
 class BuildArgs(BaseModel):
@@ -297,11 +302,13 @@ def parse_project(args: ParseArgs):
 
     logger.info("Parsing manifest from filetree")
     logger.info(f"{state_id=}")
-    manifest = dbt_service.parse_to_manifest(path, args)
+    dbt_service.parse_to_manifest(path, args)
 
-    logger.info("Serializing as messagepack file")
-    dbt_service.serialize_manifest(manifest, serialize_path)
+    logger.info("Updating state id")
+    # dbt_service.serialize_manifest(manifest, serialize_path)
     filesystem_service.update_state_id(state_id)
+
+    clear_event_history()
 
     return JSONResponse(
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}
@@ -432,6 +439,7 @@ def compile_sql(sql: SQLConfig):
     state = StateController(sql.state_id)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
+    clear_event_history()
 
     return JSONResponse(
         status_code=200,
