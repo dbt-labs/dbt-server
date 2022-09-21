@@ -15,9 +15,9 @@ RUN apt-get -y update && apt-get -y upgrade && \
   apt-get -y autoremove && \
   rm -rf /var/lib/apt/lists/*
 
-WORKDIR /usr/src/app
+WORKDIR /opt
 
-COPY requirements.txt /usr/src/app
+COPY requirements.txt /opt
 
 RUN pip install                     \
     --no-cache-dir                  \
@@ -30,4 +30,4 @@ RUN pip install                     \
 
 RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for this
 
-COPY ./dbt_server /usr/src/app/dbt_server
+COPY ./dbt_server /opt/dbt_server
