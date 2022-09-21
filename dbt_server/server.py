@@ -7,7 +7,6 @@ import signal
 from . import models
 from .database import engine
 from .services import dbt_service
-from .views import ALLOW_ORCHESTRATED_SHUTDOWN
 from .views import app
 
 # Where... does this actually go?
