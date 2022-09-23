@@ -6,7 +6,7 @@ from dbt_server.exceptions import (
     InvalidConfigurationException,
     InternalException,
     dbtCoreCompilationException,
-    UnsupportedQueryException
+    UnsupportedQueryException,
 )
 from dbt_server import tracer
 
@@ -35,9 +35,11 @@ from fastapi.responses import JSONResponse
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
-ALLOW_INTROSPECTION = str(os.environ.get(
-    "__DBT_ALLOW_INTROSPECTION", "1"
-)).lower() in ("true", "1", "on")
+ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
+    "true",
+    "1",
+    "on",
+)
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 

@@ -1,5 +1,5 @@
 from collections import deque
-import dbt
+import dbt.events.functions
 import os
 import signal
 

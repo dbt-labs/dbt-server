@@ -27,5 +27,6 @@ class StateNotFoundException(InvalidRequestException):
 class dbtCoreCompilationException(InvalidRequestException):
     pass
 
+
 class UnsupportedQueryException(InvalidRequestException):
     pass
