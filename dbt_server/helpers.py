@@ -7,10 +7,10 @@ def extract_compiled_code_from_node(result_node_dict):
     # dbt versions < 1.3 use `compiled_sql`, but this has been changed
     # to `compiled_code` in dbt-core v1.3
     compiled_code = result_node_dict.get("compiled_code", None)
-    if not compiled_code:
+    if compiled_code is None:
         compiled_code = result_node_dict.get("compiled_sql", None)
 
-    if not compiled_code:
+    if compiled_code is None:
         msg = "Failed to find compiled_sql or compiled_code in compiled node result"
         raise InternalException(msg)
 

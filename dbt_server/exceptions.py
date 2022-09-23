@@ -25,4 +25,8 @@ class StateNotFoundException(InvalidRequestException):
 
 
 class dbtCoreCompilationException(InvalidRequestException):
-    pass
+    @classmethod
+    def from_exc(cls, e):
+        original_message = getattr(e, 'msg', str(e))
+        msg = f"dbt Error: {original_message}"
+        return cls(msg)

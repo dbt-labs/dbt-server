@@ -173,7 +173,7 @@ def compile_sql(manifest, project_path, sql):
         logger.error(
             f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
         )
-        raise dbtCoreCompilationException(e)
+        raise dbtCoreCompilationException.from_exc(e)
 
     if type(result) != RemoteCompileResult:
         # Theoretically this shouldn't happen-- handling just in case

@@ -198,7 +198,7 @@ async def configuration_exception_handler(
     request: Request, exc: InvalidConfigurationException
 ):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    exc_str = str(exc)
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
     content = {"status_code": status_code, "message": exc_str, "data": None}
     return JSONResponse(content=content, status_code=status_code)
@@ -207,7 +207,7 @@ async def configuration_exception_handler(
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
-    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    exc_str = str(exc)
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
     content = {"status_code": status_code, "message": exc_str, "data": None}
     return JSONResponse(content=content, status_code=status_code)
@@ -216,7 +216,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(InternalException)
 async def unhandled_internal_error(request: Request, exc: InternalException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
-    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    exc_str = str(exc)
     logger.error(f"Request to {request.url} failed with an internal error: {exc_str}")
 
     content = {"status_code": status_code, "message": exc_str, "data": None}
@@ -231,7 +231,7 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
     else:
         status_code = status.HTTP_400_BAD_REQUEST
 
-    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    exc_str = str(exc)
     logger.error(f"Request to {request.url} was invalid: {exc_str}")
 
     content = {"status_code": status_code, "message": exc_str, "data": None}
