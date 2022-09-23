@@ -30,7 +30,6 @@ from dbt.contracts.sql import (
 
 from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt.exceptions import InvalidConnectionException
-from fastapi.responses import JSONResponse
 
 
 # Temporary default to match dbt-cloud behavior
@@ -177,7 +176,7 @@ def execute_sql(manifest, project_path, sql):
 def compile_sql(manifest, project_path, sql):
     try:
         result = dbt_compile_sql(manifest, project_path, sql)
-    except InvalidConnectionException as e:
+    except InvalidConnectionException:
         if ALLOW_INTROSPECTION:
             # Raise original error introspection isn't disabled
             # and therefore errors are unexpected
