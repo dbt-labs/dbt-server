@@ -4,15 +4,19 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
-ROOT_PATH = "./working-dir"
+
+def get_working_dir():
+    return os.environ.get("__DBT_WORKING_DIR", "./working-dir")
 
 
 def get_root_path(state_id):
-    return os.path.join(ROOT_PATH, f"state-{state_id}")
+    working_dir = get_working_dir()
+    return os.path.join(working_dir, f"state-{state_id}")
 
 
 def get_latest_state_file_path():
-    return os.path.join(ROOT_PATH, "latest-state-id.txt")
+    working_dir = get_working_dir()
+    return os.path.join(working_dir, "latest-state-id.txt")
 
 
 def get_path(state_id, *path_parts):

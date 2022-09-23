@@ -7,7 +7,6 @@ import signal
 from . import models
 from .database import engine
 from .services import dbt_service
-from .views import ALLOW_ORCHESTRATED_SHUTDOWN
 from .views import app
 
 # Where... does this actually go?
@@ -23,8 +22,8 @@ async def startup_event():
     # avoid circular import
     from .logging import configure_uvicorn_access_log
 
-    if ALLOW_ORCHESTRATED_SHUTDOWN:
-        override_signal_handlers()
+    # if ALLOW_ORCHESTRATED_SHUTDOWN:
+    #     override_signal_handlers()
 
     configure_uvicorn_access_log()
 
