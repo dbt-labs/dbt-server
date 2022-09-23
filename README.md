@@ -1,6 +1,5 @@
 # dbt-server
 
-
 ## 👩‍💻 Set up your development environment
 
 ### 🐍 Install Python
