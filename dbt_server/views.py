@@ -1,7 +1,6 @@
 import os
 import signal
 
-from collections import deque
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
 from fastapi.exceptions import RequestValidationError
@@ -26,10 +25,6 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-
-# import dbt.events.functions
-from dbt.exceptions import InvalidConnectionException
-
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
@@ -325,7 +320,6 @@ def parse_project(args: ParseArgs):
     logger.info("Serializing as messagepack file")
     dbt_service.serialize_manifest(manifest, serialize_path)
     filesystem_service.update_state_id(state_id)
-
     return JSONResponse(
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}
     )
@@ -453,41 +447,18 @@ async def preview_sql(sql: SQLConfig):
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController(sql.state_id)
-    try:
-        result = state.compile_query(sql.sql)
-    except InvalidConnectionException as e:
-        print('*' * 100)
-        return JSONResponse(
-            status_code=400,
-            content={},
-        )
-        # result
-    # compiled_code = helpers.extract_compiled_code_from_node(result)
+    result = state.compile_query(sql.sql)
+    compiled_code = helpers.extract_compiled_code_from_node(result)
 
     return JSONResponse(
         status_code=200,
-        content={},
+        content={
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": compiled_code,
+        },
     )
-
-# @app.post("/compile")
-# def compile_sql(sql: SQLConfig):
-#     state = StateController(sql.state_id)
-#     try:
-#         result = state.compile_query(sql.sql)
-#     except Exception as e:
-#         print('error: ', str(e))
-#         result
-#     compiled_code = helpers.extract_compiled_code_from_node(result)
-
-#     return JSONResponse(
-#         status_code=200,
-#         content={
-#             "parsing": state.state_id,
-#             "path": state.serialize_path,
-#             "res": jsonable_encoder(result),
-#             "compiled_code": compiled_code,
-#         },
-#     )
 
 
 @app.post("/deps")

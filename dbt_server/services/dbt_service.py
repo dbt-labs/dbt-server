@@ -50,8 +50,9 @@ from fastapi.responses import JSONResponse
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
-ALLOW_INTROSPECTION = os.getenv("__DBT_ALLOW_INTROSPECTION", 1)
-
+ALLOW_INTROSPECTION = str(os.environ.get(
+    "__DBT_ALLOW_INTROSPECTION", "1"
+)).lower() in ("true", "1", "on")
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
@@ -60,12 +61,6 @@ def handle_dbt_compilation_error(func):
     def inner(*args, **kwargs):
         try:
             return func(*args, **kwargs)
-        except InvalidConnectionException as e:
-            if not ALLOW_INTROSPECTION:
-                print('*' * 100)
-                msg = "This dbt server environment does not support introspective queries \n Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes that command"
-                logger.exception(msg)
-                raise UnsupportedQueryException(msg)
         except Exception as e:
             logger.exception("Unhandled error from dbt Core")
             raise dbtCoreCompilationException(str(e))
@@ -244,6 +239,15 @@ def execute_sql(manifest, project_path, sql):
 def compile_sql(manifest, project_path, sql):
     try:
         result = dbt_compile_sql(manifest, project_path, sql)
+    except InvalidConnectionException as e:
+        if ALLOW_INTROSPECTION:
+            # Raise original error introspection isn't disabled
+            # and therefore errors are unexpected
+            raise
+        else:
+            msg = "This dbt server environment does not support introspective queries. \n Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes that command"
+            logger.exception(msg)
+            raise UnsupportedQueryException(msg)
     except CompilationException as e:
         logger.error(
             f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
