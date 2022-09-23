@@ -29,7 +29,6 @@ from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
-import psutil
 
 # We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
@@ -45,14 +44,6 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 
 app = FastAPI()
 
-@app.get("/")
-def root():
-    process = psutil.Process(os.getpid())
-    print(f'process: {process}')
-
-    return JSONResponse(status_code=200, content={
-        "memory": process.memory_info().rss,
-    }) 
 
 @app.middleware("http")
 async def log_request_start(request: Request, call_next):
@@ -320,6 +311,7 @@ def parse_project(args: ParseArgs):
     logger.info("Serializing as messagepack file")
     dbt_service.serialize_manifest(manifest, serialize_path)
     filesystem_service.update_state_id(state_id)
+
     return JSONResponse(
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}
     )

@@ -17,6 +17,7 @@ models.Base.metadata.create_all(bind=engine)
 # TODO : This messes with stuff
 dbt_service.disable_tracking()
 
+
 @app.on_event("startup")
 async def startup_event():
     # avoid circular import
