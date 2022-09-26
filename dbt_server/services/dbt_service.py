@@ -178,7 +178,7 @@ def compile_sql(manifest, project_path, sql):
         result = dbt_compile_sql(manifest, project_path, sql)
     except InvalidConnectionException:
         if ALLOW_INTROSPECTION:
-            # Raise original error introspection isn't disabled
+            # Raise original error if introspection is not disabled
             # and therefore errors are unexpected
             raise
         else:
