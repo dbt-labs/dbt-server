@@ -6,6 +6,7 @@ from dbt_server.exceptions import (
     InvalidConfigurationException,
     InternalException,
     dbtCoreCompilationException,
+    UnsupportedQueryException,
 )
 from dbt_server import tracer
 
@@ -28,10 +29,16 @@ from dbt.contracts.sql import (
 )
 
 from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt.exceptions import InvalidConnectionException
 
 
 # Temporary default to match dbt-cloud behavior
 PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
+ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
+    "true",
+    "1",
+    "on",
+)
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
@@ -169,6 +176,15 @@ def execute_sql(manifest, project_path, sql):
 def compile_sql(manifest, project_path, sql):
     try:
         result = dbt_compile_sql(manifest, project_path, sql)
+    except InvalidConnectionException:
+        if ALLOW_INTROSPECTION:
+            # Raise original error if introspection is not disabled
+            # and therefore errors are unexpected
+            raise
+        else:
+            msg = "This dbt server environment does not support introspective queries. \n Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes that command"
+            logger.exception(msg)
+            raise UnsupportedQueryException(msg)
     except CompilationException as e:
         logger.error(
             f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"

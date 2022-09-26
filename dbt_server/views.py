@@ -1,7 +1,8 @@
+from collections import deque
+import dbt.events.functions
 import os
 import signal
 
-from collections import deque
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status
 from fastapi.exceptions import RequestValidationError
@@ -26,9 +27,6 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-
-import dbt.events.functions
-
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
