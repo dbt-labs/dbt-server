@@ -18,6 +18,11 @@ from .services import filesystem_service
 from .models import TaskState
 
 
+ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
+ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
+WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
+
+
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
@@ -27,6 +32,12 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
                 created = datetime.utcfromtimestamp(record.created)
             now = created.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             log_record["timestamp"] = now
+        if ACCOUNT_ID and "accountID" not in log_record:
+            log_record["accountID"] = ACCOUNT_ID
+        if ENVIRONMENT_ID and "environmentID" not in log_record:
+            log_record["environmentID"] = ENVIRONMENT_ID
+        if WORKSPACE_ID and "workspaceID" not in log_record:
+            log_record["workspaceID"] = WORKSPACE_ID
 
 
 # setup json logging
