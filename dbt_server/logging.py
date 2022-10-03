@@ -14,8 +14,7 @@ import dbt.logger as dbt_logger
 from pythonjsonlogger import jsonlogger
 
 
-from .services import filesystem_service
-from .models import TaskState
+from dbt_server.models import TaskState
 
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
@@ -107,6 +106,8 @@ class ServerLog:
 
 class LogManager(object):
     def __init__(self, log_path):
+        from dbt_server.services import filesystem_service
+
         self.log_path = log_path
 
         filesystem_service.ensure_dir_exists(self.log_path)

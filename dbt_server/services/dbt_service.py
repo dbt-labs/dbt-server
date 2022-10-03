@@ -1,5 +1,6 @@
 import os
 import threading
+import uuid
 
 from dbt_server.services import filesystem_service
 from dbt_server.exceptions import (
@@ -54,6 +55,10 @@ def handle_dbt_compilation_error(func):
     return inner
 
 
+def generate_node_name():
+    return str(uuid.uuid4()).replace("-", "_")
+
+
 @tracer.wrap
 def _get_dbt_config(project_path, args):
     # This function exists to trace the underlying dbt call
@@ -105,7 +110,7 @@ def serialize_manifest(manifest, serialize_path):
 
 @tracer.wrap
 def deserialize_manifest(serialize_path):
-    manifest_packed = filesystem_service.read_file(serialize_path)
+    manifest_packed = filesystem_service.read_serialized_manifest(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
 
 
@@ -155,7 +160,8 @@ def dbt_snapshot(project_path, args, manifest):
 @tracer.wrap
 def execute_sql(manifest, project_path, sql):
     try:
-        result = dbt_execute_sql(manifest, project_path, sql)
+        node_name = generate_node_name()
+        result = dbt_execute_sql(manifest, project_path, sql, node_name)
     except CompilationException as e:
         logger.error(
             f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
@@ -175,7 +181,8 @@ def execute_sql(manifest, project_path, sql):
 @tracer.wrap
 def compile_sql(manifest, project_path, sql):
     try:
-        result = dbt_compile_sql(manifest, project_path, sql)
+        node_name = generate_node_name()
+        result = dbt_compile_sql(manifest, project_path, sql, node_name)
     except InvalidConnectionException:
         if ALLOW_INTROSPECTION:
             # Raise original error if introspection is not disabled
