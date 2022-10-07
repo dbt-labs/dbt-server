@@ -52,7 +52,6 @@ def wrap(func):
             adapter_version = ""
 
         with ddtrace.tracer.trace(name) as span:
-            print(span)
             span.set_tag("dbt.version", DBT_VERSION)
             span.set_tag(f"dbt.adapters.{adapter_name}", adapter_version)
             return func(*args, **kwargs)
