@@ -19,6 +19,8 @@ Describe your changes, and why you're making them. Be as descriptive as possible
     - [ ] Postgres
     - [ ] Redshift
     - [ ] Snowflake
+    - [ ] Databricks
+    - [ ] Spark
 - [ ] I have updated the README.md (if applicable)
-- [ ] I have added tests & descriptions to my models (and macros if applicable)
+- [ ] I have added tests & descriptions to my models
 - [ ] I have added an entry to CHANGELOG.md

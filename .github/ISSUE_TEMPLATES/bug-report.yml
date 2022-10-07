@@ -79,6 +79,7 @@ body:
         - snowflake
         - bigquery
         - spark
+        - databricks
         - other (mention it in "Additional Context")
     validations:
       required: false
