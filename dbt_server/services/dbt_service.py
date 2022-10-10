@@ -15,6 +15,7 @@ from dbt.exceptions import (
     ValidationException,
     CompilationException,
 )
+import dbt.lib
 from dbt.lib import (
     create_task,
     get_dbt_config,
@@ -42,6 +43,17 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
 )
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
+
+
+def inject_dd_trace_into_core_lib():
+    from inspect import getmembers, isfunction
+
+    for attr_name, attr in getmembers(dbt.lib):
+        if not isfunction(attr):
+            continue
+
+        logger.debug(f"Wrapping dbt.lib.{attr_name} with tracer")
+        setattr(dbt.lib, attr_name, tracer.wrap(attr))
 
 
 def handle_dbt_compilation_error(func):

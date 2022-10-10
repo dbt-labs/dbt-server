@@ -56,3 +56,4 @@ async def startup_event():
 
     configure_uvicorn_access_log()
     startup_cache_initialize()
+    dbt_service.inject_dd_trace_into_core_lib()
