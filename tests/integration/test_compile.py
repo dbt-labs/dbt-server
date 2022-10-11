@@ -42,7 +42,7 @@ class CompilationInterfaceTests(unittest.TestCase):
         compiled_query = "select 2 as id"
 
         state_mock = Mock(
-            return_value=StateController(state_id=state_id, manifest=None)
+            return_value=StateController(state_id=state_id, manifest=None, size=0)
         )
 
         query_mock = Mock(return_value={"compiled_code": compiled_query})
@@ -69,6 +69,8 @@ class CompilationInterfaceTests(unittest.TestCase):
                 "path": "./working-dir/state-goodid/manifest.msgpack",
                 "res": ANY,
                 "compiled_code": compiled_query,
+                # TODO jp temporary to get the test to pass as development is done
+                "manifest_size": 0,
             }
             assert response.json() == expected
 
@@ -128,7 +130,7 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Update cache (ie. on /parse)
         manifest_mock = Mock()
-        cached.set_last_parsed_manifest("abc123", manifest_mock)
+        cached.set_last_parsed_manifest("abc123", manifest_mock, 0)
         assert cached.state_id == "abc123"
         assert cached.manifest is not None
 
@@ -142,7 +144,7 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Re-update cache (ie. on subsequent /parse)
         new_manifest_mock = Mock()
-        cached.set_last_parsed_manifest("def456", new_manifest_mock)
+        cached.set_last_parsed_manifest("def456", new_manifest_mock, 0)
         assert cached.state_id == "def456"
         assert cached.manifest is not None
 
