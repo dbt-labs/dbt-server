@@ -47,6 +47,7 @@ class StateController(object):
     def __init__(self, state_id, manifest, size):
         self.state_id = state_id
         self.manifest = manifest
+        self.size = size
 
         self.root_path = filesystem_service.get_root_path(state_id)
         self.serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")

@@ -431,6 +431,7 @@ def compile_sql(sql: SQLConfig):
             "path": state.serialize_path,
             "res": jsonable_encoder(result),
             "compiled_code": compiled_code,
+            "manifest_size": state.size
         },
     )
 
