@@ -46,7 +46,8 @@ def startup_cache_initialize():
         )
         return
 
-    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest)
+    # TODO jp add size calculation here
+    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest, 0)
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
 
 

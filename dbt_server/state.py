@@ -15,18 +15,20 @@ MANIFEST_LOCK = threading.Lock()
 class CachedManifest:
     state_id: Optional[str] = None
     manifest: Optional[Any] = None
+    size: Optional[int] = None
 
-    def set_last_parsed_manifest(self, state_id, manifest):
+    def set_last_parsed_manifest(self, state_id, manifest, size):
         with MANIFEST_LOCK:
             self.state_id = state_id
             self.manifest = manifest
+            self.size = size
 
     def lookup(self, state_id):
         with MANIFEST_LOCK:
             if self.manifest is None:
                 return None
             elif state_id in (None, self.state_id):
-                return CachedManifest(state_id=self.state_id, manifest=self.manifest)
+                return CachedManifest(state_id=self.state_id, manifest=self.manifest, size=self.size)
             else:
                 return None
 
@@ -35,13 +37,14 @@ class CachedManifest:
         with MANIFEST_LOCK:
             self.state_id = None
             self.manifest = None
+            self.size = None
 
 
 LAST_PARSED = CachedManifest()
 
 
 class StateController(object):
-    def __init__(self, state_id, manifest):
+    def __init__(self, state_id, manifest, size):
         self.state_id = state_id
         self.manifest = manifest
 
@@ -61,10 +64,11 @@ class StateController(object):
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
         # Every parse updates the in-memory manifest cache
         logger.info(f"Updating cache (state_id={state_id})")
-        LAST_PARSED.set_last_parsed_manifest(state_id, manifest)
+        # TODO jp add size calculation here
+        LAST_PARSED.set_last_parsed_manifest(state_id, manifest, 0)
 
         logger.info(f"Done parsing from source (state_id={state_id})")
-        return cls(state_id, manifest)
+        return cls(state_id, manifest, 0)
 
     @classmethod
     @tracer.wrap
@@ -79,7 +83,7 @@ class StateController(object):
         cached = LAST_PARSED.lookup(state_id)
         if cached:
             logger.info(f"Loading manifest from cache ({cached.state_id})")
-            return cls(cached.state_id, cached.manifest)
+            return cls(cached.state_id, cached.manifest, cached.size)
 
         # Not in cache - need to go to filesystem to deserialize it
         logger.info(f"Manifest cache miss (state_id={state_id})")
@@ -95,8 +99,9 @@ class StateController(object):
         manifest_path = filesystem_service.get_path(state_id, "manifest.msgpack")
         logger.info(f"Loading manifest from file system ({manifest_path})")
         manifest = dbt_service.deserialize_manifest(manifest_path)
+        # TODO jp add size calculation here
 
-        return cls(state_id, manifest)
+        return cls(state_id, manifest, 0)
 
     @tracer.wrap
     def serialize_manifest(self):
