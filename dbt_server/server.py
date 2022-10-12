@@ -46,14 +46,15 @@ def startup_cache_initialize():
         )
         return
 
-    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest)
+    source_path = filesystem_service.get_root_path(latest_state_id)
+    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest, source_path)
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
 
 
+@tracer.wrap
 @app.on_event("startup")
 async def startup_event():
     # This method is `async` intentionally to block serving until startup is complete
-
     configure_uvicorn_access_log()
-    startup_cache_initialize()
     dbt_service.inject_dd_trace_into_core_lib()
+    startup_cache_initialize()
