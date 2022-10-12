@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
+from ddtrace import tracer
 
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
@@ -420,9 +421,18 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
+    logger.info("/compile test log")
+    current_span = tracer.current_span()
+    current_span.set_tag("manifest_size", state.manifest_size)
+    logger.info(f"Current /compile span {current_span}")
+
     state = StateController.load_state(sql.state_id)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
+
+    # current_span = tracer.current_span()
+    # current_span.set_tag("manifest_size", state.manifest_size)
+    # current_span.set_tag("is_manifest_cached", state.is_manifest_cached)
 
     return JSONResponse(
         status_code=200,
