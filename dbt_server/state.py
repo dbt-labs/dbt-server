@@ -2,6 +2,7 @@ from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server import tracer
+from ddtrace import tracer as ddtracer
 
 from dataclasses import dataclass
 from typing import Optional, Any
@@ -43,6 +44,12 @@ class CachedManifest:
 LAST_PARSED = CachedManifest()
 
 
+def tag_span_with_manifest_size(span, manifest_size, is_cached):
+    if span:
+        span.set_tag("manifest_size", manifest_size)
+        span.set_tag("is_manifest_cached", is_cached)
+
+
 class StateController(object):
     def __init__(self, state_id, manifest, size):
         self.state_id = state_id
@@ -65,11 +72,14 @@ class StateController(object):
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
         # Every parse updates the in-memory manifest cache
         logger.info(f"Updating cache (state_id={state_id})")
+
         # TODO jp add size calculation here
-        LAST_PARSED.set_last_parsed_manifest(state_id, manifest, 0)
+        tag_span_with_manifest_size(ddtracer.current_span(), 1024, False)
+
+        LAST_PARSED.set_last_parsed_manifest(state_id, manifest, 1024)
 
         logger.info(f"Done parsing from source (state_id={state_id})")
-        return cls(state_id, manifest, 0)
+        return cls(state_id, manifest, 1024)
 
     @classmethod
     @tracer.wrap
@@ -81,8 +91,15 @@ class StateController(object):
         state_ids which are None (ie. "latest") or exactly matching the latest
         parsed state_id will be cache hits.
         """
+        # todo: move ddtracer.current_span() into function, leaving for debug for now
+        current_span = ddtracer.current_span()
+        logger.info(f"Load state current span ({current_span})")
+
         cached = LAST_PARSED.lookup(state_id)
         if cached:
+            tag_span_with_manifest_size(current_span, cached.size, True)
+            # tag_span_with_manifest_size(ddtracer.current_span(), cached.size, True)
+
             logger.info(f"Loading manifest from cache ({cached.state_id})")
             return cls(cached.state_id, cached.manifest, cached.size)
 
@@ -100,9 +117,11 @@ class StateController(object):
         manifest_path = filesystem_service.get_path(state_id, "manifest.msgpack")
         logger.info(f"Loading manifest from file system ({manifest_path})")
         manifest = dbt_service.deserialize_manifest(manifest_path)
-        # TODO jp add size calculation here
 
-        return cls(state_id, manifest, 0)
+        # TODO jp add size calculation here
+        tag_span_with_manifest_size(current_span, 1024, True)
+
+        return cls(state_id, manifest, 1024)
 
     @tracer.wrap
     def serialize_manifest(self):
