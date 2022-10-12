@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 import unittest
 
+import dbt_server.services.filesystem_service
 from dbt_server.server import app, startup_cache_initialize
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
@@ -23,24 +24,31 @@ class StartupCacheTest(unittest.TestCase):
         LAST_PARSED.reset()
 
     @patch(
-        "dbt_server.services.filesystem_service.get_latest_state_id",
-        return_value="abc123",
-    )
-    @patch(
         "dbt_server.services.dbt_service.deserialize_manifest",
         return_value=fake_manifest,
     )
-    def test_startup_cache_succeeds(self, mock_dbt, mock_fs):
-        # Make sure it's not errantly cached
-        assert LAST_PARSED.manifest is None
+    def test_startup_cache_succeeds(self, mock_dbt):
+        with (
+            patch(
+                "dbt_server.services.filesystem_service.get_latest_state_id",
+                return_value="abc123"
+            ) as mock_fs_get_latest_state_id,
+            patch("dbt_server.services.filesystem_service.get_size", return_value=1024) as mock_fs_get_size,
+        ):
 
-        startup_cache_initialize()
+            # Make sure it's not errantly cached
+            assert LAST_PARSED.manifest is None
 
-        # Make sure manifest is now cached
-        mock_fs.assert_called_once_with(None)
-        mock_dbt.assert_called_once_with("./working-dir/state-abc123/manifest.msgpack")
-        assert LAST_PARSED.manifest is fake_manifest
-        assert LAST_PARSED.state_id == "abc123"
+            startup_cache_initialize()
+
+            # Make sure manifest is now cached
+            expected_path = "./working-dir/state-abc123/manifest.msgpack"
+            mock_fs_get_latest_state_id.assert_called_once_with(None)
+            mock_fs_get_size.assert_called_once_with(expected_path)
+            mock_dbt.assert_called_once_with(expected_path)
+            assert LAST_PARSED.manifest is fake_manifest
+            assert LAST_PARSED.state_id == "abc123"
+            assert LAST_PARSED.size == 1024
 
     @patch(
         "dbt_server.services.filesystem_service.get_latest_state_id", return_value=None
