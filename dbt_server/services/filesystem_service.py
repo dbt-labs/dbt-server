@@ -23,6 +23,10 @@ def get_path(state_id, *path_parts):
     return os.path.join(get_root_path(state_id), *path_parts)
 
 
+def get_size(path):
+    return os.path.getsize(path)
+
+
 @tracer.wrap
 def ensure_dir_exists(path):
     dirname = os.path.dirname(path)

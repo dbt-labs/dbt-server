@@ -67,7 +67,7 @@ class StateController(object):
         source_path = filesystem_service.get_root_path(state_id)
         logger.info(f"Parsing manifest from filetree (state_id={state_id})")
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
-        manifest_size = os.path.getsize(source_path)
+        manifest_size = filesystem_service.get_size(source_path)
 
         # Every parse updates the in-memory manifest cache
         logger.info(f"Updating cache (state_id={state_id})")
@@ -106,7 +106,7 @@ class StateController(object):
         manifest_path = filesystem_service.get_path(state_id, "manifest.msgpack")
         logger.info(f"Loading manifest from file system ({manifest_path})")
         manifest = dbt_service.deserialize_manifest(manifest_path)
-        manifest_size = os.path.getsize(manifest_path)
+        manifest_size = filesystem_service.get_size(manifest_path)
 
         return cls(state_id, manifest, manifest_size, False)
 

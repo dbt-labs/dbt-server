@@ -48,7 +48,7 @@ def startup_cache_initialize():
         )
         return
 
-    manifest_size = os.path.getsize(manifest_path)
+    manifest_size = filesystem_service.get_size(manifest_path)
     LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest, manifest_size)
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
 

@@ -423,7 +423,8 @@ async def preview_sql(sql: SQLConfig):
 def compile_sql(sql: SQLConfig):
     logger.info("/compile test log")
     current_span = tracer.current_span()
-    current_span.set_tag("manifest_size", state.manifest_size)
+    if current_span:
+        current_span.set_tag("manifest_size", state.manifest_size)
     logger.info(f"Current /compile span {current_span}")
 
     state = StateController.load_state(sql.state_id)
