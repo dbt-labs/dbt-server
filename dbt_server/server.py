@@ -1,4 +1,6 @@
 # Need to run this as early in the server's startup as possible
+import os.path
+
 from dbt_server import tracer  # noqa
 
 from dbt_server import models
@@ -46,8 +48,8 @@ def startup_cache_initialize():
         )
         return
 
-    # TODO jp add size calculation here
-    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest, 0)
+    manifest_size = os.path.getsize(manifest_path)
+    LAST_PARSED.set_last_parsed_manifest(latest_state_id, manifest, manifest_size)
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
 
 
