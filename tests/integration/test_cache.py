@@ -2,7 +2,6 @@ from fastapi.testclient import TestClient
 from unittest.mock import patch
 import unittest
 
-import dbt_server.services.filesystem_service
 from dbt_server.server import app, startup_cache_initialize
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
