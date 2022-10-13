@@ -275,10 +275,6 @@ def push_unparsed_manifest(args: PushProjectArgs):
         reuse = False
         filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
 
-    current_span = tracer.current_span()
-    if current_span:
-        current_span.set_tag("manifest_size", size_in_bytes)
-
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
