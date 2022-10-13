@@ -68,7 +68,7 @@ class CompilationInterfaceTests(unittest.TestCase):
                 "parsing": state_id,
                 "path": "./working-dir/state-goodid/manifest.msgpack",
                 "res": ANY,
-                "compiled_code": compiled_query
+                "compiled_code": compiled_query,
             }
             assert response.json() == expected
 
