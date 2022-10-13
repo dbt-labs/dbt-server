@@ -1,5 +1,4 @@
 # Need to run this as early in the server's startup as possible
-import os.path
 
 from dbt_server import tracer  # noqa
 
