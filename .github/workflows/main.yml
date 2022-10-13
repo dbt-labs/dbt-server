@@ -57,7 +57,7 @@ jobs:
       - name: run tests
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
-          pip install dbt-core dbt-postgres
+          pip install dbt-core dbt-postgres ddtrace
           pytest
 
   build-push:
