@@ -1,5 +1,3 @@
-import os.path
-
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import GLOBAL_LOGGER as logger
