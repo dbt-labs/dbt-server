@@ -275,6 +275,10 @@ def push_unparsed_manifest(args: PushProjectArgs):
         reuse = False
         filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
 
+    current_span = tracer.current_span()
+    if current_span:
+        current_span.set_tag("manifest_size", size_in_bytes)
+
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
@@ -293,6 +297,10 @@ def parse_project(args: ParseArgs):
     state = StateController.parse_from_source(args.state_id, args)
     state.serialize_manifest()
     state.update_state_id()
+    state.update_cache()
+
+    current_span = tracer.current_span()
+    tag_request_span_with_metadata(current_span, state)
 
     return JSONResponse(
         status_code=200,
@@ -408,6 +416,9 @@ async def preview_sql(sql: SQLConfig):
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
+    current_span = tracer.current_span()
+    tag_request_span_with_metadata(current_span, state)
+
     return JSONResponse(
         status_code=200,
         content={
@@ -421,19 +432,12 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    logger.info("/compile test log")
-    current_span = tracer.current_span()
-    if current_span:
-        current_span.set_tag("manifest_size", state.manifest_size)
-    logger.info(f"Current /compile span {current_span}")
-
     state = StateController.load_state(sql.state_id)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
-    # current_span = tracer.current_span()
-    # current_span.set_tag("manifest_size", state.manifest_size)
-    # current_span.set_tag("is_manifest_cached", state.is_manifest_cached)
+    current_span = tracer.current_span()
+    tag_request_span_with_metadata(current_span, state)
 
     return JSONResponse(
         status_code=200,
@@ -444,6 +448,12 @@ def compile_sql(sql: SQLConfig):
             "compiled_code": compiled_code
         },
     )
+
+
+def tag_request_span_with_metadata(span, state):
+    if span:
+        span.set_tag("manifest_size", state.manifest_size)
+        span.set_tag("is_manifest_cached", state.is_manifest_cached)
 
 
 class Task(BaseModel):
