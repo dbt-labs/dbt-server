@@ -92,11 +92,11 @@ def patch_adapter_config(config):
     # cached RuntimeConfig object.
     #
     # If this error is hit in practice, it will manifest as something like:
-    #      NoneType is not iterable
+    #      Node package named fishtown_internal_analytics not found!
     #
-    # because Core is looking for packages in the wrong namespace (and finds None
-    # instead of a list of packages). This unfortunately isn't something we can
-    # readily catch programmatically & it must be fixed upstream in dbt Core.
+    # because Core is looking for packages in the wrong namespace. This
+    # unfortunately isn't something we can readily catch programmatically
+    # & it must be fixed upstream in dbt Core.
     adapter = dbt.adapters.factory.get_adapter(config)
     adapter.config = config
     return adapter
