@@ -28,7 +28,9 @@ class CachedManifest:
             if self.manifest is None:
                 return None
             elif state_id in (None, self.state_id):
-                return CachedManifest(state_id=self.state_id, manifest=self.manifest, size=self.size)
+                return CachedManifest(
+                    state_id=self.state_id, manifest=self.manifest, size=self.size
+                )
             else:
                 return None
 
@@ -123,4 +125,6 @@ class StateController(object):
     @tracer.wrap
     def update_cache(self):
         logger.info(f"Updating cache (state_id={self.state_id})")
-        LAST_PARSED.set_last_parsed_manifest(self.state_id, self.manifest, self.manifest_size)
+        LAST_PARSED.set_last_parsed_manifest(
+            self.state_id, self.manifest, self.manifest_size
+        )

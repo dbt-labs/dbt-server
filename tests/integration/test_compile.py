@@ -42,7 +42,12 @@ class CompilationInterfaceTests(unittest.TestCase):
         compiled_query = "select 2 as id"
 
         state_mock = Mock(
-            return_value=StateController(state_id=state_id, manifest=None, manifest_size=0, is_manifest_cached=False)
+            return_value=StateController(
+                state_id=state_id,
+                manifest=None,
+                manifest_size=0,
+                is_manifest_cached=False,
+            )
         )
 
         query_mock = Mock(return_value={"compiled_code": compiled_query})

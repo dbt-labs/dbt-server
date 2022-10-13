@@ -31,9 +31,11 @@ class StartupCacheTest(unittest.TestCase):
         with (
             patch(
                 "dbt_server.services.filesystem_service.get_latest_state_id",
-                return_value="abc123"
+                return_value="abc123",
             ) as mock_fs_get_latest_state_id,
-            patch("dbt_server.services.filesystem_service.get_size", return_value=1024) as mock_fs_get_size,
+            patch(
+                "dbt_server.services.filesystem_service.get_size", return_value=1024
+            ) as mock_fs_get_size,
         ):
 
             # Make sure it's not errantly cached

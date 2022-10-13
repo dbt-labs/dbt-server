@@ -442,7 +442,7 @@ def compile_sql(sql: SQLConfig):
             "parsing": state.state_id,
             "path": state.serialize_path,
             "res": jsonable_encoder(result),
-            "compiled_code": compiled_code
+            "compiled_code": compiled_code,
         },
     )
 
