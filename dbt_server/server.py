@@ -1,5 +1,4 @@
 # Need to run this as early in the server's startup as possible
-
 from dbt_server import tracer  # noqa
 
 from dbt_server import models
