@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from dbt_server.server import app
 from .helpers import profiles_dir
-from .fixtures import simple, invalid, Profiles
+from .fixtures import simple, simple2, invalid, Profiles
 
 import hashlib
 import json
@@ -172,6 +172,68 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
             self.assertEqual(resp.status_code, 200)
             data = resp.json()
             assert "compiled_code" in data
+
+
+class CodeChangeTestCase(ManifestBuildingTestCase):
+    def test_changing_code(self):
+        """
+        This test exists to ensure that manifest/config caching does not prevent callers
+        of the dbt-server from osciallating between different states with each request.
+        While only one of these states will be cached in memory at each time, callers
+        should be able to compile queries against a state of their choosing in arbitrary order.
+        """
+        with profiles_dir(Profiles.Postgres):
+            # Push project code (first project)
+            resp_push = self.push_fixture_data(simple.FILES)
+            self.assertEqual(resp_push.status_code, 200)
+            data = resp_push.json()
+            state_id_1 = data["state"]
+
+            # parse project code
+            resp_parse = self.parse_fixture_data(state_id_1)
+            self.assertEqual(resp_parse.status_code, 200)
+
+            # Compile a query with state
+            valid_query = "select * from {{ ref('model_1') }}"
+            resp = self.compile_against_state(state_id_1, valid_query)
+            data = resp.json()
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(
+                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+            )
+
+            # ------- reparse with different code -------#
+
+            # Push project code (second project)
+            resp_push = self.push_fixture_data(simple2.FILES)
+            self.assertEqual(resp_push.status_code, 200)
+            data = resp_push.json()
+            state_id_2 = data["state"]
+
+            # parse project code
+            resp_parse = self.parse_fixture_data(state_id_2)
+            self.assertEqual(resp_parse.status_code, 200)
+
+            # Compile a query with state
+            valid_query = "select * from {{ ref('model_1') }}"
+            resp = self.compile_against_state(state_id_2, valid_query)
+            data = resp.json()
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(
+                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+            )
+
+            assert state_id_1 != state_id_2
+
+            # ------- compile with initial state-------#
+
+            valid_query = "select * from {{ ref('model_1') }}"
+            resp = self.compile_against_state(state_id_1, valid_query)
+            data = resp.json()
+            self.assertEqual(resp.status_code, 200)
+            self.assertEqual(
+                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+            )
 
 
 class InvalidManifestBuildingTestCase(ManifestBuildingTestCase):

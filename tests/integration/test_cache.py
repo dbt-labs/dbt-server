@@ -30,7 +30,11 @@ class StartupCacheTest(unittest.TestCase):
         "dbt_server.services.dbt_service.deserialize_manifest",
         return_value=fake_manifest,
     )
-    def test_startup_cache_succeeds(self, mock_dbt, mock_fs):
+    @patch("dbt_server.services.dbt_service.create_dbt_config", return_value=None)
+    @patch("dbt_server.services.dbt_service.get_sql_parser", return_value=None)
+    def test_startup_cache_succeeds(
+        self, get_sql_parser, create_dbt_config, mock_dbt, mock_fs
+    ):
         # Make sure it's not errantly cached
         assert LAST_PARSED.manifest is None
 
