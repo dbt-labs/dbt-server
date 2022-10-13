@@ -1,0 +1,7 @@
+kind: Under the Hood
+body: Cache the size of the manifest and tag request spans with it for more observability
+time: 2022-10-13T14:24:50.302275-04:00
+custom:
+  Author: jp-dbt
+  Issue: "104"
+  PR: "104"
