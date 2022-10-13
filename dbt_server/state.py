@@ -4,7 +4,6 @@ from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server import tracer
-from ddtrace import tracer as ddtracer
 
 from dataclasses import dataclass
 from typing import Optional, Any
@@ -122,3 +121,8 @@ class StateController(object):
     @tracer.wrap
     def execute_query(self, query):
         return dbt_service.execute_sql(self.manifest, self.root_path, query)
+
+    @tracer.wrap
+    def update_cache(self):
+        logger.info(f"Updating cache (state_id={self.state_id})")
+        LAST_PARSED.set_last_parsed_manifest(self.state_id, self.manifest, self.manifest_size)
