@@ -300,7 +300,8 @@ def parse_project(args: ParseArgs):
     state.update_cache()
 
     current_span = tracer.current_span()
-    tag_request_span_with_metadata(current_span, state)
+    if current_span:
+        current_span.set_tag("manifest_size", state.manifest_size)
 
     return JSONResponse(
         status_code=200,
