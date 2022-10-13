@@ -67,15 +67,9 @@ class StateController(object):
         source_path = filesystem_service.get_root_path(state_id)
         logger.info(f"Parsing manifest from filetree (state_id={state_id})")
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
-        manifest_size = filesystem_service.get_size(source_path)
-
-        # Every parse updates the in-memory manifest cache
-        logger.info(f"Updating cache (state_id={state_id})")
-
-        LAST_PARSED.set_last_parsed_manifest(state_id, manifest, manifest_size)
 
         logger.info(f"Done parsing from source (state_id={state_id})")
-        return cls(state_id, manifest, manifest_size, False)
+        return cls(state_id, manifest, 0, True)
 
     @classmethod
     @tracer.wrap
@@ -114,6 +108,7 @@ class StateController(object):
     def serialize_manifest(self):
         logger.info(f"Serializing manifest to file system ({self.serialize_path})")
         dbt_service.serialize_manifest(self.manifest, self.serialize_path)
+        self.manifest_size = filesystem_service.get_size(self.serialize_path)
 
     @tracer.wrap
     def update_state_id(self):
