@@ -45,6 +45,8 @@ class CompilationInterfaceTests(unittest.TestCase):
             return_value=StateController(
                 state_id=state_id,
                 manifest=None,
+                config=None,
+                parser=None,
                 manifest_size=0,
                 is_manifest_cached=False,
             )
@@ -124,6 +126,9 @@ class CompilationInterfaceTests(unittest.TestCase):
         cached = CachedManifest()
         assert cached.state_id is None
         assert cached.manifest is None
+        assert cached.manifest_size is None
+
+        path = "working-dir/state-abc123/"
 
         cache_miss = cached.lookup("abc123")
         assert cache_miss is None
@@ -133,9 +138,19 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Update cache (ie. on /parse)
         manifest_mock = Mock()
-        cached.set_last_parsed_manifest("abc123", manifest_mock, 0)
-        assert cached.state_id == "abc123"
-        assert cached.manifest is not None
+
+        with patch.multiple(
+            "dbt_server.services.dbt_service",
+            create_dbt_config=Mock(),
+            get_sql_parser=Mock(),
+        ):
+            cached.set_last_parsed_manifest("abc123", manifest_mock, path, 512)
+
+            assert cached.state_id == "abc123"
+            assert cached.manifest is not None
+            assert cached.manifest_size == 512
+            assert cached.config is not None
+            assert cached.parser is not None
 
         assert cached.lookup(None) is not None
         manifest_mock.reset_mock()
@@ -147,9 +162,18 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Re-update cache (ie. on subsequent /parse)
         new_manifest_mock = Mock()
-        cached.set_last_parsed_manifest("def456", new_manifest_mock, 0)
-        assert cached.state_id == "def456"
-        assert cached.manifest is not None
+
+        with patch.multiple(
+            "dbt_server.services.dbt_service",
+            create_dbt_config=Mock(),
+            get_sql_parser=Mock(),
+        ):
+            cached.set_last_parsed_manifest("def456", new_manifest_mock, path, 1024)
+            assert cached.state_id == "def456"
+            assert cached.manifest is not None
+            assert cached.manifest_size == 1024
+            assert cached.config is not None
+            assert cached.parser is not None
 
         assert cached.lookup(None) is not None
         assert cached.lookup("def456") is not None

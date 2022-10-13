@@ -1,37 +1,49 @@
 import os
 import threading
 import uuid
+from inspect import getmembers, isfunction
 
+# dbt Core imports
+import dbt.tracking
+import dbt.lib
+import dbt.adapters.factory
+
+from dbt.exceptions import (
+    ValidationException,
+    CompilationException,
+    InvalidConnectionException,
+)
+
+from dbt.lib import (
+    create_task,
+    get_dbt_config as dbt_get_dbt_config,
+    parse_to_manifest as dbt_parse_to_manifest,
+    execute_sql as dbt_execute_sql,
+    deserialize_manifest as dbt_deserialize_manifest,
+    serialize_manifest as dbt_serialize_manifest,
+    SqlCompileRunnerNoIntrospection,
+)
+
+
+from dbt.parser.sql import SqlBlockParser
+from dbt.parser.manifest import process_node
+
+from dbt.contracts.sql import (
+    RemoteRunResult,
+    RemoteCompileResult,
+)
+
+# dbt Server imports
 from dbt_server.services import filesystem_service
+from dbt_server import tracer
+from dbt_server.logging import GLOBAL_LOGGER as logger
+
 from dbt_server.exceptions import (
     InvalidConfigurationException,
     InternalException,
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
-from dbt_server import tracer
-
-from dbt.exceptions import (
-    ValidationException,
-    CompilationException,
-)
-import dbt.lib
-from dbt.lib import (
-    create_task,
-    get_dbt_config,
-    parse_to_manifest as dbt_parse_to_manifest,
-    execute_sql as dbt_execute_sql,
-    compile_sql as dbt_compile_sql,
-    deserialize_manifest as dbt_deserialize_manifest,
-    serialize_manifest as dbt_serialize_manifest,
-)
-from dbt.contracts.sql import (
-    RemoteRunResult,
-    RemoteCompileResult,
-)
-
-from dbt_server.logging import GLOBAL_LOGGER as logger
-from dbt.exceptions import InvalidConnectionException
 
 
 # Temporary default to match dbt-cloud behavior
@@ -46,13 +58,11 @@ CONFIG_GLOBAL_LOCK = threading.Lock()
 
 
 def inject_dd_trace_into_core_lib():
-    from inspect import getmembers, isfunction
 
     for attr_name, attr in getmembers(dbt.lib):
         if not isfunction(attr):
             continue
 
-        logger.debug(f"Wrapping dbt.lib.{attr_name} with tracer")
         setattr(dbt.lib, attr_name, tracer.wrap(attr))
 
 
@@ -67,28 +77,54 @@ def handle_dbt_compilation_error(func):
     return inner
 
 
+def patch_adapter_config(config):
+    # This is a load-bearing assignment. Adapters cache the config they are
+    # provided (oh my!) and they are represented as singletons, so it's not
+    # actually possible to invoke dbt twice concurrently with two different
+    # configs that differ substantially. Fortunately, configs _mostly_ carry
+    # credentials. The risk here is around changes to other config-type code,
+    # like packages.yml contents or the name of the project.
+    #
+    # This quickfix is intended to support sequential requests with
+    # differing project names. It will _not_ work with concurrent requests, as one
+    # of those requests will get a surprising project_name in the adapter's
+    # cached RuntimeConfig object.
+    #
+    # If this error is hit in practice, it will manifest as something like:
+    #      Node package named fishtown_internal_analytics not found!
+    #
+    # because Core is looking for packages in the wrong namespace. This
+    # unfortunately isn't something we can readily catch programmatically
+    # & it must be fixed upstream in dbt Core.
+    adapter = dbt.adapters.factory.get_adapter(config)
+    adapter.config = config
+    return adapter
+
+
 def generate_node_name():
     return str(uuid.uuid4()).replace("-", "_")
 
 
 @tracer.wrap
-def _get_dbt_config(project_path, args):
-    # This function exists to trace the underlying dbt call
-    return get_dbt_config(project_path, args)
+def get_sql_parser(config, manifest):
+    return SqlBlockParser(
+        project=config,
+        manifest=manifest,
+        root_project=config,
+    )
 
 
 @tracer.wrap
-def create_dbt_config(project_path, args):
-    args.profile = PROFILE_NAME
-
-    # Some types of dbt config exceptions may contain sensitive information
-    # eg. contents of a profiles.yml file for invalid/malformed yml.
-    # Raise a new exception to mask the original backtrace and suppress
-    # potentially sensitive information.
+def create_dbt_config(project_path, args=None):
     try:
+        # This needs a lock to prevent two threads from mutating an adapter concurrently
         with CONFIG_GLOBAL_LOCK:
-            return _get_dbt_config(project_path, args)
+            return dbt_get_dbt_config(project_path, args)
     except ValidationException:
+        # Some types of dbt config exceptions may contain sensitive information
+        # eg. contents of a profiles.yml file for invalid/malformed yml.
+        # Raise a new exception to mask the original backtrace and suppress
+        # potentially sensitive information.
         raise InvalidConfigurationException(
             "Invalid dbt config provided. Check that your credentials are configured"
             " correctly and a valid dbt project is present"
@@ -97,7 +133,6 @@ def create_dbt_config(project_path, args):
 
 def disable_tracking():
     # TODO: why does this mess with stuff
-    import dbt.tracking
 
     dbt.tracking.disable_tracking()
 
@@ -106,6 +141,7 @@ def disable_tracking():
 def parse_to_manifest(project_path, args):
     try:
         config = create_dbt_config(project_path, args)
+        patch_adapter_config(config)
         return dbt_parse_to_manifest(config)
     except CompilationException as e:
         logger.error(
@@ -191,10 +227,17 @@ def execute_sql(manifest, project_path, sql):
 
 @handle_dbt_compilation_error
 @tracer.wrap
-def compile_sql(manifest, project_path, sql):
+def compile_sql(manifest, config, parser, sql):
     try:
         node_name = generate_node_name()
-        result = dbt_compile_sql(manifest, project_path, sql, node_name)
+        adapter = patch_adapter_config(config)
+
+        sql_node = parser.parse_remote(sql, node_name)
+        process_node(config, manifest, sql_node)
+
+        runner = SqlCompileRunnerNoIntrospection(config, adapter, sql_node, 1, 1)
+        result = runner.safe_run(manifest)
+
     except InvalidConnectionException:
         if ALLOW_INTROSPECTION:
             # Raise original error if introspection is not disabled
@@ -205,9 +248,7 @@ def compile_sql(manifest, project_path, sql):
             logger.exception(msg)
             raise UnsupportedQueryException(msg)
     except CompilationException as e:
-        logger.error(
-            f"Failed to compile sql at {project_path}. Compilation Error: {repr(e)}"
-        )
+        logger.error(f"Failed to compile sql. Compilation Error: {repr(e)}")
         raise dbtCoreCompilationException(e)
 
     if type(result) != RemoteCompileResult:

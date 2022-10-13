@@ -31,8 +31,15 @@ class StartupCacheTest(unittest.TestCase):
         "dbt_server.services.dbt_service.deserialize_manifest",
         return_value=fake_manifest,
     )
+    @patch("dbt_server.services.dbt_service.create_dbt_config", return_value=None)
+    @patch("dbt_server.services.dbt_service.get_sql_parser", return_value=None)
     def test_startup_cache_succeeds(
-        self, mock_dbt, mock_fs_get_size, mock_fs_get_latest_state_id
+        self,
+        get_sql_parser,
+        create_dbt_config,
+        mock_dbt,
+        mock_fs_get_size,
+        mock_fs_get_latest_state_id,
     ):
         # Make sure it's not errantly cached
         assert LAST_PARSED.manifest is None
@@ -46,7 +53,7 @@ class StartupCacheTest(unittest.TestCase):
         mock_dbt.assert_called_once_with(expected_path)
         assert LAST_PARSED.manifest is fake_manifest
         assert LAST_PARSED.state_id == "abc123"
-        assert LAST_PARSED.size == 1024
+        assert LAST_PARSED.manifest_size == 1024
 
     @patch(
         "dbt_server.services.filesystem_service.get_latest_state_id", return_value=None

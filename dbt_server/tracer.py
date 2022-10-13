@@ -14,7 +14,9 @@ DBT_VERSION = str(version.installed).lstrip("=")
 
 try:
     import ddtrace
-    import ddtrace.profiling.auto
+
+    if APM_ENABLED:
+        import ddtrace.profiling.auto
 
     ENV_HAS_DDTRACE = True
 except (ModuleNotFoundError, ImportError):
