@@ -19,7 +19,6 @@ from dbt.lib import (
     get_dbt_config as dbt_get_dbt_config,
     parse_to_manifest as dbt_parse_to_manifest,
     execute_sql as dbt_execute_sql,
-    # compile_sql as dbt_compile_sql,
     deserialize_manifest as dbt_deserialize_manifest,
     serialize_manifest as dbt_serialize_manifest,
     SqlCompileRunnerNoIntrospection,
