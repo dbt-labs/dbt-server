@@ -145,6 +145,7 @@ class StateController(object):
     def serialize_manifest(self):
         logger.info(f"Serializing manifest to file system ({self.serialize_path})")
         dbt_service.serialize_manifest(self.manifest, self.serialize_path)
+        self.manifest_size = filesystem_service.get_size(self.serialize_path)
 
     @tracer.wrap
     def update_state_id(self):
