@@ -24,6 +24,11 @@ def get_path(state_id, *path_parts):
 
 
 @tracer.wrap
+def get_size(path):
+    return os.path.getsize(path)
+
+
+@tracer.wrap
 def ensure_dir_exists(path):
     dirname = os.path.dirname(path)
     if not os.path.exists(dirname):

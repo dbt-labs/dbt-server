@@ -43,7 +43,12 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         state_mock = Mock(
             return_value=StateController(
-                state_id=state_id, manifest=None, config=None, parser=None
+                state_id=state_id,
+                manifest=None,
+                config=None,
+                parser=None,
+                manifest_size=0,
+                is_manifest_cached=False,
             )
         )
 
@@ -121,6 +126,7 @@ class CompilationInterfaceTests(unittest.TestCase):
         cached = CachedManifest()
         assert cached.state_id is None
         assert cached.manifest is None
+        assert cached.manifest_size is None
 
         path = "working-dir/state-abc123/"
 
@@ -138,10 +144,11 @@ class CompilationInterfaceTests(unittest.TestCase):
             create_dbt_config=Mock(),
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("abc123", manifest_mock, path)
+            cached.set_last_parsed_manifest("abc123", manifest_mock, path, 512)
 
             assert cached.state_id == "abc123"
             assert cached.manifest is not None
+            assert cached.manifest_size == 512
             assert cached.config is not None
             assert cached.parser is not None
 
@@ -161,9 +168,10 @@ class CompilationInterfaceTests(unittest.TestCase):
             create_dbt_config=Mock(),
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("def456", new_manifest_mock, path)
+            cached.set_last_parsed_manifest("def456", new_manifest_mock, path, 1024)
             assert cached.state_id == "def456"
             assert cached.manifest is not None
+            assert cached.manifest_size == 1024
             assert cached.config is not None
             assert cached.parser is not None
 

@@ -14,6 +14,7 @@ from typing import List, Optional, Union, Dict
 
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
+from dbt_server import tracer
 
 from dbt_server.services import (
     filesystem_service,
@@ -292,6 +293,9 @@ def parse_project(args: ParseArgs):
     state = StateController.parse_from_source(args.state_id, args)
     state.serialize_manifest()
     state.update_state_id()
+    state.update_cache()
+
+    tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
         status_code=200,
@@ -407,6 +411,8 @@ async def preview_sql(sql: SQLConfig):
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
+    tag_request_span(state)
+
     return JSONResponse(
         status_code=200,
         content={
@@ -424,6 +430,8 @@ def compile_sql(sql: SQLConfig):
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
+    tag_request_span(state)
+
     return JSONResponse(
         status_code=200,
         content={
@@ -433,6 +441,18 @@ def compile_sql(sql: SQLConfig):
             "compiled_code": compiled_code,
         },
     )
+
+
+def tag_request_span(state):
+    manifest_metadata = get_manifest_metadata(state)
+    tracer.add_tags_to_current_span(manifest_metadata)
+
+
+def get_manifest_metadata(state):
+    return {
+        "manifest_size": state.manifest_size,
+        "is_manifest_cached": state.is_manifest_cached,
+    }
 
 
 class Task(BaseModel):
