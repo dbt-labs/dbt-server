@@ -444,11 +444,11 @@ def compile_sql(sql: SQLConfig):
 
 
 def tag_request_span(state):
-    manifest_metadata = get_manifest_attributes(state)
+    manifest_metadata = get_manifest_metadata(state)
     tracer.add_tags_to_current_span(manifest_metadata)
 
 
-def get_manifest_attributes(state):
+def get_manifest_metadata(state):
     return {
         "manifest_size": state.manifest_size,
         "is_manifest_cached": state.is_manifest_cached,
