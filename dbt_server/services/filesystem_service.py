@@ -23,6 +23,7 @@ def get_path(state_id, *path_parts):
     return os.path.join(get_root_path(state_id), *path_parts)
 
 
+@tracer.wrap
 def get_size(path):
     return os.path.getsize(path)
 
