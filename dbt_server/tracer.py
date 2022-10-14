@@ -64,4 +64,14 @@ def wrap(func):
         return no_op
 
 
+def add_tags_to_current_span(tag_dict):
+    if not ENV_HAS_DDTRACE and not APM_ENABLED:
+        return
+
+    current_span = ddtrace.tracer.current_span()
+    if current_span:
+        for tag_name, tag_value in tag_dict.items():
+            current_span.set_tag(tag_name, tag_value)
+
+
 setup_tracing()

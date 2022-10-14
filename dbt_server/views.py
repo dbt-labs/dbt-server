@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
-from ddtrace import tracer
 
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
+from dbt_server import tracer
 
 from dbt_server.services import (
     filesystem_service,
@@ -295,9 +295,7 @@ def parse_project(args: ParseArgs):
     state.update_state_id()
     state.update_cache()
 
-    current_span = tracer.current_span()
-    if current_span:
-        current_span.set_tag("manifest_size", state.manifest_size)
+    tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
         status_code=200,
@@ -413,8 +411,7 @@ async def preview_sql(sql: SQLConfig):
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
-    current_span = tracer.current_span()
-    tag_request_span_with_metadata(current_span, state)
+    tag_request_span(state)
 
     return JSONResponse(
         status_code=200,
@@ -433,8 +430,7 @@ def compile_sql(sql: SQLConfig):
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
-    current_span = tracer.current_span()
-    tag_request_span_with_metadata(current_span, state)
+    tag_request_span(state)
 
     return JSONResponse(
         status_code=200,
@@ -447,10 +443,16 @@ def compile_sql(sql: SQLConfig):
     )
 
 
-def tag_request_span_with_metadata(span, state):
-    if span:
-        span.set_tag("manifest_size", state.manifest_size)
-        span.set_tag("is_manifest_cached", state.is_manifest_cached)
+def tag_request_span(state):
+    manifest_metadata = get_manifest_attributes(state)
+    tracer.add_tags_to_current_span(manifest_metadata)
+
+
+def get_manifest_attributes(state):
+    return {
+        "manifest_size": state.manifest_size,
+        "is_manifest_cached": state.is_manifest_cached,
+    }
 
 
 class Task(BaseModel):
