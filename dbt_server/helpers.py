@@ -26,8 +26,10 @@ def set_profile_name(args=None):
         return args
     if os.getenv("DBT_PROFILE_NAME"):
         if args == None:
+
             class Args(BaseModel):
                 profile: str = None
+
             args = Args()
         args.profile = os.getenv("DBT_PROFILE_NAME")
     return args
