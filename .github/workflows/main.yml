@@ -13,9 +13,14 @@ jobs:
     name: Run "code hyiene" checks (linter, formatter)
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    env:
+      SECRETSTUFF: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
 
       - name: setup ssh
         uses: dbt-labs/internal-actions/private-repo-ssh-setup@v1
