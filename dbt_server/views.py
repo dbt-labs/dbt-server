@@ -345,61 +345,55 @@ async def list_resources(args: ListArgs):
     )
 
 
-@app.post("/run-async")
+@app.post("/run-async", response_model=schemas.Task)
 async def run_models_async(
     args: RunArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.run_async(background_tasks, db, args)
 
 
-@app.post("/test-async")
+@app.post("/test-async", response_model=schemas.Task)
 async def test_async(
     args: TestArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.test_async(background_tasks, db, args)
 
 
-@app.post("/seed-async")
+@app.post("/seed-async", response_model=schemas.Task)
 async def seed_async(
     args: SeedArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.seed_async(background_tasks, db, args)
 
 
-@app.post("/build-async")
+@app.post("/build-async", response_model=schemas.Task)
 async def build_async(
     args: BuildArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.build_async(background_tasks, db, args)
 
 
-@app.post("/snapshot-async")
+@app.post("/snapshot-async", response_model=schemas.Task)
 async def snapshot_async(
     args: SnapshotArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.snapshot_async(background_tasks, db, args)
 
 
-@app.post("/run-operation-async")
+@app.post("/run-operation-async", response_model=schemas.Task)
 async def run_operation_async(
     args: RunOperationArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     return task_service.run_operation_async(background_tasks, db, args)
