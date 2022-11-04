@@ -1,5 +1,8 @@
 # dbt-server
 
+## What is dbt-server?
+dbt Server wraps dbt Core in a persistent server that is responsible for handling RESTful API requests for dbt operations. It’s a thin interface that is primarily responsible for performance and reliability in production environments.
+
 ## 👩‍💻 Set up your development environment
 
 ### 🐍 Install Python
