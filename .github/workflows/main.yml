@@ -10,17 +10,12 @@ on:
 
 jobs:
   hygiene:
-    name: Run "code hyiene" checks (linter, formatter)
+    name: Run "code hygiene" checks (linter, formatter)
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
-
-      - name: setup ssh
-        uses: dbt-labs/internal-actions/private-repo-ssh-setup@v1
-        with:
-          ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
 
       - name: setup python
         uses: actions/setup-python@v4
@@ -43,11 +38,6 @@ jobs:
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
-
-      - name: setup ssh
-        uses: dbt-labs/internal-actions/private-repo-ssh-setup@v1
-        with:
-          ssh-private-key: ${{ secrets.FA_ASSISTANT_SSH_KEY }}
 
       - name: setup python
         uses: actions/setup-python@v4
