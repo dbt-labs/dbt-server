@@ -10,8 +10,6 @@ from fastapi import HTTPException
 import asyncio
 import io
 
-from dbt_server.services.logs_service import capture_logs
-
 
 def run_task(task_name, task_id, args, db):
     db_task = crud.get_task(db, task_id)
