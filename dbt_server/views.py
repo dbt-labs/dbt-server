@@ -157,10 +157,10 @@ class ListArgs(BaseModel):
     exclude: Union[None, str, List[str]] = None
     select: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
-    output: Optional[str] = ""
+    output: Optional[str] = "name"
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
-    indirect_selection: str = ""
+    indirect_selection: str = "eager"
 
 
 class SnapshotArgs(BaseModel):
@@ -312,9 +312,7 @@ async def run_models(args: RunArgs):
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_run(path, args, manifest)
-
-    encoded_results = jsonable_encoder(results)
-
+    encoded_results = jsonable_encoder(results.to_dict())
     return JSONResponse(
         status_code=200,
         content={
@@ -413,7 +411,6 @@ async def preview_sql(sql: SQLConfig):
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
     tag_request_span(state)
-
     return JSONResponse(
         status_code=200,
         content={
