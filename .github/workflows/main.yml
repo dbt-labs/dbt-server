@@ -158,3 +158,4 @@ jobs:
           production-notifier-passphrase: ${{ secrets.INFRA_ROOT_NOTIFIER_PASSPHRASE }}
           production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
           production-emea-notifier-passphrase: ${{ secrets.PRODUCTION_EMEA_NOTIFIER_PASSPHRASE }}
+          production-au-notifier-passphrase: ${{ secrets.PRODUCTION_AU_NOTIFIER_PASSPHRASE }}
