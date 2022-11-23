@@ -6,6 +6,7 @@ from dbt_server.server import app
 from dbt_server.state import StateController, CachedManifest
 
 from dbt_server.exceptions import dbtCoreCompilationException, StateNotFoundException
+from dbt_server.views import SQLConfig
 
 
 client = TestClient(app)
@@ -67,7 +68,13 @@ class CompilationInterfaceTests(unittest.TestCase):
                 },
             )
 
-            state_mock.assert_called_once_with(state_id)
+            state_mock.assert_called_once_with(
+                state_id,
+                SQLConfig(
+                    state_id='goodid',
+                    sql='select {{ 1 + 1 }}',
+                    target=None
+                ))
             query_mock.assert_called_once_with(source_query)
             assert response.status_code == 200
 
@@ -95,7 +102,13 @@ class CompilationInterfaceTests(unittest.TestCase):
                 },
             )
 
-            state.assert_called_once_with(state_id)
+            state.assert_called_once_with(
+                state_id,
+                SQLConfig(
+                    state_id='badid',
+                    sql="select {{ exceptions.raise_compiler_error('bad')}}",
+                    target=None
+                ))
             assert response.status_code == 400
 
             expected = {
@@ -138,13 +151,12 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Update cache (ie. on /parse)
         manifest_mock = Mock()
-
+        config_mock = Mock()
         with patch.multiple(
             "dbt_server.services.dbt_service",
-            create_dbt_config=Mock(),
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("abc123", manifest_mock, path, 512)
+            cached.set_last_parsed_manifest("abc123", manifest_mock, 512, config_mock)
 
             assert cached.state_id == "abc123"
             assert cached.manifest is not None
@@ -162,13 +174,13 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Re-update cache (ie. on subsequent /parse)
         new_manifest_mock = Mock()
+        new_config_mock = Mock()
 
         with patch.multiple(
             "dbt_server.services.dbt_service",
-            create_dbt_config=Mock(),
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("def456", new_manifest_mock, path, 1024)
+            cached.set_last_parsed_manifest("def456", new_manifest_mock, 1024, new_config_mock)
             assert cached.state_id == "def456"
             assert cached.manifest is not None
             assert cached.manifest_size == 1024

@@ -16,8 +16,10 @@ from dbt_server.exceptions import StateNotFoundException
 models.Base.metadata.create_all(bind=engine)
 dbt_service.disable_tracking()
 
+
 class ConfigArgs(BaseModel):
-   target: Optional[str] = None
+    target: Optional[str] = None
+
 
 def startup_cache_initialize():
     """
@@ -50,7 +52,7 @@ def startup_cache_initialize():
             f"[STARTUP] Specified latest state not found - not loading manifest (state_id={latest_state_id})"
         )
         return
-    
+
     target_name = os.environ.get("__DBT_TARGET_NAME", "")
     config_args = ConfigArgs(target=target_name)
 
