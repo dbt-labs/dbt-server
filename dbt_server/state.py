@@ -67,7 +67,7 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def from_parts(cls, state_id, manifest, source_path, manifest_size, args):
+    def from_parts(cls, state_id, manifest, source_path, manifest_size, args=None):
         config = dbt_service.create_dbt_config(source_path, args)
         parser = dbt_service.get_sql_parser(config, manifest)
 
@@ -94,7 +94,7 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def parse_from_source(cls, state_id, parse_args):
+    def parse_from_source(cls, state_id, parse_args=None):
         """
         Loads a manifest from source code in a specified directory based on the
         provided state_id. This method will cache the parsed manifest in memory
@@ -109,7 +109,7 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def load_state(cls, state_id, args):
+    def load_state(cls, state_id, args=None):
         """
         Loads a manifest given a state_id from an in-memory cache if present,
         or from disk at a location specified by the state_id argument. The
