@@ -65,17 +65,16 @@ class CompilationInterfaceTests(unittest.TestCase):
                 json={
                     "sql": source_query,
                     "state_id": state_id,
-                    "target": "new_target"
+                    "target": "new_target",
                 },
             )
 
             state_mock.assert_called_once_with(
                 state_id,
                 SQLConfig(
-                    state_id='goodid',
-                    sql='select {{ 1 + 1 }}',
-                    target="new_target"
-                ))
+                    state_id="goodid", sql="select {{ 1 + 1 }}", target="new_target"
+                ),
+            )
             query_mock.assert_called_once_with(source_query)
             assert response.status_code == 200
 
@@ -106,10 +105,11 @@ class CompilationInterfaceTests(unittest.TestCase):
             state.assert_called_once_with(
                 state_id,
                 SQLConfig(
-                    state_id='badid',
+                    state_id="badid",
                     sql="select {{ exceptions.raise_compiler_error('bad')}}",
-                    target=None
-                ))
+                    target=None,
+                ),
+            )
             assert response.status_code == 400
 
             expected = {
@@ -181,7 +181,9 @@ class CompilationInterfaceTests(unittest.TestCase):
             "dbt_server.services.dbt_service",
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("def456", new_manifest_mock, 1024, new_config_mock)
+            cached.set_last_parsed_manifest(
+                "def456", new_manifest_mock, 1024, new_config_mock
+            )
             assert cached.state_id == "def456"
             assert cached.manifest is not None
             assert cached.manifest_size == 1024
