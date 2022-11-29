@@ -53,7 +53,9 @@ def startup_cache_initialize():
         )
         return
 
-    target_name = os.environ.get("__DBT_TARGET_NAME", "")
+    target_name = os.environ.get("__DBT_TARGET_NAME", None)
+    if target_name == "":
+        target_name = None
     config_args = ConfigArgs(target=target_name)
 
     source_path = filesystem_service.get_root_path(latest_state_id)
