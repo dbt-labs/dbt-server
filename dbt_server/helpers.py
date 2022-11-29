@@ -3,6 +3,10 @@ from dbt_server.exceptions import InternalException
 from pydantic import BaseModel
 
 
+class Args(BaseModel):
+    profile: str = None
+
+
 def extract_compiled_code_from_node(result_node_dict):
     # https://github.com/dbt-labs/dbt-core/issues/5558
     #
@@ -26,10 +30,6 @@ def set_profile_name(args=None):
         return args
     if os.getenv("DBT_PROFILE_NAME"):
         if args == None:
-
-            class Args(BaseModel):
-                profile: str = None
-
             args = Args()
         args.profile = os.getenv("DBT_PROFILE_NAME")
     return args
