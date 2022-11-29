@@ -65,6 +65,7 @@ class CompilationInterfaceTests(unittest.TestCase):
                 json={
                     "sql": source_query,
                     "state_id": state_id,
+                    "target": "new_target"
                 },
             )
 
@@ -73,7 +74,7 @@ class CompilationInterfaceTests(unittest.TestCase):
                 SQLConfig(
                     state_id='goodid',
                     sql='select {{ 1 + 1 }}',
-                    target=None
+                    target="new_target"
                 ))
             query_mock.assert_called_once_with(source_query)
             assert response.status_code == 200
@@ -161,7 +162,7 @@ class CompilationInterfaceTests(unittest.TestCase):
             assert cached.state_id == "abc123"
             assert cached.manifest is not None
             assert cached.manifest_size == 512
-            assert cached.config is not None
+            assert cached.config == config_mock
             assert cached.parser is not None
 
         assert cached.lookup(None) is not None
@@ -184,7 +185,7 @@ class CompilationInterfaceTests(unittest.TestCase):
             assert cached.state_id == "def456"
             assert cached.manifest is not None
             assert cached.manifest_size == 1024
-            assert cached.config is not None
+            assert cached.config == new_config_mock
             assert cached.parser is not None
 
         assert cached.lookup(None) is not None
