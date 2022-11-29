@@ -142,8 +142,6 @@ class CompilationInterfaceTests(unittest.TestCase):
         assert cached.manifest is None
         assert cached.manifest_size is None
 
-        path = "working-dir/state-abc123/"
-
         cache_miss = cached.lookup("abc123")
         assert cache_miss is None
 
