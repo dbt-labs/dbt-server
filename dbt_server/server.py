@@ -1,4 +1,7 @@
 # Need to run this as early in the server's startup as possible
+import os
+from typing import Optional
+from pydantic import BaseModel
 from dbt_server import tracer  # noqa
 
 from dbt_server import models
@@ -12,6 +15,10 @@ from dbt_server.exceptions import StateNotFoundException
 
 models.Base.metadata.create_all(bind=engine)
 dbt_service.disable_tracking()
+
+
+class ConfigArgs(BaseModel):
+    target: Optional[str] = None
 
 
 def startup_cache_initialize():
@@ -46,10 +53,15 @@ def startup_cache_initialize():
         )
         return
 
+    target_name = os.environ.get("__DBT_TARGET_NAME", "")
+    config_args = ConfigArgs(target=target_name)
+
     source_path = filesystem_service.get_root_path(latest_state_id)
     manifest_size = filesystem_service.get_size(manifest_path)
+    config = dbt_service.create_dbt_config(source_path, config_args)
+
     LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, manifest, source_path, manifest_size
+        latest_state_id, manifest, manifest_size, config
     )
 
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
