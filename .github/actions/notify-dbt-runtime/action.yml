@@ -1,0 +1,63 @@
+name: "Notify dbt Runtime"
+description: "Notify dbt Runtime of a service's new image tag and version"
+inputs:
+  image-name:
+    description: "The name for the docker image"
+    required: true
+  production-notifier-passphrase:
+    description: "The production passphrase used to encrypt the payload"
+    required: true
+  production-registry-endpoint:
+    description: "The production registry where the image should be stored"
+    required: true
+  production-runtime-endpoint:
+    description: "The production runtime endpoint"
+    required: true
+  production-emea-notifier-passphrase:
+    description: "The production passphrase used to encrypt the payload"
+    required: true
+  production-emea-runtime-endpoint:
+    description: "The production-emea runtime endpoint"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: notify production-us dbt Runtime
+      shell: bash
+      env:
+        IMAGE_NAME: ${{ inputs.image-name }}
+        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_REGISTRY: ${{ inputs.production-registry-endpoint }}
+        IMAGE_VERSION: ${{ github.run_number }}
+        NOTIFIER_IMAGE: ${{ inputs.production-registry-endpoint }}/runtime-notifier:latest
+        RUNTIME_NOTIFIER_PASSPHRASE: ${{ inputs.production-notifier-passphrase }}
+        RUNTIME_ENDPOINT: ${{ inputs.production-runtime-endpoint }}
+      run: |
+        docker run --rm \
+        -e IMAGE_NAME="${IMAGE_NAME}" \
+        -e IMAGE_TAG="${IMAGE_TAG}" \
+        -e IMAGE_REGISTRY="${IMAGE_REGISTRY}" \
+        -e IMAGE_VERSION="${IMAGE_VERSION}" \
+        -e RUNTIME_NOTIFIER_PASSPHRASE="${RUNTIME_NOTIFIER_PASSPHRASE}" \
+        -e RUNTIME_ENDPOINT="${RUNTIME_ENDPOINT}" \
+        "${NOTIFIER_IMAGE}"
+
+    - name: notify production-emea dbt Runtime
+      shell: bash
+      env:
+        IMAGE_NAME: ${{ inputs.image-name }}
+        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_REGISTRY: ${{ inputs.production-registry-endpoint }}
+        IMAGE_VERSION: ${{ github.run_number }}
+        NOTIFIER_IMAGE: ${{ inputs.production-registry-endpoint }}/runtime-notifier:latest
+        RUNTIME_NOTIFIER_PASSPHRASE: ${{ inputs.production-emea-notifier-passphrase }}
+        RUNTIME_ENDPOINT: ${{ inputs.production-emea-runtime-endpoint }}
+      run: |
+        docker run --rm \
+        -e IMAGE_NAME="${IMAGE_NAME}" \
+        -e IMAGE_TAG="${IMAGE_TAG}" \
+        -e IMAGE_REGISTRY="${IMAGE_REGISTRY}" \
+        -e IMAGE_VERSION="${IMAGE_VERSION}" \
+        -e RUNTIME_NOTIFIER_PASSPHRASE="${RUNTIME_NOTIFIER_PASSPHRASE}" \
+        -e RUNTIME_ENDPOINT="${RUNTIME_ENDPOINT}" \
+        "${NOTIFIER_IMAGE}"
