@@ -29,7 +29,7 @@ def set_profile_name(args=None):
     if args and args.profile:
         return args
     if os.getenv("DBT_PROFILE_NAME"):
-        if args == None:
+        if args is None:
             args = Args()
         args.profile = os.getenv("DBT_PROFILE_NAME")
     return args
