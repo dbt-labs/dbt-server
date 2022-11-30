@@ -405,6 +405,34 @@ async def run_operation_async(
     return task_service.run_operation_async(background_tasks, db, args)
 
 
+async def common_parameters(command: str, request: Request):
+    # replace this check with list all subcommand dbt has, and minus the ones that are defined as sync command
+    if command not in ["run", "test", "seed", "build", "snapshot", "run-operation"]:
+        # return proper response
+        return JSONResponse()
+    dict_params = dict(request.query_params)
+    # validate the parameters
+    # this part we will need to somehow get the schema for each command
+        
+    # check the args here
+    return [command, dict_params]
+
+# just using get here for playing around in browser, should be post
+@app.get("/async/{command}")
+async def async_entry(
+    # command: str
+    background_tasks: BackgroundTasks,
+    commons: list = Depends(common_parameters),
+    # args: list,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db),
+):
+    # here we can still do all of the things we need to do for initializing the project
+
+    return {"command": commons[0], "params": commons[1]}
+    # return task_service.run_operation_async(background_tasks, db, args)
+
+
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
     state = StateController.load_state(sql.state_id, sql)
