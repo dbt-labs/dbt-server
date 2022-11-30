@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from dbt_server.services import filesystem_service
 from dbt_server.exceptions import InvalidConfigurationException
 
-from dbt.clients.registry import package_version, get_available_versions
+from dbt.clients.registry import package_version, get_compatible_versions
 from dbt import semver
 from dbt.exceptions import (
     VersionsNotCompatibleException,
@@ -213,7 +213,7 @@ def resolve_version(package) -> str:
         new_msg = "Version error for package {}: {}".format(package.get("package"), e)
         raise DependencyException(new_msg) from e
 
-    available = get_available_versions(package.get("package"))
+    available = get_compatible_versions(package.get("package"))
     prerelease_version_specified = any(
         bool(semver.VersionSpecifier.from_version_string(version).prerelease)
         for version in versions
