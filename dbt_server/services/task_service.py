@@ -11,7 +11,7 @@ import asyncio
 import io
 
 
-def run_task(task_name, task_id, args, db):
+async def run_task(task_name, task_id, args, db):
     db_task = crud.get_task(db, task_id)
 
     path = filesystem_service.get_root_path(args.state_id)
@@ -170,7 +170,7 @@ async def _wait_for_file(path):
         raise RuntimeError("No log file appeared in designated timeout")
 
 
-async def _read_until_empty(fh):
+def _read_until_empty(fh):
     while True:
         line = fh.readline()
         if len(line) == 0:
@@ -179,29 +179,43 @@ async def _read_until_empty(fh):
             yield line
 
 
-async def tail_logs_for_path(db, task_id, request, live=True):
+async def get_logs_for_path(db, task_id, request):
     db_task = crud.get_task(db, task_id)
     logger.info(f"Waiting for file @ {db_task.log_path}")
     fh = await _wait_for_file(db_task.log_path)
 
-    if live:
-        fh.seek(0, io.SEEK_END)
-    try:
-        while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
-            if await request.is_disconnected():
-                logger.debug("Log request disconnected")
-                break
-            async for log in _read_until_empty(fh):
-                yield log
-            await asyncio.sleep(0.5)
-            db.refresh(db_task)
+    while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
+        if await request.is_disconnected():
+            logger.debug("Log request disconnected")
+            break
+        await asyncio.sleep(0.5)
+        db.refresh(db_task)
 
-        # Drain any lines accumulated after end of task
-        # If we didn't do this, some lines could be omitted
-        logger.info("Draining logs from file")
-        async for log in _read_until_empty(fh):
-            yield log
+    # read the whole file
+    logger.info("Draining logs from file")
+    return fh.read()
 
-    finally:
-        yield ServerLog(state=db_task.state, error=db_task.error).to_json()
-        fh.close()
+# async def tail_logs_for_path(db, task_id, request, live=True):
+#     db_task = crud.get_task(db, task_id)
+#     logger.info(f"Waiting for file @ {db_task.log_path}")
+#     fh = await _wait_for_file(db_task.log_path)
+#
+#     if live:
+#         fh.seek(0, io.SEEK_END)
+#
+#     while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
+#         if await request.is_disconnected():
+#             logger.debug("Log request disconnected")
+#             break
+#         async for log in _read_until_empty(fh):
+#             yield log
+#         await asyncio.sleep(0.5)
+#         db.refresh(db_task)
+#
+#     # Drain any lines accumulated after end of task
+#     # If we didn't do this, some lines could be omitted
+#     logger.info("Draining logs from file")
+#     async for log in _read_until_empty(fh):
+#         yield log
+
+
