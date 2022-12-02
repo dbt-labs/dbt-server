@@ -190,6 +190,7 @@ class RunOperationArgs(BaseModel):
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
     sql: str
+    target: Optional[str] = None
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -405,7 +406,7 @@ async def run_operation_async(
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id)
+    state = StateController.load_state(sql.state_id, sql)
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
@@ -423,7 +424,7 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id)
+    state = StateController.load_state(sql.state_id, sql)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 

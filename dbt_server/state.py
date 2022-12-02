@@ -20,13 +20,13 @@ class CachedManifest:
     config: Optional[Any] = None
     parser: Optional[Any] = None
 
-    def set_last_parsed_manifest(self, state_id, manifest, project_path, manifest_size):
+    def set_last_parsed_manifest(self, state_id, manifest, manifest_size, config):
         with MANIFEST_LOCK:
             self.state_id = state_id
             self.manifest = manifest
             self.manifest_size = manifest_size
+            self.config = config
 
-            self.config = dbt_service.create_dbt_config(project_path)
             self.parser = dbt_service.get_sql_parser(self.config, self.manifest)
 
     def lookup(self, state_id):
@@ -67,8 +67,8 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def from_parts(cls, state_id, manifest, source_path, manifest_size):
-        config = dbt_service.create_dbt_config(source_path)
+    def from_parts(cls, state_id, manifest, source_path, manifest_size, args=None):
+        config = dbt_service.create_dbt_config(source_path, args)
         parser = dbt_service.get_sql_parser(config, manifest)
 
         return cls(
@@ -94,7 +94,7 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def parse_from_source(cls, state_id, parse_args):
+    def parse_from_source(cls, state_id, parse_args=None):
         """
         Loads a manifest from source code in a specified directory based on the
         provided state_id. This method will cache the parsed manifest in memory
@@ -105,11 +105,11 @@ class StateController(object):
         manifest = dbt_service.parse_to_manifest(source_path, parse_args)
 
         logger.info(f"Done parsing from source (state_id={state_id})")
-        return cls.from_parts(state_id, manifest, source_path, 0)
+        return cls.from_parts(state_id, manifest, source_path, 0, parse_args)
 
     @classmethod
     @tracer.wrap
-    def load_state(cls, state_id):
+    def load_state(cls, state_id, args=None):
         """
         Loads a manifest given a state_id from an in-memory cache if present,
         or from disk at a location specified by the state_id argument. The
@@ -139,7 +139,7 @@ class StateController(object):
         manifest_size = filesystem_service.get_size(manifest_path)
 
         source_path = filesystem_service.get_root_path(state_id)
-        return cls.from_parts(state_id, manifest, source_path, manifest_size)
+        return cls.from_parts(state_id, manifest, source_path, manifest_size, args)
 
     @tracer.wrap
     def serialize_manifest(self):
@@ -169,5 +169,5 @@ class StateController(object):
     def update_cache(self):
         logger.info(f"Updating cache (state_id={self.state_id})")
         LAST_PARSED.set_last_parsed_manifest(
-            self.state_id, self.manifest, self.root_path, self.manifest_size
+            self.state_id, self.manifest, self.manifest_size, self.config
         )
