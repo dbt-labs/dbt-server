@@ -19,6 +19,18 @@ from .logging import GLOBAL_LOGGER as logger
 
 from dbt_server.exceptions import InvalidConfigurationException
 
+
+import click
+import os
+import sys
+from typing import Optional
+
+from dbt.cli.main import cli as dbt, deps
+from dbt.tracking import track_run
+from dbt.adapters.factory import adapter_management
+from dbt.profiler import profiler
+from dbt.config.runtime import load_project
+
 # ORM stuff
 from sqlalchemy.orm import Session
 from . import crud
@@ -391,9 +403,13 @@ async def run_operation_async(
 
 async def common_parameters(command: str, request: Request):
     # replace this check with list all subcommand dbt has, and minus the ones that are defined as sync command
-    if command not in ["run", "test", "seed", "build", "snapshot", "run-operation"]:
+
+    if command not in dbt.commands.keys():
         # return proper response
-        return JSONResponse()
+        raise JSONResponse( status_code=404, content={
+            "reason": 'command not found',
+
+        },)
     dict_params = dict(request.query_params)
     # validate the parameters
     # this part we will need to somehow get the schema for each command
@@ -401,19 +417,100 @@ async def common_parameters(command: str, request: Request):
     # check the args here
     return [command, dict_params]
 
-# just using get here for playing around in browser, should be post
-@app.get("/async/{command}")
+def make_context(args, command=dbt) -> Optional[click.Context]:
+    try:
+        ctx = command.make_context(command.name, args)
+    except click.exceptions.Exit:
+        return None
+
+    ctx.invoked_subcommand = ctx.protected_args[0] if ctx.protected_args else None
+    ctx.obj = {}
+    # ideas option3
+    # create_dbt_ctx(ctx)
+    return ctx
+
+def convert_to_args(dict):
+    #copilot just wrote this whole function
+    args = []
+    for k, v in dict.items():
+        args.append(f"--{k}")
+        args.append(v)
+    return args
+
+@app.post("/async/{command}")
 async def async_entry(
-    # command: str
+    command: str,
+    request: Request,
     background_tasks: BackgroundTasks,
-    commons: list = Depends(common_parameters),
+    # commons: list = Depends(common_parameters),
     # args: list,
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
+    if command not in dbt.commands.keys():
+        return JSONResponse(
+            status_code=404,
+            content={
+                "reason": 'command not found',
+            }
+        )
+    cli_args = convert_to_args(dict(request.query_params))
     # here we can still do all of the things we need to do for initializing the project
+    # ctx = make_context([command] + cli_args) #command=dbt.commands[command])
+    try:
+        ctx = make_context(cli_args, command=dbt.commands[command])
+    except click.exceptions.UsageError as input_error:
+        return JSONResponse(
+            status_code=404, 
+            content={
+                "Reason": 'Invalid arguments',
+                "Detail": input_error.message,
+            }
+        )
+    # This thing we would need to refactor
+    project_dir_override = os.path.expanduser(ctx.params.get('project_dir'))
+    ctx.obj["project"] = load_project(project_dir_override, True, None, None)  # type: ignore
+    dbt.commands[command].invoke(ctx)
+    
+    # dbt.commands[command].parse_args([command] + cli_args, standalone_mode=False)
+    # dbt.commands[command].main([command] + cli_args, standalone_mode=False)
+    # ctx = make_context(cli_args, command=dbt.commands[command])
+    # from dbt.cli.flags import Flags
+    # flags = Flags(ctx=ctx)
 
-    return {"command": commons[0], "params": commons[1]}
+
+    # # option1
+    # # function defined in core
+    # modify_context(ctx, logger=logger, event_callback=callback)
+
+    # # option2 xxx no
+    # ctx.params['logger'] = object of customize logging event manager
+    # ctx.params['event_callback'] = 
+
+    # option3
+    # we need to customize making context
+    # ctx.set_logger_for_dbt(new_logger)
+    # ctx.set_profie()
+    #     # maybe have a customize invoke function from click
+
+    # breakpoint()
+    # if ctx:
+    #     dbt.invoke(ctx)
+    # ctx_deps = make_context(cli_args, deps)
+    # # assert ctx_deps is not None
+    # ctx_deps.with_resource(track_run(run_command="deps"))
+    # ctx_deps.with_resource(adapter_management())
+    # ctx_deps.with_resource(profiler(enable=True, outfile="output.profile"))
+    # project_dir_override = os.path.expanduser(ctx_deps.params.get('project_dir'))
+    # ctx_deps.obj["project"] = load_project(project_dir_override, True, None, None)  # type: ignore
+    # # dbt.setup_click(commons[0], callback = something)
+    # a = deps.invoke(ctx_deps)
+    # breakpoint()
+
+    # example code for logging
+    # ctx.logger_callback
+
+    return {"command": command, "params": dict(request.query_params)}
     # return task_service.run_operation_async(background_tasks, db, args)
 
 
