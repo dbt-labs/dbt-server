@@ -93,7 +93,7 @@ class BuildArgs(BaseModel):
 
 
 class RunArgs(BaseModel):
-    state_id: str
+    state_id: Optional[str] = None
     profile: Optional[str] = None
     target: Optional[str] = None
     single_threaded: Optional[bool] = None
@@ -350,6 +350,10 @@ async def run_models_async(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
+    # todo: any better way to do this?
+    if not args.state_id:
+        args.state_id = filesystem_service.get_latest_state_id("")
+
     return task_service.run_async(background_tasks, db, args)
 
 
