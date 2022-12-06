@@ -11,7 +11,7 @@ import asyncio
 import io
 
 
-async def run_task(task_name, task_id, args, db):
+def run_task(task_name, task_id, args, db):
     db_task = crud.get_task(db, task_id)
 
     path = filesystem_service.get_root_path(args.state_id)
@@ -170,7 +170,7 @@ async def _wait_for_file(path):
         raise RuntimeError("No log file appeared in designated timeout")
 
 
-def _read_until_empty(fh):
+async def _read_until_empty(fh):
     while True:
         line = fh.readline()
         if len(line) == 0:
