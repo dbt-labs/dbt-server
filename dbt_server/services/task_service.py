@@ -19,8 +19,9 @@ def run_task(task_name, task_id, args, db):
     log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
     log_manager = LogManager(log_path)
-    log_manager.setup_handlers()
 
+    # TODO: Structured logging doesn't have the concept of custom log lines like this,
+    # need to follow up with core about a way to do this
     logger.info(f"Running dbt ({task_id}) - deserializing manifest {serialize_path}")
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
@@ -46,6 +47,7 @@ def run_task(task_name, task_id, args, db):
             raise RuntimeException("Not an actual task")
     except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
+        log_manager.cleanup()
         raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
