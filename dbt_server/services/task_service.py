@@ -195,27 +195,28 @@ async def get_logs_for_path(db, task_id, request):
     logger.info("Draining logs from file")
     return fh.read()
 
-# async def tail_logs_for_path(db, task_id, request, live=True):
-#     db_task = crud.get_task(db, task_id)
-#     logger.info(f"Waiting for file @ {db_task.log_path}")
-#     fh = await _wait_for_file(db_task.log_path)
-#
-#     if live:
-#         fh.seek(0, io.SEEK_END)
-#
-#     while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
-#         if await request.is_disconnected():
-#             logger.debug("Log request disconnected")
-#             break
-#         async for log in _read_until_empty(fh):
-#             yield log
-#         await asyncio.sleep(0.5)
-#         db.refresh(db_task)
-#
-#     # Drain any lines accumulated after end of task
-#     # If we didn't do this, some lines could be omitted
-#     logger.info("Draining logs from file")
-#     async for log in _read_until_empty(fh):
-#         yield log
+
+async def tail_logs_for_path(db, task_id, request, live=True):
+    db_task = crud.get_task(db, task_id)
+    logger.info(f"Waiting for file @ {db_task.log_path}")
+    fh = await _wait_for_file(db_task.log_path)
+
+    if live:
+        fh.seek(0, io.SEEK_END)
+
+    while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
+        if await request.is_disconnected():
+            logger.debug("Log request disconnected")
+            break
+        async for log in _read_until_empty(fh):
+            yield log
+        await asyncio.sleep(0.5)
+        db.refresh(db_task)
+
+    # Drain any lines accumulated after end of task
+    # If we didn't do this, some lines could be omitted
+    logger.info("Draining logs from file")
+    async for log in _read_until_empty(fh):
+        yield log
 
 
