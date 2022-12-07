@@ -28,7 +28,7 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -351,6 +351,7 @@ async def run_models_async(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
+    logger.debug("Received run request")
     return task_service.run_async(background_tasks, db, args)
 
 

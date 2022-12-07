@@ -3,7 +3,7 @@ from dbt.exceptions import RuntimeException
 
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger, LogManager, ServerLog
 from dbt_server.models import TaskState
 
 from fastapi import HTTPException

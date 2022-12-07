@@ -36,7 +36,7 @@ from dbt.contracts.sql import (
 # dbt Server imports
 from dbt_server.services import filesystem_service
 from dbt_server import tracer
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,

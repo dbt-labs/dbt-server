@@ -8,7 +8,7 @@ from dbt_server import models
 from dbt_server.database import engine
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.views import app
-from dbt_server.logging import GLOBAL_LOGGER as logger, configure_uvicorn_access_log
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger, configure_uvicorn_access_log
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
 
