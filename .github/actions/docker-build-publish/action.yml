@@ -1,0 +1,54 @@
+name: "Build and Publish Docker Image"
+description: "Build and Publish Docker Image"
+inputs:
+  image-name:
+    description: "The name for the docker image"
+    required: true
+  docker-file-path:
+    description: "The path to the docker file to use in the build step"
+    required: true
+  docker-file-target:
+    description: "The docker file target to build"
+    required: false
+  docker-context:
+    description: "The build context"
+    required: false
+  docker-build-args:
+    description: "The docker build args to pass to the build step"
+    required: false
+  staging-registry-endpoint:
+    description: "The staging registry where the image should be stored"
+    required: true
+  production-registry-endpoint:
+    description: "The production registry where the image should be stored"
+    required: true
+  ssh:
+    description: "list of ssh agent socket or keys to expose to the build"
+    required: false
+  push:
+    description: "whether to push the images built"
+    required: false
+    default: 'true'
+runs:
+  using: "composite"
+  steps:
+    - name: setup docker buildx
+      id: buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: build and publish docker image
+      uses: docker/build-push-action@v2
+      env:
+        STAGING_VERSION_TAG: ${{ inputs.staging-registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
+        STAGING_LATEST_TAG: ${{ inputs.staging-registry-endpoint }}/${{ inputs.image-name }}:latest
+        PRODUCTION_VERSION_TAG: ${{ inputs.production-registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
+        PRODUCTION_LATEST_TAG: ${{ inputs.production-registry-endpoint }}/${{ inputs.image-name }}:latest
+      with:
+        builder: ${{ steps.buildx.output.name }}
+        build-args: ${{ inputs.docker-build-args }}
+        file: ${{ inputs.docker-file-path }}
+        target: ${{ inputs.docker-file-target }}
+        context: ${{ inputs.docker-context }}
+        ssh: ${{ inputs.ssh }}
+        tags: ${{ format('{0}, {1}, {2}, {3}', env.STAGING_VERSION_TAG, env.STAGING_LATEST_TAG, env.PRODUCTION_VERSION_TAG, env.PRODUCTION_LATEST_TAG) }}
+        push: ${{ inputs.push }}
