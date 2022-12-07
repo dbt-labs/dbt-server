@@ -20,8 +20,6 @@ def run_task(task_name, task_id, args, db):
 
     log_manager = LogManager(log_path)
 
-    # TODO: Structured logging doesn't have the concept of custom log lines like this,
-    # need to follow up with core about a way to do this
     logger.info(f"Running dbt ({task_id}) - deserializing manifest {serialize_path}")
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
