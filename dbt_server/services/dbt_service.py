@@ -46,8 +46,6 @@ from dbt_server.exceptions import (
 )
 from dbt_server.helpers import set_profile_name
 
-# Temporary default to match dbt-cloud behavior
-PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
     "true",
     "1",
