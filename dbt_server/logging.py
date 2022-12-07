@@ -117,7 +117,7 @@ class LogManager(object):
         filesystem_service.ensure_dir_exists(self.log_path)
         logger_config = LoggerConfig(
             name=self.name,
-            line_format=LineFormat.DebugText,
+            line_format=LineFormat.Json,
             level=EventLevel.INFO,
             use_colors=True,
             output_file_name=log_path,
