@@ -114,7 +114,6 @@ class LogManager(object):
         file_logger = logging.FileHandler(self.log_path)
         logger.addHandler(file_logger)
 
-
         logs_redirect_handler = logbook.FileHandler(
             filename=self.log_path,
             level=logbook.DEBUG,
