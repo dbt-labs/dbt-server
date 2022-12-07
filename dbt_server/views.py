@@ -26,10 +26,11 @@ import sys
 from typing import Optional
 
 from dbt.cli.main import cli as dbt, deps
+from dbt.cli.flags import Flags
 from dbt.tracking import track_run
 from dbt.adapters.factory import adapter_management
 from dbt.profiler import profiler
-from dbt.config.runtime import load_project
+from dbt.config.runtime import load_project, load_profile
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -430,7 +431,6 @@ def make_context(args, command=dbt) -> Optional[click.Context]:
     return ctx
 
 def convert_to_args(dict):
-    #copilot just wrote this whole function
     args = []
     for k, v in dict.items():
         args.append(f"--{k}")
@@ -447,7 +447,7 @@ async def async_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
-    if command not in dbt.commands.keys():
+    if command not in dbt.commands:
         return JSONResponse(
             status_code=404,
             content={
@@ -457,7 +457,23 @@ async def async_entry(
     cli_args = convert_to_args(dict(request.query_params))
     # here we can still do all of the things we need to do for initializing the project
     # ctx = make_context([command] + cli_args) #command=dbt.commands[command])
+
+    # This thing we would need to refactor
+    cli_args = convert_to_args(dict(request.query_params))
+    # TODO: limitation for this we can't really do any validation to the params that came in before any command.
+    ctx_flag = make_context([command] + cli_args)
+    flags = Flags(ctx=ctx_flag, args=[command] + cli_args)
+
+
+    # Profile
+    profile = load_profile(
+        flags.PROJECT_DIR, flags.VARS, flags.PROFILE, flags.TARGET, flags.THREADS
+    )
+
+    # Project
+    project = load_project(flags.PROJECT_DIR, flags.VERSION_CHECK, profile, flags.VARS)
     try:
+        # this function actually will modify cli_args
         ctx = make_context(cli_args, command=dbt.commands[command])
     except click.exceptions.UsageError as input_error:
         return JSONResponse(
@@ -467,10 +483,21 @@ async def async_entry(
                 "Detail": input_error.message,
             }
         )
-    # This thing we would need to refactor
-    project_dir_override = os.path.expanduser(ctx.params.get('project_dir'))
-    ctx.obj["project"] = load_project(project_dir_override, True, None, None)  # type: ignore
+    ctx.obj = {}
+    ctx.obj["flags"] = flags
+    ctx.obj["profile"] = profile
+    ctx.obj["project"] = project
+    
     dbt.commands[command].invoke(ctx)
+    return JSONResponse(
+            status_code=200, 
+            content={
+                "command": command,
+                "params": dict(request.query_params),
+                "status": 'finished'
+            }
+        )
+
     
     # dbt.commands[command].parse_args([command] + cli_args, standalone_mode=False)
     # dbt.commands[command].main([command] + cli_args, standalone_mode=False)
@@ -510,7 +537,7 @@ async def async_entry(
     # example code for logging
     # ctx.logger_callback
 
-    return {"command": command, "params": dict(request.query_params)}
+    # return {"command": command, "params": dict(request.query_params)}
     # return task_service.run_operation_async(background_tasks, db, args)
 
 
