@@ -17,35 +17,35 @@ else:
     project_dir = None
 
 
-SERVER_HOST_PUSH    = 'http://0.0.0.0:8585/push'
-SERVER_HOST_PARSE   = 'http://0.0.0.0:8585/parse'
-SERVER_HOST_COMPILE = 'http://0.0.0.0:8585/compile'
-SERVER_HOST_MEM     = 'http://0.0.0.0:8585/'
+SERVER_HOST_PUSH = "http://0.0.0.0:8585/push"
+SERVER_HOST_PARSE = "http://0.0.0.0:8585/parse"
+SERVER_HOST_COMPILE = "http://0.0.0.0:8585/compile"
+SERVER_HOST_MEM = "http://0.0.0.0:8585/"
 
 VALID_FILE_EXTENSIONS = re.compile(r"^.+\.(sql|yml|yaml|md|csv|py|dbtignore)$")
 
 PROJECT_PATH_KEYS = {
-    'model-paths': {
+    "model-paths": {
         "default": ["models"],
         "aliases": ["source-paths"],
     },
-    'analysis-paths': {
+    "analysis-paths": {
         "default": ["analyses"],
         "aliases": [],
     },
-    'test-paths': {
+    "test-paths": {
         "default": ["tests"],
         "aliases": [],
     },
-    'seed-paths': {
+    "seed-paths": {
         "default": ["seeds"],
         "aliases": ["data-paths"],
     },
-    'macro-paths': {
+    "macro-paths": {
         "default": ["macros"],
         "aliases": [],
     },
-    'snapshot-paths': {
+    "snapshot-paths": {
         "default": ["snapshots"],
         "aliases": [],
     },
@@ -76,7 +76,7 @@ def walk(root_dir):
 
 
 def load(filepath):
-    with open(filepath, 'rb') as fh:
+    with open(filepath, "rb") as fh:
         contents = fh.read()
         try:
             decoded_contents = contents.decode("utf-8")
@@ -100,6 +100,7 @@ def read_project(project_dir, paths):
                 if file_contents is not None:
                     manifest[relpath] = file_contents
     return manifest
+
 
 def get_hash(s):
     return hashlib.md5(json.dumps(s).encode()).hexdigest()
@@ -127,28 +128,25 @@ def get_packages(project_dir):
 
 
 def get_packages_yml_path(project_dir):
-    dbt_packages_yml_path = os.path.join(project_dir, 'packages.yml')
+    dbt_packages_yml_path = os.path.join(project_dir, "packages.yml")
     if not os.path.exists(dbt_packages_yml_path):
         return None
     return dbt_packages_yml_path
+
 
 def get_project_paths(project_dir):
     """
     Returns all paths referenced from a dbt_project.yml file
     """
     dbt_project_yml_path = get_projects_yml_path(project_dir)
-    dbtignore_path = os.path.join(project_dir, '.dbtignore')
+    dbtignore_path = os.path.join(project_dir, ".dbtignore")
     project_config = get_project_config(dbt_project_yml_path)
 
     all_paths = [dbt_project_yml_path, dbtignore_path]
     for key, key_info in PROJECT_PATH_KEYS.items():
-        candidate_keys = [key] + key_info['aliases']
-        default = key_info.get('default', [])
-        config_value = resolve_project_path_key(
-            project_config,
-            candidate_keys,
-            default
-        )
+        candidate_keys = [key] + key_info["aliases"]
+        default = key_info.get("default", [])
+        config_value = resolve_project_path_key(project_config, candidate_keys, default)
         all_paths += config_value
 
     # Relative to project dir
@@ -169,6 +167,7 @@ def get_all_project_paths(project_dir):
         project_paths += get_project_paths(project)
     return project_paths
 
+
 def resolve_project_path_key(project_config, candidate_keys, default):
     NotFound = object()
     for key in candidate_keys:
@@ -180,16 +179,18 @@ def resolve_project_path_key(project_config, candidate_keys, default):
         elif isinstance(config_value, (tuple, list)):
             return list(config_value)
         else:
-            raise RuntimeError(f"Key {key} in dbt_project.yml file is not"
-                               "a list or string")
+            raise RuntimeError(
+                f"Key {key} in dbt_project.yml file is not" "a list or string"
+            )
     return default
 
 
 def get_selectors_yml_path(project_dir):
-    selectors_yml_path = os.path.join(project_dir, 'selectors.yml')
+    selectors_yml_path = os.path.join(project_dir, "selectors.yml")
     if not os.path.exists(selectors_yml_path):
         return None
     return selectors_yml_path
+
 
 def get_package_dirs(project_dir):
     package_dir_paths = []
@@ -211,13 +212,15 @@ def get_package_install_root_path(project_dir):
     project_config = get_project_config(dbt_project_yml_path)
     return project_config.get(PACKAGE_PATH_KEY, PACKAGE_PATH_DEFAULT)
 
+
 def get_project_config(dbt_project_yml_path):
     with open(dbt_project_yml_path) as fh:
         project_code = fh.read()
     return yaml.safe_load(project_code)
 
+
 def get_projects_yml_path(project_dir):
-    dbt_project_yml_path = os.path.join(project_dir, 'dbt_project.yml')
+    dbt_project_yml_path = os.path.join(project_dir, "dbt_project.yml")
     if not os.path.exists(dbt_project_yml_path):
         raise Exception(
             f"dbt_project.yml file not found at {project_dir}."
@@ -227,11 +230,10 @@ def get_projects_yml_path(project_dir):
 
 
 def read_packages_to_json(path):
-    with open(path, 'rb') as file:
+    with open(path, "rb") as file:
         contents = file.read()
     package_config = yaml.safe_load(contents)
     return json.dumps(package_config)
-
 
 
 project_dir = resolve_project_dir(project_dir)
