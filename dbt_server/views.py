@@ -4,7 +4,7 @@ import os
 import signal
 
 from sse_starlette.sse import EventSourceResponse
-from fastapi import FastAPI, BackgroundTasks, Depends, status
+from fastapi import FastAPI, BackgroundTasks, Depends, status, Query
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel, Field
@@ -36,12 +36,15 @@ import os
 import sys
 from typing import Optional
 
-from dbt.cli.main import cli as dbt, deps
-from dbt.cli.flags import Flags
-from dbt.tracking import track_run
-from dbt.adapters.factory import adapter_management
-from dbt.profiler import profiler
-from dbt.config.runtime import load_project, load_profile
+from dbt.cli.main import cli as dbt
+from dbt.cli.flags import set_invocation_args
+from dbt.cli.context import DBTContext, DBTUsageException
+# from dbt.cli.flags import Flags
+# from dbt.tracking import track_run
+# from dbt.adapters.factory import adapter_management
+# from dbt.profiler import profiler
+# from dbt.config.runtime import load_project, load_profile
+
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -434,127 +437,43 @@ async def common_parameters(command: str, request: Request):
     # check the args here
     return [command, dict_params]
 
-def make_context(args, command=dbt) -> Optional[click.Context]:
-    try:
-        ctx = command.make_context(command.name, args)
-    except click.exceptions.Exit:
-        return None
-
-    ctx.invoked_subcommand = ctx.protected_args[0] if ctx.protected_args else None
-    ctx.obj = {}
-    # ideas option3
-    # create_dbt_ctx(ctx)
-    return ctx
-
-def convert_to_args(dict):
-    args = []
-    for k, v in dict.items():
-        args.append(f"--{k}")
-        args.append(v)
-    return args
-
-@app.post("/async/{command}")
-async def async_entry(
-    command: str,
-    request: Request,
-    background_tasks: BackgroundTasks,
+@app.post("/async/dbt/")
+async def dbt_entry(
+    # background_tasks: BackgroundTasks,
+    args: List[str]= Query(None),
+    # request: Request,
     # commons: list = Depends(common_parameters),
     # args: list,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    if command not in dbt.commands:
-        return JSONResponse(
-            status_code=404,
-            content={
-                "reason": 'command not found',
-            }
-        )
-    cli_args = convert_to_args(dict(request.query_params))
-    # here we can still do all of the things we need to do for initializing the project
-    # ctx = make_context([command] + cli_args) #command=dbt.commands[command])
-
-    # This thing we would need to refactor
-    cli_args = convert_to_args(dict(request.query_params))
-    # TODO: limitation for this we can't really do any validation to the params that came in before any command.
-    ctx_flag = make_context([command] + cli_args)
-    flags = Flags(ctx=ctx_flag, args=[command] + cli_args)
-
-
-    # Profile
-    profile = load_profile(
-        flags.PROJECT_DIR, flags.VARS, flags.PROFILE, flags.TARGET, flags.THREADS
-    )
-
-    # Project
-    project = load_project(flags.PROJECT_DIR, flags.VERSION_CHECK, profile, flags.VARS)
+    # response_model=schemas.Task,
+    # db: Session = Depends(crud.get_db),
+):  
+    # example request:
+    # http://127.0.0.1:8580/async/dbt/?args=--printer-width&args=100&args=run&args=--project-dir&args=/Users/chenyuli/git/python-models-test-project-small
+    
+    set_invocation_args(args)
+    # create invocation ctx, this will take care of validation of args
     try:
-        # this function actually will modify cli_args
-        ctx = make_context(cli_args, command=dbt.commands[command])
-    except click.exceptions.UsageError as input_error:
+        ctx = DBTContext(args)
+    except DBTUsageException as e:
         return JSONResponse(
-            status_code=404, 
+            status_code=422,
             content={
-                "Reason": 'Invalid arguments',
-                "Detail": input_error.message,
-            }
+                "message": "Invalid arguments",
+                "error": str(e)
+            },
         )
-    ctx.obj = {}
-    ctx.obj["flags"] = flags
-    ctx.obj["profile"] = profile
-    ctx.obj["project"] = project
-    
-    dbt.commands[command].invoke(ctx)
+    # TODOs:
+    # 1. being able to use a state/manifest
+    # 2. being able to provide a loaded project, profile
+    # 3. convert it to actually async
+    result = dbt.invoke(ctx)
     return JSONResponse(
-            status_code=200, 
-            content={
-                "command": command,
-                "params": dict(request.query_params),
-                "status": 'finished'
-            }
-        )
-
+        status_code=200,
+        content={
+            "message": "finished"
+        },
+    )
     
-    # dbt.commands[command].parse_args([command] + cli_args, standalone_mode=False)
-    # dbt.commands[command].main([command] + cli_args, standalone_mode=False)
-    # ctx = make_context(cli_args, command=dbt.commands[command])
-    # from dbt.cli.flags import Flags
-    # flags = Flags(ctx=ctx)
-
-
-    # # option1
-    # # function defined in core
-    # modify_context(ctx, logger=logger, event_callback=callback)
-
-    # # option2 xxx no
-    # ctx.params['logger'] = object of customize logging event manager
-    # ctx.params['event_callback'] = 
-
-    # option3
-    # we need to customize making context
-    # ctx.set_logger_for_dbt(new_logger)
-    # ctx.set_profie()
-    #     # maybe have a customize invoke function from click
-
-    # breakpoint()
-    # if ctx:
-    #     dbt.invoke(ctx)
-    # ctx_deps = make_context(cli_args, deps)
-    # # assert ctx_deps is not None
-    # ctx_deps.with_resource(track_run(run_command="deps"))
-    # ctx_deps.with_resource(adapter_management())
-    # ctx_deps.with_resource(profiler(enable=True, outfile="output.profile"))
-    # project_dir_override = os.path.expanduser(ctx_deps.params.get('project_dir'))
-    # ctx_deps.obj["project"] = load_project(project_dir_override, True, None, None)  # type: ignore
-    # # dbt.setup_click(commons[0], callback = something)
-    # a = deps.invoke(ctx_deps)
-    # breakpoint()
-
-    # example code for logging
-    # ctx.logger_callback
-
-    # return {"command": command, "params": dict(request.query_params)}
-    # return task_service.run_operation_async(background_tasks, db, args)
 
 
 @app.post("/preview")
