@@ -191,6 +191,7 @@ class SQLConfig(BaseModel):
     state_id: Optional[str] = None
     sql: str
     target: Optional[str] = None
+    profile: Optional[str] = None
 
 
 @app.exception_handler(InvalidConfigurationException)

@@ -1,0 +1,7 @@
+kind: Fixes
+body: Add profile as arg to sqlconfig
+time: 2022-12-08T12:51:19.859883-06:00
+custom:
+  Author: racheldaniel
+  Issue: "136"
+  PR: "135"
