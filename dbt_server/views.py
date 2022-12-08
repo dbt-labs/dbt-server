@@ -284,23 +284,6 @@ async def dbt_entry(
     background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args.command, db)
     return crud.create_task(db, task)
 
-
-async def common_parameters(command: str, request: Request):
-    # replace this check with list all subcommand dbt has, and minus the ones that are defined as sync command
-
-    if command not in dbt.commands.keys():
-        # return proper response
-        raise JSONResponse( status_code=404, content={
-            "reason": 'command not found',
-
-        },)
-    dict_params = dict(request.query_params)
-    # validate the parameters
-    # this part we will need to somehow get the schema for each command
-        
-    # check the args here
-    return [command, dict_params]
-
 @app.post("/async/dbt/")
 async def dbt_entry(
     # background_tasks: BackgroundTasks,
