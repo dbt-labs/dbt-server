@@ -404,23 +404,6 @@ async def run_operation_async(
 ):
     return task_service.run_operation_async(background_tasks, db, args)
 
-
-async def common_parameters(command: str, request: Request):
-    # replace this check with list all subcommand dbt has, and minus the ones that are defined as sync command
-
-    if command not in dbt.commands.keys():
-        # return proper response
-        raise JSONResponse( status_code=404, content={
-            "reason": 'command not found',
-
-        },)
-    dict_params = dict(request.query_params)
-    # validate the parameters
-    # this part we will need to somehow get the schema for each command
-        
-    # check the args here
-    return [command, dict_params]
-
 @app.post("/async/dbt/")
 async def dbt_entry(
     # background_tasks: BackgroundTasks,
