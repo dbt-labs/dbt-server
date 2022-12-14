@@ -36,14 +36,6 @@ import os
 import sys
 from typing import Optional
 
-from dbt.cli.main import cli as dbt
-from dbt.cli.flags import set_invocation_args
-from dbt.cli.context import DBTContext, DBTUsageException
-# from dbt.cli.flags import Flags
-# from dbt.tracking import track_run
-# from dbt.adapters.factory import adapter_management
-# from dbt.profiler import profiler
-# from dbt.config.runtime import load_project, load_profile
 
 
 # ORM stuff
@@ -224,7 +216,6 @@ def parse_project(args: ParseArgs):
         content={"parsing": args.state_id, "path": state.serialize_path},
     )
 
-
 @app.post("/list")
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
@@ -250,6 +241,11 @@ class dbtCommandArgs(BaseModel):
     state_id: Optional[str]
     command: List[str]
 
+from dbt_server import crud, schemas
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.models import TaskState
+from dbt.lib import load_profile_project
 
 @app.post("/async/dbt")
 async def dbt_entry(
@@ -287,40 +283,32 @@ async def dbt_entry(
 @app.post("/async/dbt/")
 async def dbt_entry(
     # background_tasks: BackgroundTasks,
-    args: List[str]= Query(None),
+    args: dbtCommandArgs,
     # request: Request,
     # commons: list = Depends(common_parameters),
     # args: list,
     # response_model=schemas.Task,
-    # db: Session = Depends(crud.get_db),
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db),
 ):  
-    # example request:
-    # http://127.0.0.1:8580/async/dbt/?args=--printer-width&args=100&args=run&args=--project-dir&args=/Users/chenyuli/git/python-models-test-project-small
-    
-    set_invocation_args(args)
-    # create invocation ctx, this will take care of validation of args
-    try:
-        ctx = DBTContext(args)
-    except DBTUsageException as e:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "Invalid arguments",
-                "error": str(e)
-            },
-        )
-    # TODOs:
-    # 1. being able to use a state/manifest
-    # 2. being able to provide a loaded project, profile
-    # 3. convert it to actually async
-    result = dbt.invoke(ctx)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "finished"
-        },
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command="dbt run-operation",
+        log_path=log_path,
     )
-    
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(invoke_dbt, task_id, args, db)
+    return crud.create_task(db, task)
+
 
 
 @app.post("/preview")
