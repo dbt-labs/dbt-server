@@ -280,13 +280,11 @@ from dbt.exceptions import RuntimeException
 
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
 from dbt_server.models import TaskState
 from dbt.lib import load_profile_project
 
-from fastapi import HTTPException
-import asyncio
-import io
+
 
 class dbtCommandArgs(BaseModel):
     state_id: str
@@ -338,6 +336,9 @@ async def dbt_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):  
+
+    # example request: Post http://127.0.0.1:8580/async/dbt
+    # with body {"state_id": "123", "command":["run"]}
     task_id = str(uuid.uuid4())
     log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
