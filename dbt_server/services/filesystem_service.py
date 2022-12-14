@@ -2,7 +2,7 @@ import os
 import shutil
 from dbt_server.logging import GLOBAL_LOGGER as logger
 
-ROOT_PATH = "./working-dir"
+ROOT_PATH = "../working-dir"
 
 
 def get_root_path(state_id):

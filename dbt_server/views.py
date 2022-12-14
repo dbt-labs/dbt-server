@@ -25,14 +25,6 @@ import os
 import sys
 from typing import Optional
 
-from dbt.cli.main import cli as dbt
-from dbt.cli.flags import set_invocation_args
-from dbt.cli.context import DBTContext, DBTUsageException
-# from dbt.cli.flags import Flags
-# from dbt.tracking import track_run
-# from dbt.adapters.factory import adapter_management
-# from dbt.profiler import profiler
-# from dbt.config.runtime import load_project, load_profile
 
 
 # ORM stuff
@@ -81,61 +73,13 @@ class ParseArgs(BaseModel):
     target: Optional[str] = None
 
 
-class BuildArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    resource_types: Optional[List[str]] = None
-    select: Union[None, str, List[str]] = None
-    threads: Optional[int] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
 
 
-class RunArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
 
 
-class TestArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    data_type: bool = Field(False, alias="data")
-    schema_type: bool = Field(False, alias="schema")
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
+
+
+
 
 
 class SeedArgs(BaseModel):
@@ -169,30 +113,6 @@ class ListArgs(BaseModel):
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
     indirect_selection: str = ""
-
-
-class SnapshotArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-
-
-class RunOperationArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    macro: str
-    single_threaded: Optional[bool] = None
-    args: str = Field(default="{}")
 
 
 class SQLConfig(BaseModel):
@@ -302,28 +222,6 @@ async def parse_project(args: ParseArgs):
         status_code=200, content={"parsing": args.state_id, "path": serialize_path}
     )
 
-
-@app.post("/run")
-async def run_models(args: RunArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_run(path, args, manifest)
-
-    encoded_results = jsonable_encoder(results)
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parsing": args.state_id,
-            "path": serialize_path,
-            "res": encoded_results,
-        },
-    )
-
-
 @app.post("/list")
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
@@ -345,26 +243,6 @@ async def list_resources(args: ListArgs):
     )
 
 
-@app.post("/run-async")
-async def run_models_async(
-    args: RunArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.run_async(background_tasks, db, args)
-
-
-@app.post("/test-async")
-async def test_async(
-    args: TestArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.test_async(background_tasks, db, args)
-
-
 @app.post("/seed-async")
 async def seed_async(
     args: SeedArgs,
@@ -375,72 +253,90 @@ async def seed_async(
     return task_service.seed_async(background_tasks, db, args)
 
 
-@app.post("/build-async")
-async def build_async(
-    args: BuildArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.build_async(background_tasks, db, args)
+import uuid
+from dbt_server.models import TaskState
+from dbt.cli.main import dbtRunner
+from fastapi import HTTPException
+import uuid
+from dbt.exceptions import RuntimeException
+
+from dbt_server import crud, schemas
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.models import TaskState
+from dbt.lib import load_profile_project
+
+from fastapi import HTTPException
+import asyncio
+import io
+
+class dbtCommandArgs(BaseModel):
+    state_id: str
+    command: list[str]
 
 
-@app.post("/snapshot-async")
-async def snapshot_async(
-    args: SnapshotArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.snapshot_async(background_tasks, db, args)
+def invoke_dbt(task_id, args:dbtCommandArgs, db):
+    db_task = crud.get_task(db, task_id)
 
+    path = filesystem_service.get_root_path(args.state_id)
+    serialize_path = filesystem_service.get_path(args.state_id, "manifest.msgpack")
+    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
-@app.post("/run-operation-async")
-async def run_operation_async(
-    args: RunOperationArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.run_operation_async(background_tasks, db, args)
+    log_manager = LogManager(log_path)
+    log_manager.setup_handlers()
+
+    logger.info(f"Running dbt ({task_id}) - deserializing manifest {serialize_path}")
+
+    manifest = dbt_service.deserialize_manifest(serialize_path)
+    profile, project = load_profile_project(path, os.getenv("DBT_PROFILE_NAME", "user"),)
+
+    crud.set_task_running(db, db_task)
+
+    logger.info(f"Running dbt ({task_id}) - kicking off task")
+
+    try:
+        dbt = dbtRunner(project, profile, manifest)
+        # TODO we might need to surface this to shipment later on
+        res, success = dbt.invoke(args.command)
+    except RuntimeException as e:
+        crud.set_task_errored(db, db_task, str(e))
+        raise e
+
+    logger.info(f"Running dbt ({task_id}) - done")
+
+    log_manager.cleanup()
+
+    crud.set_task_done(db, db_task)
 
 @app.post("/async/dbt/")
 async def dbt_entry(
     # background_tasks: BackgroundTasks,
-    args: List[str]= Query(None),
+    args: dbtCommandArgs,
     # request: Request,
     # commons: list = Depends(common_parameters),
     # args: list,
     # response_model=schemas.Task,
-    # db: Session = Depends(crud.get_db),
+    background_tasks: BackgroundTasks,
+    response_model=schemas.Task,
+    db: Session = Depends(crud.get_db),
 ):  
-    # example request:
-    # http://127.0.0.1:8580/async/dbt/?args=--printer-width&args=100&args=run&args=--project-dir&args=/Users/chenyuli/git/python-models-test-project-small
-    
-    set_invocation_args(args)
-    # create invocation ctx, this will take care of validation of args
-    try:
-        ctx = DBTContext(args)
-    except DBTUsageException as e:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "Invalid arguments",
-                "error": str(e)
-            },
-        )
-    # TODOs:
-    # 1. being able to use a state/manifest
-    # 2. being able to provide a loaded project, profile
-    # 3. convert it to actually async
-    result = dbt.invoke(ctx)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "message": "finished"
-        },
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command="dbt run-operation",
+        log_path=log_path,
     )
-    
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(invoke_dbt, task_id, args, db)
+    return crud.create_task(db, task)
+
 
 
 @app.post("/preview")
