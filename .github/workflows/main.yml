@@ -75,6 +75,9 @@ jobs:
             prerelease: true
           - version: "1.3.0-latest"
             package: "dbt-core~=1.3.0"
+          - version: "1.4.0-pre"
+            package: "dbt-core~=1.4.0b1"
+            prerelease: true
         dbt-database-adapter:
           - name: snowflake
             package: dbt-snowflake
