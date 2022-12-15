@@ -466,3 +466,19 @@ async def log_endpoint(
 ):
     event_generator = task_service.tail_logs_for_path(db, task_id, request)
     return EventSourceResponse(event_generator, ping=2)
+
+
+@app.get("/task-status/{task_id}")
+def get_task_status(
+    task_id: str,
+    db: Session = Depends(crud.get_db),
+):
+    
+    task_status = task_service.get_task_status(db, task_id)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "task_status": task_status,
+        },
+    )

@@ -31,17 +31,17 @@ def run_task(task_name, task_id, args, db):
 
     try:
         if task_name == "run":
-            dbt_service.dbt_run(path, args, manifest)
+            results = dbt_service.dbt_run(path, args, manifest)
         elif task_name == "seed":
-            dbt_service.dbt_seed(path, args, manifest)
+            results = dbt_service.dbt_seed(path, args, manifest)
         elif task_name == "test":
-            dbt_service.dbt_test(path, args, manifest)
+            results = dbt_service.dbt_test(path, args, manifest)
         elif task_name == "build":
-            dbt_service.dbt_build(path, args, manifest)
+            results = dbt_service.dbt_build(path, args, manifest)
         elif task_name == "snapshot":
-            dbt_service.dbt_snapshot(path, args, manifest)
+            results = dbt_service.dbt_snapshot(path, args, manifest)
         elif task_name == "run_operation":
-            dbt_service.dbt_run_operation(path, args, manifest)
+            results = dbt_service.dbt_run_operation(path, args, manifest)
         else:
             raise RuntimeException("Not an actual task")
     except RuntimeException as e:
@@ -155,6 +155,11 @@ def snapshot_async(background_tasks, db, args):
 
     background_tasks.add_task(run_task, "snapshot", task_id, args, db)
     return crud.create_task(db, task)
+
+
+def get_task_status(db, task_id):
+    db_task = crud.get_task(db, task_id)
+    return db_task.state
 
 
 async def _wait_for_file(path):
