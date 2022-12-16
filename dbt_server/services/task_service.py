@@ -159,7 +159,9 @@ def snapshot_async(background_tasks, db, args):
 
 def get_task_status(db, task_id):
     db_task = crud.get_task(db, task_id)
-    return db_task.state
+    if db_task == None:
+        raise HTTPException(status_code=400, detail="Task does not exist")
+    return db_task
 
 
 async def _wait_for_file(path):

@@ -473,12 +473,12 @@ def get_task_status(
     task_id: str,
     db: Session = Depends(crud.get_db),
 ):
-    
-    task_status = task_service.get_task_status(db, task_id)
+
+    db_task = task_service.get_task_status(db, task_id)
 
     return JSONResponse(
         status_code=200,
         content={
-            "task_status": task_status,
+            "task_status": db_task.state,
         },
     )
