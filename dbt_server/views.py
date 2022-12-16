@@ -81,15 +81,6 @@ class ParseArgs(BaseModel):
     target: Optional[str] = None
 
 
-
-
-
-
-
-
-
-
-
 class SeedArgs(BaseModel):
     state_id: str
     profile: Optional[str] = None
@@ -288,7 +279,7 @@ from dbt.lib import load_profile_project
 
 class dbtCommandArgs(BaseModel):
     state_id: str
-    command: list[str]
+    command: List[str]
 
 
 def invoke_dbt(task_id, args:dbtCommandArgs, db):
