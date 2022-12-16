@@ -31,17 +31,17 @@ def run_task(task_name, task_id, args, db):
 
     try:
         if task_name == "run":
-            results = dbt_service.dbt_run(path, args, manifest)
+            dbt_service.dbt_run(path, args, manifest)
         elif task_name == "seed":
-            results = dbt_service.dbt_seed(path, args, manifest)
+            dbt_service.dbt_seed(path, args, manifest)
         elif task_name == "test":
-            results = dbt_service.dbt_test(path, args, manifest)
+            dbt_service.dbt_test(path, args, manifest)
         elif task_name == "build":
-            results = dbt_service.dbt_build(path, args, manifest)
+            dbt_service.dbt_build(path, args, manifest)
         elif task_name == "snapshot":
-            results = dbt_service.dbt_snapshot(path, args, manifest)
+            dbt_service.dbt_snapshot(path, args, manifest)
         elif task_name == "run_operation":
-            results = dbt_service.dbt_run_operation(path, args, manifest)
+            dbt_service.dbt_run_operation(path, args, manifest)
         else:
             raise RuntimeException("Not an actual task")
     except RuntimeException as e:
