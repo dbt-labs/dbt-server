@@ -1,0 +1,9 @@
+kind: Features
+body: Creates new endpoint, /task-status/{task-id}, where task-id is an id returned
+  from an asynchronous endpoint. Returns one of ['pending', 'running', 'finished',
+  'error'] on success.
+time: 2022-12-16T13:38:23.95341-08:00
+custom:
+  Author: jenniferjsmmiller
+  Issue: "601"
+  PR: "146"
