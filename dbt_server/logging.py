@@ -1,26 +1,46 @@
-import io
 import json
 import logging
+import uuid
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-import logbook
-import logbook.queues
-
-from dbt.events.functions import STDOUT_LOG, FILE_LOG
-import dbt.logger as dbt_logger
+from dbt.events.functions import EVENT_MANAGER
+from dbt.events.eventmgr import LoggerConfig, LineFormat, EventLevel
+from dbt.events.base_types import BaseEvent
 from pythonjsonlogger import jsonlogger
+from dbt_server.services import filesystem_service
 
+from dbt.events import AdapterLogger
+from dbt.events.types import (
+    AdapterEventDebug,
+    AdapterEventInfo,
+    AdapterEventWarning,
+    AdapterEventError,
+)
 
 from dbt_server.models import TaskState
 
+DBT_SERVER_EVENT_LOGGER = AdapterLogger("Server")
+DBT_SERVER_EVENT_TYPES = [
+    AdapterEventDebug,
+    AdapterEventInfo,
+    AdapterEventWarning,
+    AdapterEventError
+]
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
 WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
 
+dbt_event_to_python_root_log = {
+    EventLevel.DEBUG: logging.root.debug,
+    EventLevel.TEST: logging.root.debug,
+    EventLevel.INFO: logging.root.info,
+    EventLevel.WARN: logging.root.warn,
+    EventLevel.ERROR: logging.root.error,
+}
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
@@ -39,9 +59,9 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
             log_record["workspaceID"] = WORKSPACE_ID
 
 
-# setup json logging
+# setup json logging for stdout and datadog
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 stdout = logging.StreamHandler()
 if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
     formatter = logging.Formatter(
@@ -57,15 +77,7 @@ else:
     )
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
-dbt_server_logger = logging.getLogger("dbt-server")
-dbt_server_logger.setLevel(logging.DEBUG)
-GLOBAL_LOGGER = dbt_server_logger
 
-# remove handlers from these loggers, so
-# that they propagate up to the root logger
-# for json formatting
-STDOUT_LOG.handlers = []
-FILE_LOG.handlers = []
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
@@ -92,9 +104,19 @@ def configure_uvicorn_access_log():
     ual.handlers = []
 
 
-json_formatter = dbt_logger.JsonFormatter(format_string=dbt_logger.STDOUT_LOG_FORMAT)
+# Push event messages to root python logger for formatting
+def log_event_to_console(event: BaseEvent):
+    logging_method = dbt_event_to_python_root_log[event.log_level()]
+    if type(event) not in DBT_SERVER_EVENT_TYPES and logging_method == logging.root.debug:
+        # Only log debug level for dbt-server logs
+        return
+    logging_method(event.info.msg)
 
 
+EVENT_MANAGER.callbacks.append(log_event_to_console)
+
+
+# TODO: This should be some type of event. We may also choose to send events for all task state updates.
 @dataclass
 class ServerLog:
     state: TaskState
@@ -104,79 +126,23 @@ class ServerLog:
         return json.dumps(self.__dict__)
 
 
+# TODO: Make this a contextmanager
 class LogManager(object):
     def __init__(self, log_path):
-        from dbt_server.services import filesystem_service
-
+        self.name = str(uuid.uuid4())
         self.log_path = log_path
-
         filesystem_service.ensure_dir_exists(self.log_path)
-        file_logger = logging.FileHandler(self.log_path)
-        logger.addHandler(file_logger)
-
-        logs_redirect_handler = logbook.FileHandler(
-            filename=self.log_path,
-            level=logbook.DEBUG,
-            bubble=True,
-            # TODO : Do we want to filter these?
-            filter=self._dbt_logs_only_filter,
+        logger_config = LoggerConfig(
+            name=self.name,
+            line_format=LineFormat.Json,
+            level=EventLevel.INFO,
+            use_colors=True,
+            output_file_name=log_path,
+            # TODO: Add scrubber for secrets
         )
-
-        # Big hack?
-        logs_redirect_handler.formatter = json_formatter
-
-        self.handlers = [
-            logs_redirect_handler,
-        ]
-
-        dbt_logger.log_manager.set_path(None)
-
-    def _dbt_logs_only_filter(self, record, handler):
-        """
-        DUPLICATE OF LogbookStepLogsStreamWriter._dbt_logs_only_filter
-        """
-        return record.channel.split(".")[0] == "dbt"
-
-    def setup_handlers(self):
-        logger.info("Setting up log handlers...")
-
-        dbt_logger.log_manager.objects = [
-            handler
-            for handler in dbt_logger.log_manager.objects
-            if type(handler) is not logbook.NullHandler
-        ]
-
-        handlers = [logbook.NullHandler()] + self.handlers
-
-        self.log_context = logbook.NestedSetup(handlers)
-        self.log_context.push_application()
-
-        logger.info("Done setting up log handlers.")
+        EVENT_MANAGER.add_logger(logger_config)
 
     def cleanup(self):
-        self.log_context.pop_application()
+        # TODO: verify that threading doesn't result in wonky list
+        EVENT_MANAGER.loggers = [log for log in EVENT_MANAGER.loggers if log.name != self.name]
 
-
-class CapturingLogManager(LogManager):
-    def __init__(self, log_path):
-        super().__init__(log_path)
-
-        self._stream = io.StringIO()
-        capture_handler = logbook.StreamHandler(
-            stream=self._stream,
-            level=logbook.DEBUG,
-            bubble=True,
-            filter=self._dbt_logs_only_filter,
-        )
-
-        capture_handler.formatter = json_formatter
-
-        self.handlers += [capture_handler]
-
-    def getLogs(self):
-        # Be a good citizen with the seek pos
-        pos = self._stream.tell()
-        self._stream.seek(0)
-        res = self._stream.read().split("\n")
-        self._stream.seek(pos)
-        return res

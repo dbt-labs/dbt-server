@@ -1,6 +1,6 @@
 import os
 import shutil
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
