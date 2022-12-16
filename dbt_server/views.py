@@ -278,16 +278,16 @@ from dbt.lib import load_profile_project
 
 
 class dbtCommandArgs(BaseModel):
-    state_id: str
+    state_id: Optional[str]
     command: List[str]
 
 
-def invoke_dbt(task_id, args:dbtCommandArgs, db):
+def invoke_dbt(task_id, state_id, args:dbtCommandArgs, db):
     db_task = crud.get_task(db, task_id)
 
-    path = filesystem_service.get_root_path(args.state_id)
-    serialize_path = filesystem_service.get_path(args.state_id, "manifest.msgpack")
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(state_id)
+    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
 
     log_manager = LogManager(log_path)
     log_manager.setup_handlers()
@@ -315,7 +315,7 @@ def invoke_dbt(task_id, args:dbtCommandArgs, db):
 
     crud.set_task_done(db, db_task)
 
-@app.post("/async/dbt/")
+@app.post("/async/dbt")
 async def dbt_entry(
     # background_tasks: BackgroundTasks,
     args: dbtCommandArgs,
@@ -327,11 +327,12 @@ async def dbt_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):  
+    state_id = filesystem_service.get_latest_state_id(args.state_id)
 
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run"]}
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id,
@@ -344,7 +345,7 @@ async def dbt_entry(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(invoke_dbt, task_id, args, db)
+    background_tasks.add_task(invoke_dbt, task_id, state_id, args, db)
     return crud.create_task(db, task)
 
 
