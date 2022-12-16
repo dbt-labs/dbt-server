@@ -1,0 +1,7 @@
+kind: Fixes
+body: Fixes legacy logging for stream endpoint
+time: 2022-12-07T09:55:30.642422-06:00
+custom:
+  Author: racheldaniel
+  Issue: "132"
+  PR: "118"

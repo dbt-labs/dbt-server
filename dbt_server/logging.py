@@ -3,7 +3,9 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Optional
+
 import logbook
 import logbook.queues
 
@@ -12,8 +14,30 @@ import dbt.logger as dbt_logger
 from pythonjsonlogger import jsonlogger
 
 
-from .services import filesystem_service
-from .models import TaskState
+from dbt_server.models import TaskState
+
+
+ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
+ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
+WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
+
+
+class CustomJsonFormatter(jsonlogger.JsonFormatter):
+    def add_fields(self, log_record, record, message_dict):
+        super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
+        if not log_record.get("timestamp"):
+            created = datetime.utcnow()
+            if record.created:
+                created = datetime.utcfromtimestamp(record.created)
+            now = created.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+            log_record["timestamp"] = now
+        if ACCOUNT_ID and "accountID" not in log_record:
+            log_record["accountID"] = ACCOUNT_ID
+        if ENVIRONMENT_ID and "environmentID" not in log_record:
+            log_record["environmentID"] = ENVIRONMENT_ID
+        if WORKSPACE_ID and "workspaceID" not in log_record:
+            log_record["workspaceID"] = WORKSPACE_ID
+
 
 # setup json logging
 logger = logging.getLogger()
@@ -24,10 +48,12 @@ if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
         "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
     )
 else:
-    formatter = jsonlogger.JsonFormatter(
-        "%(asctime)s %(created)f %(filename)s %(funcName)s %(levelname)s "
+    formatter = CustomJsonFormatter(
+        "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
         "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
-        "%(processName)s %(thread)s %(threadName)s %(name)s"
+        "%(processName)s %(thread)s %(threadName)s %(name)s "
+        "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
+        "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
     )
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
@@ -80,9 +106,13 @@ class ServerLog:
 
 class LogManager(object):
     def __init__(self, log_path):
+        from dbt_server.services import filesystem_service
+
         self.log_path = log_path
 
         filesystem_service.ensure_dir_exists(self.log_path)
+        file_logger = logging.FileHandler(self.log_path)
+        logger.addHandler(file_logger)
 
         logs_redirect_handler = logbook.FileHandler(
             filename=self.log_path,

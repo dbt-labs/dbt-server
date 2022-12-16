@@ -1,0 +1,7 @@
+kind: Under the Hood
+body: 'corrects the directory name for GitHub issue templates '
+time: 2022-12-05T16:41:29.039612-08:00
+custom:
+  Author: lostmygithubaccount
+  Issue: "110"
+  PR: "111"

@@ -1,0 +1,9 @@
+kind: Fixes
+body: Passes args through parse, sql compile and preview endpoints to the StateController;
+  updates the StateController methods to accept args to be passed to parse function
+  in lib.py that already accepts args.
+time: 2022-11-29T08:27:28.370561-06:00
+custom:
+  Author: racheldaniel
+  Issue: "123"
+  PR: "122"

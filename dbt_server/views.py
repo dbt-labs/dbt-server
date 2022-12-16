@@ -1,7 +1,7 @@
+from collections import deque
+import dbt.events.functions
 import os
 import signal
-from dbt.contracts.sql import RemoteRunResult, RemoteCompileResult
-from dbt.exceptions import CompilationException
 
 from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status, Query
@@ -12,12 +12,23 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
-from .services import filesystem_service
-from .services import dbt_service
-from .services import task_service
-from .logging import GLOBAL_LOGGER as logger
+from dbt_server.state import StateController
+from dbt_server import crud, schemas, helpers
+from dbt_server import tracer
 
-from dbt_server.exceptions import InvalidConfigurationException
+from dbt_server.services import (
+    filesystem_service,
+    dbt_service,
+    task_service,
+)
+
+from dbt_server.exceptions import (
+    InvalidConfigurationException,
+    InvalidRequestException,
+    InternalException,
+    StateNotFoundException,
+)
+from dbt_server.logging import GLOBAL_LOGGER as logger
 
 
 import click
@@ -29,8 +40,12 @@ from typing import Optional
 
 # ORM stuff
 from sqlalchemy.orm import Session
-from . import crud
-from . import schemas
+
+# We need to override the EVENT_HISTORY queue to store
+# only a small amount of events to prevent too much memory
+# from being used.
+dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
+
 
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
 # ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
@@ -57,13 +72,6 @@ class FileInfo(BaseModel):
 class PushProjectArgs(BaseModel):
     state_id: str
     body: Dict[str, FileInfo]
-    install_deps: Optional[bool] = False
-
-
-class DepsArgs(BaseModel):
-    packages: Optional[str] = None
-    profile: Optional[str] = None
-    target: Optional[str] = None
 
 
 class ParseArgs(BaseModel):
@@ -71,15 +79,6 @@ class ParseArgs(BaseModel):
     version_check: Optional[bool] = None
     profile: Optional[str] = None
     target: Optional[str] = None
-
-
-
-
-
-
-
-
-
 
 
 class SeedArgs(BaseModel):
@@ -109,42 +108,62 @@ class ListArgs(BaseModel):
     exclude: Union[None, str, List[str]] = None
     select: Union[None, str, List[str]] = None
     selector_name: Optional[str] = None
-    output: Optional[str] = ""
+    output: Optional[str] = "name"
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
-    indirect_selection: str = ""
+    indirect_selection: str = "eager"
 
 
 class SQLConfig(BaseModel):
     state_id: Optional[str] = None
     sql: str
+    target: Optional[str] = None
+    profile: Optional[str] = None
 
 
 @app.exception_handler(InvalidConfigurationException)
 async def configuration_exception_handler(
     request: Request, exc: InvalidConfigurationException
 ):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
-    content = {"status_code": 422, "message": exc_str, "data": None}
-    return JSONResponse(
-        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
-    )
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
     logger.error(f"Request to {request.url} failed validation: {exc_str}")
-    content = {"status_code": 422, "message": exc_str, "data": None}
-    return JSONResponse(
-        content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY
-    )
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
 
 
-@app.get("/")
-async def test(tasks: BackgroundTasks):
-    return {"abc": 123, "tasks": tasks.tasks}
+@app.exception_handler(InternalException)
+async def unhandled_internal_error(request: Request, exc: InternalException):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    logger.error(f"Request to {request.url} failed with an internal error: {exc_str}")
+
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
+
+
+@app.exception_handler(InvalidRequestException)
+async def handled_dbt_error(request: Request, exc: InvalidRequestException):
+    # Missing states get a 422, otherwise they get a 400
+    if isinstance(exc, StateNotFoundException):
+        status_code = status.HTTP_422_UNPROCESSABLE_ENTITY
+    else:
+        status_code = status.HTTP_400_BAD_REQUEST
+
+    exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
+    logger.error(f"Request to {request.url} was invalid: {exc_str}")
+
+    content = {"status_code": status_code, "message": exc_str, "data": None}
+    return JSONResponse(content=content, status_code=status_code)
 
 
 if ALLOW_ORCHESTRATED_SHUTDOWN:
@@ -169,7 +188,7 @@ async def ready():
 
 
 @app.post("/push")
-async def push_unparsed_manifest(args: PushProjectArgs):
+def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
@@ -185,12 +204,6 @@ async def push_unparsed_manifest(args: PushProjectArgs):
         reuse = False
         filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
 
-    if args.install_deps:
-        logger.info("Installing deps")
-        path = filesystem_service.get_root_path(state_id)
-        dbt_service.dbt_deps(path)
-        logger.info("Done installing deps")
-
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
@@ -205,21 +218,17 @@ async def push_unparsed_manifest(args: PushProjectArgs):
 
 
 @app.post("/parse")
-async def parse_project(args: ParseArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+def parse_project(args: ParseArgs):
+    state = StateController.parse_from_source(args.state_id, args)
+    state.serialize_manifest()
+    state.update_state_id()
+    state.update_cache()
 
-    logger.info("Parsing manifest from filetree")
-    logger.info(f"{state_id=}")
-    manifest = dbt_service.parse_to_manifest(path, args)
-
-    logger.info("Serializing as messagepack file")
-    dbt_service.serialize_manifest(manifest, serialize_path)
-    filesystem_service.update_state_id(state_id)
+    tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
-        status_code=200, content={"parsing": args.state_id, "path": serialize_path}
+        status_code=200,
+        content={"parsing": args.state_id, "path": state.serialize_path},
     )
 
 @app.post("/list")
@@ -270,7 +279,7 @@ from dbt.lib import load_profile_project
 
 class dbtCommandArgs(BaseModel):
     state_id: str
-    command: list[str]
+    command: List[str]
 
 
 def invoke_dbt(task_id, args:dbtCommandArgs, db):
@@ -342,102 +351,51 @@ async def dbt_entry(
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state_id = filesystem_service.get_latest_state_id(sql.state_id)
-    if state_id is None:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "No historical record of a successfully parsed project for this user environment."
-            },
-        )
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    state = StateController.load_state(sql.state_id, sql)
+    result = state.execute_query(sql.sql)
+    compiled_code = helpers.extract_compiled_code_from_node(result)
 
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    result = dbt_service.execute_sql(manifest, path, sql.sql)
-    if type(result) != RemoteRunResult:
-        # Theoretically this shouldn't happen-- handling just in case
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": "Something went wrong with sql execution-- please contact support."
-            },
-        )
-    result = result.to_dict()
-    encoded_results = jsonable_encoder(result)
-
+    tag_request_span(state)
     return JSONResponse(
         status_code=200,
         content={
-            "parsing": state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": compiled_code,
         },
     )
 
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state_id = filesystem_service.get_latest_state_id(sql.state_id)
-    if state_id is None:
-        return JSONResponse(
-            status_code=422,
-            content={
-                "message": "No historical record of a successfully parsed project for this user environment."
-            },
-        )
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    state = StateController.load_state(sql.state_id, sql)
+    result = state.compile_query(sql.sql)
+    compiled_code = helpers.extract_compiled_code_from_node(result)
 
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-
-    try:
-        result = dbt_service.compile_sql(manifest, path, sql.sql)
-    except CompilationException as e:
-        logger.error(
-            f"Failed to compile sql for state_id: {state_id}. Compilation Error: {repr(e)}"
-        )
-        return JSONResponse(
-            status_code=400,
-            content={"message": repr(e)},
-        )
-
-    if type(result) != RemoteCompileResult:
-        # Theoretically this shouldn't happen-- handling just in case
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": "Something went wrong with sql compilation-- please contact support."
-            },
-        )
-    result = result.to_dict()
-    encoded_results = jsonable_encoder(result)
+    tag_request_span(state)
 
     return JSONResponse(
         status_code=200,
         content={
-            "parsing": state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": compiled_code,
         },
     )
 
 
-@app.post("/deps")
-async def tar_deps(args: DepsArgs):
-    package_data = dbt_service.render_package_data(args.packages)
-    if not package_data:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "message": (
-                    "No hub packages found for installation. "
-                    "\nPlease contact support if you are receiving this message in error."
-                )
-            },
-        )
-    packages = dbt_service.get_package_details(package_data)
-    return JSONResponse(status_code=200, content={"res": jsonable_encoder(packages)})
+def tag_request_span(state):
+    manifest_metadata = get_manifest_metadata(state)
+    tracer.add_tags_to_current_span(manifest_metadata)
+
+
+def get_manifest_metadata(state):
+    return {
+        "manifest_size": state.manifest_size,
+        "is_manifest_cached": state.is_manifest_cached,
+    }
 
 
 class Task(BaseModel):
