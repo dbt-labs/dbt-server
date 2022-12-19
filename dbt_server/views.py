@@ -482,3 +482,20 @@ async def log_endpoint(
         },
     )
 
+
+@app.get("/status/{task_id}")
+def status_endpoint(
+        task_id: str,
+        db: Session = Depends(crud.get_db),
+):
+    task = crud.get_task(db, task_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": task.state,
+        },
+    )
+
+
+
+
