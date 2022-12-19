@@ -353,7 +353,15 @@ async def run_models_async(
     db: Session = Depends(crud.get_db),
 ):
     args.state_id = filesystem_service.get_latest_state_id(args.state_id)
-    return task_service.run_async(background_tasks, db, args)
+    task = task_service.run_async(background_tasks, db, args)
+
+    return JSONResponse(
+        status_code=200,
+        content={
+            "task_id": task.task_id,
+            "state_id": args.state_id,
+        },
+    )
 
 
 @app.post("/test-async")
