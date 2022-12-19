@@ -48,11 +48,11 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 app = FastAPI()
 
 
-@app.middleware("http")
-async def log_request_start(request: Request, call_next):
-    logger.debug(f"Received request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    return response
+# @app.middleware("http")
+# async def log_request_start(request: Request, call_next):
+#     logger.debug(f"Received request: {request.method} {request.url.path}")
+#     response = await call_next(request)
+#     return response
 
 
 class FileInfo(BaseModel):
