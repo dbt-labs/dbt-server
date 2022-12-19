@@ -2,19 +2,22 @@ from collections import deque
 import dbt.events.functions
 import os
 import signal
+import uuid
 
 from sse_starlette.sse import EventSourceResponse
-from fastapi import FastAPI, BackgroundTasks, Depends, status, Query
+from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
+from dbt_server import crud, schemas, tracer, helpers
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.models import TaskState
 from dbt_server.state import StateController
-from dbt_server import crud, schemas, helpers
-from dbt_server import tracer
 
 from dbt_server.services import (
     filesystem_service,
@@ -29,14 +32,6 @@ from dbt_server.exceptions import (
     StateNotFoundException,
 )
 from dbt_server.logging import GLOBAL_LOGGER as logger
-
-
-import click
-import os
-import sys
-from typing import Optional
-
-
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -262,58 +257,10 @@ async def seed_async(
     return task_service.seed_async(background_tasks, db, args)
 
 
-import uuid
-from dbt_server.models import TaskState
-from dbt.cli.main import dbtRunner
-from fastapi import HTTPException
-import uuid
-from dbt.exceptions import RuntimeException
-
-from dbt_server import crud, schemas
-from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
-from dbt_server.models import TaskState
-from dbt.lib import load_profile_project
-
-
-
 class dbtCommandArgs(BaseModel):
     state_id: Optional[str]
     command: List[str]
 
-
-def invoke_dbt(task_id, state_id, args:dbtCommandArgs, db):
-    db_task = crud.get_task(db, task_id)
-
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-    log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
-
-    log_manager = LogManager(log_path)
-    log_manager.setup_handlers()
-
-    logger.info(f"Running dbt ({task_id}) - deserializing manifest {serialize_path}")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    profile, project = load_profile_project(path, os.getenv("DBT_PROFILE_NAME", "user"),)
-
-    crud.set_task_running(db, db_task)
-
-    logger.info(f"Running dbt ({task_id}) - kicking off task")
-
-    try:
-        dbt = dbtRunner(project, profile, manifest)
-        # TODO we might need to surface this to shipment later on
-        res, success = dbt.invoke(args.command)
-    except RuntimeException as e:
-        crud.set_task_errored(db, db_task, str(e))
-        raise e
-
-    logger.info(f"Running dbt ({task_id}) - done")
-
-    log_manager.cleanup()
-
-    crud.set_task_done(db, db_task)
 
 @app.post("/async/dbt")
 async def dbt_entry(
@@ -327,12 +274,12 @@ async def dbt_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):  
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run"]}
+    state = StateController.load_state(args.state_id, args)
+
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
+    log_path = filesystem_service.get_path(state.state_id, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id,
@@ -345,7 +292,7 @@ async def dbt_entry(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(invoke_dbt, task_id, state_id, args, db)
+    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args, db)
     return crud.create_task(db, task)
 
 
