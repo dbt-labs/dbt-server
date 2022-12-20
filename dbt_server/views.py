@@ -12,6 +12,10 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
+from dbt_server import crud, schemas, tracer, helpers
+from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.models import TaskState
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
 from dbt_server import tracer
@@ -29,14 +33,6 @@ from dbt_server.exceptions import (
     StateNotFoundException,
 )
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
-
-
-import click
-import os
-import sys
-from typing import Optional
-
-
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -292,11 +288,12 @@ async def dbt_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):  
-
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run"]}
+    state = StateController.load_state(args.state_id, args)
+
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    log_path = filesystem_service.get_path(state.state_id, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id,
@@ -309,7 +306,7 @@ async def dbt_entry(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(invoke_dbt, task_id, args, db)
+    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args, db)
     return crud.create_task(db, task)
 
 
