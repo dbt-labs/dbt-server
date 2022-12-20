@@ -1,7 +1,11 @@
+import os
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
-from dbt_server.logging import GLOBAL_LOGGER as logger
-from dbt_server import tracer
+from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
+from dbt_server import crud, tracer
+from dbt.lib import load_profile_project
+from dbt.cli.main import dbtRunner
+from dbt.exceptions import RuntimeException
 
 from dataclasses import dataclass
 from typing import Optional, Any
@@ -171,3 +175,34 @@ class StateController(object):
         LAST_PARSED.set_last_parsed_manifest(
             self.state_id, self.manifest, self.manifest_size, self.config
         )
+
+    @tracer.wrap
+    def execute_async_command(self, task_id, state_id, command, db):
+        db_task = crud.get_task(db, task_id)
+
+        log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
+
+        log_manager = LogManager(log_path)
+        log_manager.setup_handlers()
+
+        logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
+
+        profile, project = load_profile_project(self.root_path, os.getenv("DBT_PROFILE_NAME", "user"),)
+
+        crud.set_task_running(db, db_task)
+
+        logger.info(f"Running dbt ({task_id}) - kicking off task")
+
+        try:
+            dbt = dbtRunner(project, profile, self.manifest)
+            # TODO we might need to surface this to shipment later on
+            res, success = dbt.invoke(command)
+        except RuntimeException as e:
+            crud.set_task_errored(db, db_task, str(e))
+            raise e
+
+        logger.info(f"Running dbt ({task_id}) - done")
+
+        log_manager.cleanup()
+
+        crud.set_task_done(db, db_task)
