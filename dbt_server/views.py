@@ -107,6 +107,7 @@ class RunArgs(BaseModel):
     fail_fast: Optional[bool] = None
     full_refresh: Optional[bool] = None
     version_check: Optional[bool] = None
+    callback: Optional[str] = None
 
 
 class TestArgs(BaseModel):

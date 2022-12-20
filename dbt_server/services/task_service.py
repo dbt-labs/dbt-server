@@ -1,4 +1,6 @@
 import uuid
+
+import requests
 from dbt.exceptions import RuntimeException
 
 from dbt_server import crud, schemas
@@ -26,6 +28,7 @@ def run_task(task_name, task_id, args, db):
     manifest = dbt_service.deserialize_manifest(serialize_path)
 
     crud.set_task_running(db, db_task)
+    call_status_callback(args, task_id, TaskState.RUNNING)
 
     logger.info(f"Running dbt ({task_id}) - kicking off task")
 
@@ -46,6 +49,7 @@ def run_task(task_name, task_id, args, db):
             raise RuntimeException("Not an actual task")
     except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
+        call_status_callback(args, task_id, TaskState.ERROR)
         raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
@@ -53,6 +57,7 @@ def run_task(task_name, task_id, args, db):
     log_manager.cleanup()
 
     crud.set_task_done(db, db_task)
+    call_status_callback(args, task_id, TaskState.FINISHED)
 
 
 def run_async(background_tasks, db, args):
@@ -207,18 +212,7 @@ async def tail_logs_for_path(db, task_id, request, live=True):
         fh.close()
 
 
-async def get_logs_for_path(db, task_id, request):
-    db_task = crud.get_task(db, task_id)
-    logger.info(f"Waiting for file @ {db_task.log_path}")
-    fh = await _wait_for_file(db_task.log_path)
-
-    while db_task.state not in (TaskState.ERROR, TaskState.FINISHED):
-        if await request.is_disconnected():
-            logger.debug("Log request disconnected")
-            break
-        await asyncio.sleep(0.5)
-        db.refresh(db_task)
-
-    # read the whole file
-    logger.info("Draining logs from file")
-    return fh.read()
+def call_status_callback(args, task_id, status):
+    if args.callback:
+        callback_url = args.callback
+        response = requests.post(callback_url, json={"task_id": task_id, "status": status})
