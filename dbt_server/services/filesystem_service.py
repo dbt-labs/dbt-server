@@ -72,8 +72,10 @@ def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
         write_file(path, file_info.contents)
 
     if previous_state_id and state_id != previous_state_id:
+        #  TODO: The target folder is usually created during command runs and won't exist on push/parse
+        #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
+        #  with the click API work
         previous_partial_parse_path = get_path(previous_state_id, "target", PARTIAL_PARSE_FILE)
-        # TODO: We don't create a target folder-- will this change with click API?
         new_partial_parse_path = get_path(state_id, "target", PARTIAL_PARSE_FILE)
         if not os.path.exists(previous_partial_parse_path):
             return
