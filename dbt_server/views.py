@@ -8,16 +8,15 @@ from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
-from dbt_server import crud, schemas, tracer, helpers
-from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger
-from dbt_server.models import TaskState
 from dbt_server.state import StateController
+from dbt_server import crud, schemas, helpers
+from dbt_server import tracer
+from dbt_server.models import TaskState
 
 from dbt_server.services import (
     filesystem_service,
@@ -31,7 +30,7 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -106,6 +105,31 @@ class ListArgs(BaseModel):
     output: Optional[str] = "name"
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
+    indirect_selection: str = "eager"
+
+
+class SnapshotArgs(BaseModel):
+    state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
+    single_threaded: Optional[bool] = None
+    threads: Optional[int] = None
+    resource_types: Optional[List[str]] = None
+    models: Union[None, str, List[str]] = None
+    select: Union[None, str, List[str]] = None
+    exclude: Union[None, str, List[str]] = None
+    selector_name: Optional[str] = None
+    state: Optional[str] = None
+    defer: Optional[bool] = None
+
+
+class RunOperationArgs(BaseModel):
+    state_id: str
+    profile: Optional[str] = None
+    target: Optional[str] = None
+    macro: str
+    single_threaded: Optional[bool] = None
+    args: str = Field(default="{}")
     indirect_selection: str = "eager"
 
 
@@ -226,6 +250,7 @@ def parse_project(args: ParseArgs):
         content={"parsing": args.state_id, "path": state.serialize_path},
     )
 
+
 @app.post("/list")
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
@@ -273,7 +298,7 @@ async def dbt_entry(
     background_tasks: BackgroundTasks,
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
-):  
+):
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run"]}
     state = StateController.load_state(args.state_id, args)
@@ -292,7 +317,7 @@ async def dbt_entry(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args, db)
+    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args.command, db)
     return crud.create_task(db, task)
 
 
