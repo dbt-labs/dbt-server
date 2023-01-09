@@ -476,37 +476,3 @@ async def stream_log_endpoint(
 ):
     event_generator = task_service.tail_logs_for_path(db, task_id, request)
     return EventSourceResponse(event_generator, ping=2)
-
-
-@app.get("/logs/{task_id}")
-async def log_endpoint(
-        task_id: str,
-        request: Request,
-        db: Session = Depends(crud.get_db),
-):
-    logs = await task_service.get_logs_for_path(db, task_id, request)
-    logger.info(f"logs: {logs}")
-    return JSONResponse(
-        status_code=200,
-        content={
-            "res": jsonable_encoder(logs),
-        },
-    )
-
-
-@app.get("/status/{task_id}")
-def status_endpoint(
-        task_id: str,
-        db: Session = Depends(crud.get_db),
-):
-    task = crud.get_task(db, task_id)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": task.state,
-        },
-    )
-
-
-
-
