@@ -1,7 +1,7 @@
 import os
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
-from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger, LogManager
 from dbt_server import crud, tracer
 from dbt.lib import load_profile_project
 from dbt.cli.main import dbtRunner
@@ -180,6 +180,9 @@ class StateController(object):
     @tracer.wrap
     def execute_async_command(self, task_id, state_id, command, db):
         db_task = crud.get_task(db, task_id)
+        log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
+
+        log_manager = LogManager(log_path)
         logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
 
         profile, project = load_profile_project(self.root_path, os.getenv("DBT_PROFILE_NAME", "user"),)
@@ -194,6 +197,7 @@ class StateController(object):
             res, success = dbt.invoke(command)
         except RuntimeException as e:
             crud.set_task_errored(db, db_task, str(e))
+            log_manager.cleanup()
             raise e
 
         logger.info(f"Running dbt ({task_id}) - done")
