@@ -1,0 +1,8 @@
+kind: Features
+body: This adds functionality to allow users to supply a profile name via cli arg,
+  env var or dbt_project.yml
+time: 2022-11-02T15:11:53.673724-05:00
+custom:
+  Author: racheldaniel
+  Issue: "108"
+  PR: "107"

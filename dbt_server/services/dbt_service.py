@@ -44,10 +44,8 @@ from dbt_server.exceptions import (
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
+from dbt_server.helpers import set_profile_name
 
-
-# Temporary default to match dbt-cloud behavior
-PROFILE_NAME = os.getenv("DBT_PROFILE_NAME", "user")
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
     "true",
     "1",
@@ -117,6 +115,7 @@ def get_sql_parser(config, manifest):
 @tracer.wrap
 def create_dbt_config(project_path, args=None):
     try:
+        args = set_profile_name(args)
         # This needs a lock to prevent two threads from mutating an adapter concurrently
         with CONFIG_GLOBAL_LOCK:
             return dbt_get_dbt_config(project_path, args)

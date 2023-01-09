@@ -19,6 +19,7 @@ dbt_service.disable_tracking()
 
 class ConfigArgs(BaseModel):
     target: Optional[str] = None
+    profile: Optional[str] = None
 
 
 def startup_cache_initialize():
