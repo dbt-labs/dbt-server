@@ -298,7 +298,7 @@ async def dbt_entry(
     task = schemas.Task(
         task_id=task_id,
         state=TaskState.PENDING,
-        command="dbt run-operation",
+        command=(" ").join(args.command),
         log_path=log_path,
     )
 
