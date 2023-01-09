@@ -4,6 +4,7 @@ from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
+PARTIAL_PARSE_FILE = "partial_parse.msgpack"
 
 def get_working_dir():
     return os.environ.get("__DBT_WORKING_DIR", "./working-dir")
@@ -46,6 +47,12 @@ def write_file(path, contents):
 
 
 @tracer.wrap
+def copy_file(source_path, dest_path):
+    ensure_dir_exists(dest_path)
+    shutil.copyfile(source_path, dest_path)
+
+
+@tracer.wrap
 def read_serialized_manifest(path):
     try:
         with open(path, "rb") as fh:
@@ -55,7 +62,7 @@ def read_serialized_manifest(path):
 
 
 @tracer.wrap
-def write_unparsed_manifest_to_disk(state_id, filedict):
+def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
     root_path = get_root_path(state_id)
     if os.path.exists(root_path):
         shutil.rmtree(root_path)
@@ -63,6 +70,16 @@ def write_unparsed_manifest_to_disk(state_id, filedict):
     for filename, file_info in filedict.items():
         path = get_path(state_id, filename)
         write_file(path, file_info.contents)
+
+    if previous_state_id and state_id != previous_state_id:
+        #  TODO: The target folder is usually created during command runs and won't exist on push/parse
+        #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
+        #  with the click API work
+        previous_partial_parse_path = get_path(previous_state_id, "target", PARTIAL_PARSE_FILE)
+        new_partial_parse_path = get_path(state_id, "target", PARTIAL_PARSE_FILE)
+        if not os.path.exists(previous_partial_parse_path):
+            return
+        copy_file(previous_partial_parse_path, new_partial_parse_path)
 
 
 @tracer.wrap
