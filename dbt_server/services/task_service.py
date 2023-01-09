@@ -215,4 +215,4 @@ async def tail_logs_for_path(db, task_id, request, live=True):
 def call_status_callback(args, task_id, status):
     if args.callback:
         callback_url = args.callback
-        response = requests.post(callback_url, json={"task_id": task_id, "status": status})
+        requests.post(callback_url, json={"task_id": task_id, "status": status})
