@@ -259,9 +259,11 @@ async def ready():
     return JSONResponse(status_code=200, content={})
 
 
+
 @app.post("/push")
 def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
+    previous_state_id = filesystem_service.get_latest_state_id(None)
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
     size_in_files = len(args.body)
@@ -274,7 +276,7 @@ def push_unparsed_manifest(args: PushProjectArgs):
     # Stupid example of reusing an existing manifest
     if not os.path.exists(path):
         reuse = False
-        filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
+        filesystem_service.write_unparsed_manifest_to_disk(state_id, previous_state_id, args.body)
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
