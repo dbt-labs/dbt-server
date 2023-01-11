@@ -1,34 +1,15 @@
 import json
 import logging
-import uuid
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from dbt.events.functions import EVENT_MANAGER
-from dbt.events.eventmgr import LoggerConfig, LineFormat, EventLevel
+from dbt.events.eventmgr import EventLevel
 from dbt.events.base_types import BaseEvent
 from pythonjsonlogger import jsonlogger
-from dbt_server.services import filesystem_service
-
-from dbt.events import AdapterLogger
-from dbt.events.types import (
-    AdapterEventDebug,
-    AdapterEventInfo,
-    AdapterEventWarning,
-    AdapterEventError,
-)
 
 from dbt_server.models import TaskState
-
-DBT_SERVER_EVENT_LOGGER = AdapterLogger("Server")
-DBT_SERVER_EVENT_TYPES = [
-    AdapterEventDebug,
-    AdapterEventInfo,
-    AdapterEventWarning,
-    AdapterEventError
-]
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
@@ -78,6 +59,10 @@ else:
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
 
+# Use standard python logger for all dbt-server logs-- these will be sent to
+# stdout but will not be written to task log files
+DBT_SERVER_LOGGER = logging.getLogger("dbt-server")
+DBT_SERVER_LOGGER.setLevel(logging.DEBUG)
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
@@ -107,13 +92,15 @@ def configure_uvicorn_access_log():
 # Push event messages to root python logger for formatting
 def log_event_to_console(event: BaseEvent):
     logging_method = dbt_event_to_python_root_log[event.log_level()]
-    if type(event) not in DBT_SERVER_EVENT_TYPES and logging_method == logging.root.debug:
+    if logging_method == logging.root.debug:
         # Only log debug level for dbt-server logs
         return
     logging_method(event.info.msg)
 
 
-EVENT_MANAGER.callbacks.append(log_event_to_console)
+# TODO: Core is still working on a way to add a callback to the eventlogger using the
+# newer format. We will still need to do this for events emitted by core
+# EVENT_MANAGER.callbacks.append(log_event_to_console)
 
 
 # TODO: This should be some type of event. We may also choose to send events for all task state updates.
@@ -124,25 +111,3 @@ class ServerLog:
 
     def to_json(self):
         return json.dumps(self.__dict__)
-
-
-# TODO: Make this a contextmanager
-class LogManager(object):
-    def __init__(self, log_path):
-        self.name = str(uuid.uuid4())
-        self.log_path = log_path
-        filesystem_service.ensure_dir_exists(self.log_path)
-        logger_config = LoggerConfig(
-            name=self.name,
-            line_format=LineFormat.Json,
-            level=EventLevel.INFO,
-            use_colors=True,
-            output_file_name=log_path,
-            # TODO: Add scrubber for secrets
-        )
-        EVENT_MANAGER.add_logger(logger_config)
-
-    def cleanup(self):
-        # TODO: verify that threading doesn't result in wonky list
-        EVENT_MANAGER.loggers = [log for log in EVENT_MANAGER.loggers if log.name != self.name]
-

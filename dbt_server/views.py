@@ -4,11 +4,10 @@ import os
 import signal
 import uuid
 
-from sse_starlette.sse import EventSourceResponse
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
@@ -21,7 +20,6 @@ from dbt_server.models import TaskState
 from dbt_server.services import (
     filesystem_service,
     dbt_service,
-    task_service,
 )
 
 from dbt_server.exceptions import (
@@ -30,7 +28,7 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -75,23 +73,6 @@ class ParseArgs(BaseModel):
     target: Optional[str] = None
 
 
-class SeedArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    show: Optional[bool] = None
-    state: Optional[str] = None
-    selector_name: Optional[str] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
-
-
 class ListArgs(BaseModel):
     state_id: str
     profile: Optional[str] = None
@@ -105,31 +86,6 @@ class ListArgs(BaseModel):
     output: Optional[str] = "name"
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
-    indirect_selection: str = "eager"
-
-
-class SnapshotArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-
-
-class RunOperationArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    macro: str
-    single_threaded: Optional[bool] = None
-    args: str = Field(default="{}")
     indirect_selection: str = "eager"
 
 
@@ -274,16 +230,6 @@ async def list_resources(args: ListArgs):
     )
 
 
-@app.post("/seed-async")
-async def seed_async(
-    args: SeedArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.seed_async(background_tasks, db, args)
-
-
 class dbtCommandArgs(BaseModel):
     state_id: Optional[str]
     command: List[str]
@@ -321,7 +267,6 @@ async def dbt_entry(
 
     background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args.command, db)
     return crud.create_task(db, task)
-
 
 
 @app.post("/preview")
@@ -375,13 +320,3 @@ def get_manifest_metadata(state):
 
 class Task(BaseModel):
     task_id: str
-
-
-@app.get("/stream-logs/{task_id}")
-async def log_endpoint(
-    task_id: str,
-    request: Request,
-    db: Session = Depends(crud.get_db),
-):
-    event_generator = task_service.tail_logs_for_path(db, task_id, request)
-    return EventSourceResponse(event_generator, ping=2)

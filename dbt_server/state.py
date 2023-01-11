@@ -1,7 +1,7 @@
 import os
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
-from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger, LogManager
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server import crud, tracer
 from dbt.lib import load_profile_project
 from dbt.cli.main import dbtRunner
@@ -182,7 +182,14 @@ class StateController(object):
         db_task = crud.get_task(db, task_id)
         log_path = filesystem_service.get_path(state_id, task_id, "logs.stdout")
 
-        log_manager = LogManager(log_path)
+        # Temporary solution for structured log formatting until core adds a cleaner interface
+        new_command = []
+        new_command.append("--log-format")
+        new_command.append("json")
+        new_command.append("--log-path")
+        new_command.append(log_path)
+        new_command += command
+
         logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
 
         profile, project = load_profile_project(self.root_path, os.getenv("DBT_PROFILE_NAME", "user"),)
@@ -194,10 +201,9 @@ class StateController(object):
         try:
             dbt = dbtRunner(project, profile, self.manifest)
             # TODO we might need to surface this to shipment later on
-            res, success = dbt.invoke(command)
+            res, success = dbt.invoke(new_command)
         except RuntimeException as e:
             crud.set_task_errored(db, db_task, str(e))
-            log_manager.cleanup()
             raise e
 
         logger.info(f"Running dbt ({task_id}) - done")
