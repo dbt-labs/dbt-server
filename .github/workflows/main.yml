@@ -151,3 +151,5 @@ jobs:
           production-runtime-endpoint: ${{ secrets.PRODUCTION_RUNTIME_ENDPOINT }}
           production-emea-notifier-passphrase: ${{ secrets.PRODUCTION_EMEA_NOTIFIER_PASSPHRASE }}
           production-emea-runtime-endpoint: ${{ secrets.PRODUCTION_EMEA_RUNTIME_ENDPOINT }}
+          production-au-notifier-passphrase: ${{ secrets.PRODUCTION_AU_NOTIFIER_PASSPHRASE }}
+          production-au-runtime-endpoint: ${{ secrets.PRODUCTION_AU_RUNTIME_ENDPOINT }}
