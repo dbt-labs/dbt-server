@@ -310,7 +310,6 @@ async def dbt_entry(
     return crud.create_task(db, task)
 
 
-
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
     state = StateController.load_state(sql.state_id, sql)
