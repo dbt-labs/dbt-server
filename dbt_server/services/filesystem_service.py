@@ -10,9 +10,24 @@ def get_working_dir():
     return os.environ.get("__DBT_WORKING_DIR", "./working-dir")
 
 
-def get_root_path(state_id):
+def get_root_path(state_id=None, project_path=None):
+    if project_path is not None:
+        return project_path
     working_dir = get_working_dir()
     return os.path.join(working_dir, f"state-{state_id}")
+
+
+def get_task_artifacts_path(task_id, state_id=None):
+    working_dir = get_working_dir()
+    state_id = get_latest_state_id(state_id)
+    if state_id is None:
+        return working_dir
+    return os.path.join(working_dir, f"state-{state_id}", task_id)
+
+
+def get_log_path(task_id, state_id=None):
+    artifacts_path = get_task_artifacts_path(task_id, state_id)
+    return os.path.join(artifacts_path, "logs.stdout")
 
 
 def get_latest_state_file_path():
@@ -20,8 +35,8 @@ def get_latest_state_file_path():
     return os.path.join(working_dir, "latest-state-id.txt")
 
 
-def get_path(state_id, *path_parts):
-    return os.path.join(get_root_path(state_id), *path_parts)
+def get_path(*path_parts):
+    return os.path.join(*path_parts)
 
 
 @tracer.wrap
@@ -68,15 +83,15 @@ def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
         shutil.rmtree(root_path)
 
     for filename, file_info in filedict.items():
-        path = get_path(state_id, filename)
+        path = get_path(root_path, filename)
         write_file(path, file_info.contents)
 
     if previous_state_id and state_id != previous_state_id:
         #  TODO: The target folder is usually created during command runs and won't exist on push/parse
         #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
         #  with the click API work
-        previous_partial_parse_path = get_path(previous_state_id, "target", PARTIAL_PARSE_FILE)
-        new_partial_parse_path = get_path(state_id, "target", PARTIAL_PARSE_FILE)
+        previous_partial_parse_path = get_path(get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE)
+        new_partial_parse_path = get_path(root_path, "target", PARTIAL_PARSE_FILE)
         if not os.path.exists(previous_partial_parse_path):
             return
         copy_file(previous_partial_parse_path, new_partial_parse_path)

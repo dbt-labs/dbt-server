@@ -28,17 +28,20 @@ def startup_cache_initialize():
     a latest-state-id.txt file pointing to a state folder with a pre-compiled manifest.
     If any step fails (the latest-state-id.txt file is missing, there's no compiled manifest,
     or it can't be deserialized) then continue without caching.
+    
+    TODO: This only checks for an existing state_id, we don't store the last project_path on
+    disk. Need to follow up to see if that would be beneficial.
     """
 
     # If an exception is raised in this method, the dbt-server will fail to start up.
     # Be careful here :)
-
     latest_state_id = filesystem_service.get_latest_state_id(None)
     if latest_state_id is None:
         logger.info("[STARTUP] No latest state found - not loading manifest into cache")
         return
 
-    manifest_path = filesystem_service.get_path(latest_state_id, "manifest.msgpack")
+    root_path = filesystem_service.get_root_path(latest_state_id)
+    manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
     logger.info(
         f"[STARTUP] Loading manifest from file system (state_id={latest_state_id})"
     )
@@ -59,12 +62,12 @@ def startup_cache_initialize():
         target_name = None
     config_args = ConfigArgs(target=target_name)
 
-    source_path = filesystem_service.get_root_path(latest_state_id)
+    root_path = filesystem_service.get_root_path(latest_state_id)
     manifest_size = filesystem_service.get_size(manifest_path)
-    config = dbt_service.create_dbt_config(source_path, config_args)
+    config = dbt_service.create_dbt_config(root_path, config_args)
 
     LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, manifest, manifest_size, config
+        latest_state_id, root_path, manifest, manifest_size, config
     )
 
     logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
