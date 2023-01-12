@@ -2,12 +2,12 @@ from collections import deque
 import dbt.events.functions
 import os
 import signal
+import uuid
 
-from sse_starlette.sse import EventSourceResponse
-from fastapi import FastAPI, BackgroundTasks, Depends, status
+from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
@@ -15,11 +15,11 @@ from typing import List, Optional, Union, Dict
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
 from dbt_server import tracer
+from dbt_server.models import TaskState
 
 from dbt_server.services import (
     filesystem_service,
     dbt_service,
-    task_service,
 )
 
 from dbt_server.exceptions import (
@@ -28,7 +28,7 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import DBT_SERVER_EVENT_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -73,80 +73,6 @@ class ParseArgs(BaseModel):
     target: Optional[str] = None
 
 
-class BuildArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    resource_types: Optional[List[str]] = None
-    select: Union[None, str, List[str]] = None
-    threads: Optional[int] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
-
-
-class RunArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
-
-
-class TestArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    data_type: bool = Field(False, alias="data")
-    schema_type: bool = Field(False, alias="schema")
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
-
-
-class SeedArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    show: Optional[bool] = None
-    state: Optional[str] = None
-    selector_name: Optional[str] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
-
-
 class ListArgs(BaseModel):
     state_id: str
     profile: Optional[str] = None
@@ -161,30 +87,6 @@ class ListArgs(BaseModel):
     output_keys: Union[None, str, List[str]] = None
     state: Optional[str] = None
     indirect_selection: str = "eager"
-
-
-class SnapshotArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-
-
-class RunOperationArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    macro: str
-    single_threaded: Optional[bool] = None
-    args: str = Field(default="{}")
 
 
 class SQLConfig(BaseModel):
@@ -307,25 +209,6 @@ def parse_project(args: ParseArgs):
     )
 
 
-@app.post("/run")
-async def run_models(args: RunArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_run(path, args, manifest)
-    encoded_results = jsonable_encoder(results.to_dict())
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parsing": args.state_id,
-            "path": serialize_path,
-            "res": encoded_results,
-        },
-    )
-
-
 @app.post("/list")
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
@@ -347,65 +230,43 @@ async def list_resources(args: ListArgs):
     )
 
 
-@app.post("/run-async")
-async def run_models_async(
-    args: RunArgs,
+class dbtCommandArgs(BaseModel):
+    state_id: Optional[str]
+    command: List[str]
+
+
+@app.post("/async/dbt")
+async def dbt_entry(
+    # background_tasks: BackgroundTasks,
+    args: dbtCommandArgs,
+    # request: Request,
+    # commons: list = Depends(common_parameters),
+    # args: list,
+    # response_model=schemas.Task,
     background_tasks: BackgroundTasks,
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
-    logger.debug("Received run request")
-    return task_service.run_async(background_tasks, db, args)
+    # example request: Post http://127.0.0.1:8580/async/dbt
+    # with body {"state_id": "123", "command":["run"]}
+    state = StateController.load_state(args.state_id, args)
 
+    task_id = str(uuid.uuid4())
+    log_path = filesystem_service.get_path(state.state_id, task_id, "logs.stdout")
 
-@app.post("/test-async")
-async def test_async(
-    args: TestArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.test_async(background_tasks, db, args)
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command=(" ").join(args.command),
+        log_path=log_path,
+    )
 
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
 
-@app.post("/seed-async")
-async def seed_async(
-    args: SeedArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.seed_async(background_tasks, db, args)
-
-
-@app.post("/build-async")
-async def build_async(
-    args: BuildArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.build_async(background_tasks, db, args)
-
-
-@app.post("/snapshot-async")
-async def snapshot_async(
-    args: SnapshotArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.snapshot_async(background_tasks, db, args)
-
-
-@app.post("/run-operation-async")
-async def run_operation_async(
-    args: RunOperationArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.run_operation_async(background_tasks, db, args)
+    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args.command, db)
+    return crud.create_task(db, task)
 
 
 @app.post("/preview")
@@ -459,13 +320,3 @@ def get_manifest_metadata(state):
 
 class Task(BaseModel):
     task_id: str
-
-
-@app.get("/stream-logs/{task_id}")
-async def log_endpoint(
-    task_id: str,
-    request: Request,
-    db: Session = Depends(crud.get_db),
-):
-    event_generator = task_service.tail_logs_for_path(db, task_id, request)
-    return EventSourceResponse(event_generator, ping=2)
