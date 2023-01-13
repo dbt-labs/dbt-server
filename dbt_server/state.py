@@ -18,6 +18,7 @@ MANIFEST_LOCK = threading.Lock()
 @dataclass
 class CachedManifest:
     state_id: Optional[str] = None
+    project_path: Optional[str] = None
     root_path: Optional[str] = None
     manifest: Optional[Any] = None
     manifest_size: Optional[int] = None
@@ -25,9 +26,11 @@ class CachedManifest:
     config: Optional[Any] = None
     parser: Optional[Any] = None
 
-    def set_last_parsed_manifest(self, state_id, root_path, manifest, manifest_size, config):
+    def set_last_parsed_manifest(self, state_id, project_path, root_path, manifest, manifest_size, config):
+        print("setting last parsed state_id to: ", state_id)
         with MANIFEST_LOCK:
             self.state_id = state_id
+            self.project_path = project_path
             self.root_path = root_path
             self.manifest = manifest
             self.manifest_size = manifest_size
@@ -36,10 +39,13 @@ class CachedManifest:
             self.parser = dbt_service.get_sql_parser(self.config, self.manifest)
 
     def lookup(self, state_id):
+        print("INSIDE LOOKUP")
         with MANIFEST_LOCK:
             if self.manifest is None:
                 return None
             elif state_id in (None, self.state_id):
+                print("lookup state_id: ", state_id)
+                print("cached lookup result: ", self.state_id)
                 # TODO: verify this conditional catches project path cache hits
                 return self
             else:
@@ -49,6 +55,8 @@ class CachedManifest:
     def reset(self):
         with MANIFEST_LOCK:
             self.state_id = None
+            self.project_path = None
+            self.root_path = None
             self.manifest = None
             self.manifest_size = None
             self.config = None
@@ -60,9 +68,10 @@ LAST_PARSED = CachedManifest()
 
 class StateController(object):
     def __init__(
-        self, state_id, root_path, manifest, config, parser, manifest_size, is_manifest_cached
+        self, state_id, project_path, root_path, manifest, config, parser, manifest_size, is_manifest_cached
     ):
         self.state_id = state_id
+        self.project_path = project_path
         self.root_path = root_path
         self.manifest = manifest
         self.config = config
@@ -75,12 +84,13 @@ class StateController(object):
 
     @classmethod
     @tracer.wrap
-    def from_parts(cls, state_id, manifest, root_path, manifest_size, args=None):
+    def from_parts(cls, state_id, project_path, manifest, root_path, manifest_size, args=None):
         config = dbt_service.create_dbt_config(root_path, args)
         parser = dbt_service.get_sql_parser(config, manifest)
 
         return cls(
             state_id=state_id,
+            project_path=project_path,
             root_path=root_path,
             manifest=manifest,
             config=config,
@@ -94,6 +104,7 @@ class StateController(object):
     def from_cached(cls, cached):
         return cls(
             state_id=cached.state_id,
+            project_path=cached.project_path,
             root_path=cached.root_path,
             manifest=cached.manifest,
             config=cached.config,
@@ -111,14 +122,16 @@ class StateController(object):
         before returning.
         """
         root_path = filesystem_service.get_root_path(parse_args.state_id, parse_args.project_path)
-
+        print("root_path: ", root_path)
+        print("parse_args.state_id: ", parse_args.state_id)
         log_details = generate_log_details(parse_args.state_id, parse_args.project_path)
         logger.info(f"Parsing manifest from filetree ({log_details})")
 
         manifest = dbt_service.parse_to_manifest(root_path, parse_args)
 
+
         logger.info(f"Done parsing from source ({log_details})")
-        return cls.from_parts(parse_args.state_id, manifest, root_path, 0, parse_args)
+        return cls.from_parts(parse_args.state_id, parse_args.project_path, manifest, root_path, 0, parse_args)
 
     @classmethod
     @tracer.wrap
@@ -131,19 +144,19 @@ class StateController(object):
         parsed state_id will be cache hits.
         """
         cached = LAST_PARSED.lookup(args.state_id)
+        print("cached state_id: ", cached.state_id)
         if cached:
             logger.info(f"Loading manifest from cache ({generate_log_details(cached.state_id, cached.root_path)})")
             return cls.from_cached(cached)
-        # TODO: THIS IS FUNKY AND NOT QUITE RIGHT-- NEEDS REVIEW
         # Not in cache - need to go to filesystem to deserialize it
-        logger.info(f"Manifest cache miss ({generate_log_details(args.state_id, cls.root_path)})")
+        logger.info(f"Manifest cache miss ({generate_log_details(args.state_id, cls.project_path)})")
         state_id = filesystem_service.get_latest_state_id(args.state_id)
-        project_path = args.project_path if args else None
+        project_path = filesystem_service.get_latest_project_path()
 
         # No state_id provided, and no latest-state-id.txt found
         if state_id is None and project_path is None:
             raise StateNotFoundException(
-                f"Provided state_id or project_path does not exist or is not found ({generate_log_details(state_id, project_path)})"
+                f"Provided state_id does not exist, no previous state_id or project_path found ({generate_log_details(state_id, project_path)})"
             )
 
         root_path = filesystem_service.get_root_path(state_id, project_path)
@@ -154,7 +167,7 @@ class StateController(object):
         manifest = dbt_service.deserialize_manifest(manifest_path)
         manifest_size = filesystem_service.get_size(manifest_path)
 
-        return cls.from_parts(state_id, manifest, root_path, manifest_size, args)
+        return cls.from_parts(state_id, project_path, manifest, root_path, manifest_size, args)
 
     @tracer.wrap
     def serialize_manifest(self):
@@ -167,6 +180,12 @@ class StateController(object):
         if self.state_id is not None:
             logger.info(f"Updating latest state id ({self.state_id})")
             filesystem_service.update_state_id(self.state_id)
+    
+    @tracer.wrap
+    def update_project_path(self):
+        if self.project_path is not None:
+            logger.info(f"Updating latest project path ({self.project_path})")
+            filesystem_service.update_project_path(self.project_path)
 
     @tracer.wrap
     def compile_query(self, query):
@@ -183,9 +202,12 @@ class StateController(object):
 
     @tracer.wrap
     def update_cache(self):
-        logger.info(f"Updating cache ({generate_log_details(self.state_id, self.root_path)})")
+        logger.info(f"Updating cache ({generate_log_details(self.state_id, self.project_path)})")
+        self.update_state_id()
+        self.update_project_path()
+        print("state_id inside update cache: ", self.state_id)
         LAST_PARSED.set_last_parsed_manifest(
-            self.state_id, self.root_path, self.manifest, self.manifest_size, self.config
+            self.state_id, self.project_path, self.root_path, self.manifest, self.manifest_size, self.config
         )
 
     @tracer.wrap

@@ -13,6 +13,8 @@ def get_working_dir():
 def get_root_path(state_id=None, project_path=None):
     if project_path is not None:
         return project_path
+    if state_id is None:
+        return None
     working_dir = get_working_dir()
     return os.path.join(working_dir, f"state-{state_id}")
 
@@ -21,7 +23,7 @@ def get_task_artifacts_path(task_id, state_id=None):
     working_dir = get_working_dir()
     state_id = get_latest_state_id(state_id)
     if state_id is None:
-        return working_dir
+        return os.path.join(working_dir, task_id)
     return os.path.join(working_dir, f"state-{state_id}", task_id)
 
 
@@ -33,6 +35,11 @@ def get_log_path(task_id, state_id=None):
 def get_latest_state_file_path():
     working_dir = get_working_dir()
     return os.path.join(working_dir, "latest-state-id.txt")
+
+
+def get_latest_project_path_file_path():
+    working_dir = get_working_dir()
+    return os.path.join(working_dir, "latest-project-path.txt")
 
 
 def get_path(*path_parts):
@@ -102,7 +109,6 @@ def get_latest_state_id(state_id):
     if not state_id:
         path = os.path.abspath(get_latest_state_file_path())
         if not os.path.exists(path):
-            logger.error("No state id included in request, no previous state id found.")
             return None
         with open(path, "r") as latest_path_file:
             state_id = latest_path_file.read().strip()
@@ -110,7 +116,24 @@ def get_latest_state_id(state_id):
 
 
 @tracer.wrap
+def get_latest_project_path():
+    path = os.path.abspath(get_latest_project_path_file_path())
+    if not os.path.exists(path):
+        return None
+    with open(path, "r") as latest_path_file:
+        project_path = latest_path_file.read().strip()
+    return project_path
+
+
+@tracer.wrap
 def update_state_id(state_id):
     path = os.path.abspath(get_latest_state_file_path())
     with open(path, "w+") as latest_path_file:
         latest_path_file.write(state_id)
+
+
+@tracer.wrap
+def update_project_path(project_path):
+    path = os.path.abspath(get_latest_project_path_file_path())
+    with open(path, "w+") as latest_path_file:
+        latest_path_file.write(project_path)

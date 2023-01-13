@@ -191,15 +191,15 @@ def push_unparsed_manifest(args: PushProjectArgs):
 @app.post("/parse")
 def parse_project(args: ParseArgs):
     state = StateController.parse_from_source(args)
+    print("state state_id: ", state.state_id)
     state.serialize_manifest()
-    state.update_state_id()
     state.update_cache()
 
     tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": state.state_id, "path": state.serialize_path},
+        content={"parsing": state.state_id or state.project_path, "path": state.serialize_path},
     )
 
 
@@ -223,15 +223,15 @@ async def dbt_entry(
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run", "--threads", 1]}
     state = StateController.load_state(args)
-
+    print("*" * 100)
+    print(state.state_id)
     task_id = str(uuid.uuid4())
     log_path = filesystem_service.get_log_path(task_id, args.state_id)
 
     task = schemas.Task(
         task_id=task_id,
         state=TaskState.PENDING,
-        # TODO: This is wrong
-        command=(" ").join(args.command),
+        command=(" ").join(str(param) for param in args.command),
         log_path=log_path,
     )
 
