@@ -10,16 +10,13 @@ from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Dict
 
 from dbt_server import crud, schemas, tracer, helpers
 from dbt_server.services import filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.models import TaskState
 from dbt_server.state import StateController
-from dbt_server import crud, schemas, helpers
-from dbt_server import tracer
-from dbt_server.models import TaskState
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -27,7 +24,6 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import DBT_SERVER_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
