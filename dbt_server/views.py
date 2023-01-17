@@ -13,18 +13,13 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional, Union, Dict
 
 from dbt_server import crud, schemas, tracer, helpers
-from dbt_server.services import dbt_service, filesystem_service
+from dbt_server.services import filesystem_service
 from dbt_server.logging import GLOBAL_LOGGER as logger
 from dbt_server.models import TaskState
 from dbt_server.state import StateController
 from dbt_server import crud, schemas, helpers
 from dbt_server import tracer
 from dbt_server.models import TaskState
-
-from dbt_server.services import (
-    filesystem_service,
-    dbt_service,
-)
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -206,11 +201,6 @@ class dbtCommandArgs(BaseModel):
     state_id: Optional[str]
     command: List[str]
 
-from dbt_server import crud, schemas
-from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager
-from dbt_server.models import TaskState
-from dbt.lib import load_profile_project
 
 @app.post("/async/dbt")
 async def dbt_entry(
@@ -238,39 +228,6 @@ async def dbt_entry(
         raise HTTPException(status_code=400, detail="Task already registered")
 
     background_tasks.add_task(state.execute_async_command, task_id, args.command, db)
-    return crud.create_task(db, task)
-
-@app.post("/async/dbt/")
-async def dbt_entry(
-    # background_tasks: BackgroundTasks,
-    args: dbtCommandArgs,
-    # request: Request,
-    # commons: list = Depends(common_parameters),
-    # args: list,
-    # response_model=schemas.Task,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):  
-    # example request: Post http://127.0.0.1:8580/async/dbt
-    # with body {"state_id": "123", "command":["run"]}
-    state = StateController.load_state(args.state_id, args)
-
-    task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(state.state_id, task_id, "logs.stdout")
-
-    task = schemas.Task(
-        task_id=task_id,
-        state=TaskState.PENDING,
-        command=(" ").join(args.command),
-        log_path=log_path,
-    )
-
-    db_task = crud.get_task(db, task_id)
-    if db_task:
-        raise HTTPException(status_code=400, detail="Task already registered")
-
-    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args, db)
     return crud.create_task(db, task)
 
 
