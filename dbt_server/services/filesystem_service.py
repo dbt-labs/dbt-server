@@ -21,7 +21,6 @@ def get_root_path(state_id=None, project_path=None):
 
 def get_task_artifacts_path(task_id, state_id=None):
     working_dir = get_working_dir()
-    state_id = get_latest_state_id(state_id)
     if state_id is None:
         return os.path.join(working_dir, task_id)
     return os.path.join(working_dir, f"state-{state_id}", task_id)

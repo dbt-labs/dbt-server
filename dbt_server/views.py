@@ -191,7 +191,6 @@ def push_unparsed_manifest(args: PushProjectArgs):
 @app.post("/parse")
 def parse_project(args: ParseArgs):
     state = StateController.parse_from_source(args)
-    print("state state_id: ", state.state_id)
     state.serialize_manifest()
     state.update_cache()
 
@@ -223,10 +222,9 @@ async def dbt_entry(
     # example request: Post http://127.0.0.1:8580/async/dbt
     # with body {"state_id": "123", "command":["run", "--threads", 1]}
     state = StateController.load_state(args)
-    print("*" * 100)
-    print(state.state_id)
+
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_log_path(task_id, args.state_id)
+    log_path = filesystem_service.get_log_path(task_id, state.state_id)
 
     task = schemas.Task(
         task_id=task_id,

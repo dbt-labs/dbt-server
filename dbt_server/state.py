@@ -27,7 +27,6 @@ class CachedManifest:
     parser: Optional[Any] = None
 
     def set_last_parsed_manifest(self, state_id, project_path, root_path, manifest, manifest_size, config):
-        print("setting last parsed state_id to: ", state_id)
         with MANIFEST_LOCK:
             self.state_id = state_id
             self.project_path = project_path
@@ -39,13 +38,10 @@ class CachedManifest:
             self.parser = dbt_service.get_sql_parser(self.config, self.manifest)
 
     def lookup(self, state_id):
-        print("INSIDE LOOKUP")
         with MANIFEST_LOCK:
             if self.manifest is None:
                 return None
             elif state_id in (None, self.state_id):
-                print("lookup state_id: ", state_id)
-                print("cached lookup result: ", self.state_id)
                 # TODO: verify this conditional catches project path cache hits
                 return self
             else:
@@ -122,8 +118,6 @@ class StateController(object):
         before returning.
         """
         root_path = filesystem_service.get_root_path(parse_args.state_id, parse_args.project_path)
-        print("root_path: ", root_path)
-        print("parse_args.state_id: ", parse_args.state_id)
         log_details = generate_log_details(parse_args.state_id, parse_args.project_path)
         logger.info(f"Parsing manifest from filetree ({log_details})")
 
@@ -144,7 +138,6 @@ class StateController(object):
         parsed state_id will be cache hits.
         """
         cached = LAST_PARSED.lookup(args.state_id)
-        print("cached state_id: ", cached.state_id)
         if cached:
             logger.info(f"Loading manifest from cache ({generate_log_details(cached.state_id, cached.root_path)})")
             return cls.from_cached(cached)
@@ -205,7 +198,6 @@ class StateController(object):
         logger.info(f"Updating cache ({generate_log_details(self.state_id, self.project_path)})")
         self.update_state_id()
         self.update_project_path()
-        print("state_id inside update cache: ", self.state_id)
         LAST_PARSED.set_last_parsed_manifest(
             self.state_id, self.project_path, self.root_path, self.manifest, self.manifest_size, self.config
         )
