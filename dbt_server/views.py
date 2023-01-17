@@ -197,11 +197,6 @@ def parse_project(args: ParseArgs):
     )
 
 
-class dbtCommandArgs(BaseModel):
-    state_id: Optional[str]
-    command: List[str]
-
-
 @app.post("/async/dbt")
 async def dbt_entry(
     args: dbtCommandArgs,
