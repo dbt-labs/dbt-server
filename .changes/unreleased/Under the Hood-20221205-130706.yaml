@@ -1,0 +1,7 @@
+kind: Under the Hood
+body: Adding the production AU environment to the CICD git workflows.
+time: 2022-12-05T13:07:06.005308-06:00
+custom:
+  Author: emilyjohnson-dbt
+  Issue: "130"
+  PR: "119"
