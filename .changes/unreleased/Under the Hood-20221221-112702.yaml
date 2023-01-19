@@ -1,0 +1,8 @@
+kind: Under the Hood
+body: Upgrade FastAPI version in requirements.txt and add httpx to dev-requirements.txt
+  to resolve error handling issue with underlying FastAPI dependency
+time: 2022-12-21T11:27:02.990803-08:00
+custom:
+  Author: jenniferjsmmiller
+  Issue: "599"
+  PR: "149"
