@@ -124,7 +124,7 @@ class StateController(object):
         manifest = dbt_service.parse_to_manifest(root_path, parse_args)
 
 
-        logger.info(f"Done parsing from source ({log_details})")
+        logger.info(f"Done parsing from source {log_details}")
         return cls.from_parts(parse_args.state_id, parse_args.project_path, manifest, root_path, 0, parse_args)
 
     @classmethod
@@ -139,17 +139,18 @@ class StateController(object):
         """
         cached = LAST_PARSED.lookup(args.state_id)
         if cached:
-            logger.info(f"Loading manifest from cache ({generate_log_details(cached.state_id, cached.root_path)})")
+            logger.info(f"Loading manifest from cache {generate_log_details(cached.state_id, cached.root_path)}")
             return cls.from_cached(cached)
         # Not in cache - need to go to filesystem to deserialize it
-        logger.info(f"Manifest cache miss ({generate_log_details(args.state_id, cls.project_path)})")
         state_id = filesystem_service.get_latest_state_id(args.state_id)
         project_path = filesystem_service.get_latest_project_path()
+    
+        logger.info(f"Manifest cache miss ({generate_log_details(state_id, project_path)})")
 
         # No state_id provided, and no latest-state-id.txt found
         if state_id is None and project_path is None:
             raise StateNotFoundException(
-                f"Provided state_id does not exist, no previous state_id or project_path found ({generate_log_details(state_id, project_path)})"
+                f"Provided state_id does not exist, no previous state_id or project_path found {generate_log_details(state_id, project_path)}"
             )
 
         root_path = filesystem_service.get_root_path(state_id, project_path)
@@ -195,7 +196,7 @@ class StateController(object):
 
     @tracer.wrap
     def update_cache(self):
-        logger.info(f"Updating cache ({generate_log_details(self.state_id, self.project_path)})")
+        logger.info(f"Updating cache {generate_log_details(self.state_id, self.project_path)}")
         self.update_state_id()
         self.update_project_path()
         LAST_PARSED.set_last_parsed_manifest(
@@ -205,14 +206,15 @@ class StateController(object):
     @tracer.wrap
     def execute_async_command(self, task_id, command, db):
         db_task = crud.get_task(db, task_id)
-        log_path = filesystem_service.get_log_path(task_id, self.state_id)
+        # For commands, only the log file destination directory is sent to --log-path
+        log_dir_path = filesystem_service.get_task_artifacts_path(task_id, self.state_id)
 
         # Temporary solution for structured log formatting until core adds a cleaner interface
         new_command = []
         new_command.append("--log-format")
         new_command.append("json")
         new_command.append("--log-path")
-        new_command.append(log_path)
+        new_command.append(log_dir_path)
         new_command += command
 
         logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
@@ -238,6 +240,8 @@ class StateController(object):
 
 def generate_log_details(state_id, project_path):
     if state_id is None and project_path:
-        return f"project_path={project_path}"
-    return f"state_id={state_id}"
+        return f"(project_path={project_path})"
+    elif state_id:
+        return f"(state_id={state_id})"
+    return ""
     

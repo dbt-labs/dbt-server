@@ -1,0 +1,14 @@
+user:
+  outputs:
+    default:
+      account: testAccount
+      client_session_keep_alive: false
+      database: TEST
+      password: test-password
+      role: TEST
+      schema: test_schema
+      threads: 4
+      type: snowflake
+      user: TEST
+      warehouse: TEST
+  target: default

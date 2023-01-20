@@ -10,7 +10,7 @@ from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
 
 from dbt_server import crud, schemas, tracer, helpers
 from dbt_server.services import filesystem_service
@@ -77,8 +77,8 @@ class SQLConfig(BaseModel):
 
 
 class dbtCommandArgs(BaseModel):
+    command: List[Any]
     state_id: Optional[str]
-    command: List[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -200,8 +200,7 @@ async def dbt_entry(
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
-    # example request: Post http://127.0.0.1:8580/async/dbt
-    # with body {"state_id": "123", "command":["run", "--threads", 1]}
+    # example body: {"state_id": "123", "command":["run", "--threads", 1]}
     state = StateController.load_state(args)
 
     task_id = str(uuid.uuid4())

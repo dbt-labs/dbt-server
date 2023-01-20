@@ -5,6 +5,8 @@ from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
 PARTIAL_PARSE_FILE = "partial_parse.msgpack"
+# This is defined in dbt-core-- dir path is configurable but not filename
+DBT_LOG_FILE_NAME = "dbt.log"
 
 def get_working_dir():
     return os.environ.get("__DBT_WORKING_DIR", "./working-dir")
@@ -28,7 +30,7 @@ def get_task_artifacts_path(task_id, state_id=None):
 
 def get_log_path(task_id, state_id=None):
     artifacts_path = get_task_artifacts_path(task_id, state_id)
-    return os.path.join(artifacts_path, "logs.stdout")
+    return os.path.join(artifacts_path, DBT_LOG_FILE_NAME)
 
 
 def get_latest_state_file_path():
@@ -127,6 +129,7 @@ def get_latest_project_path():
 @tracer.wrap
 def update_state_id(state_id):
     path = os.path.abspath(get_latest_state_file_path())
+    ensure_dir_exists(path)
     with open(path, "w+") as latest_path_file:
         latest_path_file.write(state_id)
 
@@ -134,5 +137,6 @@ def update_state_id(state_id):
 @tracer.wrap
 def update_project_path(project_path):
     path = os.path.abspath(get_latest_project_path_file_path())
+    ensure_dir_exists(path)
     with open(path, "w+") as latest_path_file:
         latest_path_file.write(project_path)

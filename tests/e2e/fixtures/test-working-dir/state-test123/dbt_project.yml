@@ -1,0 +1,27 @@
+
+name: 'jaffle_shop'
+version: 2.0
+
+config-version: 2
+profile: 'user'
+source-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+data-paths: ["data"]
+macro-paths: ["macros"]
+
+
+target-path: "target"
+clean-targets:
+    - "target"
+    - "dbt_modules"
+    - "logs"
+
+models:
+  jaffle_shop:
+      materialized: table
+      staging:
+        materialized: view
+
+vars:
+  test_var: '2022-03-15T10:00:00'
