@@ -1,4 +1,5 @@
 import json
+import shutil
 import unittest
 from unittest.mock import patch
 import uuid
@@ -23,6 +24,10 @@ class TestDbtEntry(unittest.TestCase):
         self.temp_dir = tempfile.TemporaryDirectory()
         os.environ['__DBT_WORKING_DIR'] = self.temp_dir.name
 
+        self.state_id = "test123"
+        self.state_dir = f'{self.temp_dir.name}/state-{self.state_id}'
+        shutil.copytree('tests/e2e/fixtures/test-project', self.state_dir)
+
         self.engine = create_engine(f'sqlite:///{self.temp_dir.name}/sql_app.db', echo=True, connect_args={'check_same_thread': False})
         Base.metadata.create_all(bind=self.engine, tables=[Task.__table__])
         self.SessionLocal = sessionmaker(bind=self.engine)
@@ -45,7 +50,7 @@ class TestDbtEntry(unittest.TestCase):
         
         Also test that expected log file is created and populated with valid json logs
         """
-        args = views.ParseArgs(project_path='tests/e2e/fixtures/test-working-dir/state-test123')
+        args = views.ParseArgs(project_path=self.state_dir)
         state = StateController.parse_from_source(args)
         state.serialize_manifest()
         state.update_cache()
@@ -89,11 +94,7 @@ class TestDbtEntry(unittest.TestCase):
         Mocks actual command execution to prevent log files being written in
         permanent directory
         """
-        current_dir = os.getcwd()
-        test_working_dir = os.path.join(current_dir, "tests/e2e/fixtures/test-working-dir")
-        test_state_id = 'test123'
-        os.environ['__DBT_WORKING_DIR'] = test_working_dir
-        args = views.ParseArgs(state_id=test_state_id)
+        args = views.ParseArgs(state_id=self.state_id)
         state = StateController.parse_from_source(args)
         state.serialize_manifest()
         state.update_cache()
@@ -110,7 +111,7 @@ class TestDbtEntry(unittest.TestCase):
         self.assertEqual(json_response['state'], 'pending')
         self.assertEqual(json_response['command'], 'run --threads 1')
 
-        expected_log_path = f'{test_working_dir}/state-{test_state_id}/{json_response.get("task_id")}/dbt.log'
+        expected_log_path = f'{self.state_dir}/{json_response.get("task_id")}/dbt.log'
         self.assertEqual(json_response['log_path'], expected_log_path)
 
         # check that the task is added to the database
