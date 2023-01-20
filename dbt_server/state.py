@@ -42,7 +42,6 @@ class CachedManifest:
             if self.manifest is None:
                 return None
             elif state_id in (None, self.state_id):
-                # TODO: verify this conditional catches project path cache hits
                 return self
             else:
                 return None

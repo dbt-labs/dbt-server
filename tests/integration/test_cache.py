@@ -1,3 +1,4 @@
+import os
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 import unittest
@@ -5,7 +6,7 @@ import unittest
 from dbt_server.server import app, startup_cache_initialize
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
-
+from dbt_server.services.filesystem_service import DEFAULT_WORKING_DIR
 
 class FakeManifest:
     pass
@@ -17,6 +18,7 @@ client = TestClient(app)
 
 class StartupCacheTest(unittest.TestCase):
     def setUp(self):
+        os.environ['__DBT_WORKING_DIR'] = DEFAULT_WORKING_DIR
         LAST_PARSED.reset()
 
     def tearDown(self):

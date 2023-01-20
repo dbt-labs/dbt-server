@@ -7,9 +7,10 @@ from dbt_server import tracer
 PARTIAL_PARSE_FILE = "partial_parse.msgpack"
 # This is defined in dbt-core-- dir path is configurable but not filename
 DBT_LOG_FILE_NAME = "dbt.log"
+DEFAULT_WORKING_DIR = "./working-dir"
 
 def get_working_dir():
-    return os.environ.get("__DBT_WORKING_DIR", "./working-dir")
+    return os.environ.get("__DBT_WORKING_DIR", DEFAULT_WORKING_DIR)
 
 
 def get_root_path(state_id=None, project_path=None):
