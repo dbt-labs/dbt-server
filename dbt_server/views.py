@@ -10,17 +10,13 @@ from starlette.requests import Request
 from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Dict, Any
 
-from dbt_server.state import StateController
-from dbt_server import crud, schemas, helpers
-from dbt_server import tracer
+from dbt_server import crud, schemas, tracer, helpers
+from dbt_server.services import filesystem_service
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.models import TaskState
-
-from dbt_server.services import (
-    filesystem_service,
-    dbt_service,
-)
+from dbt_server.state import StateController
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -28,7 +24,6 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import DBT_SERVER_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -67,26 +62,11 @@ class PushProjectArgs(BaseModel):
 
 
 class ParseArgs(BaseModel):
-    state_id: str
+    state_id: Optional[str] = None
+    project_path: Optional[str] = None
     version_check: Optional[bool] = None
     profile: Optional[str] = None
     target: Optional[str] = None
-
-
-class ListArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    output: Optional[str] = "name"
-    output_keys: Union[None, str, List[str]] = None
-    state: Optional[str] = None
-    indirect_selection: str = "eager"
 
 
 class SQLConfig(BaseModel):
@@ -94,6 +74,11 @@ class SQLConfig(BaseModel):
     sql: str
     target: Optional[str] = None
     profile: Optional[str] = None
+
+
+class dbtCommandArgs(BaseModel):
+    command: List[Any]
+    state_id: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -196,68 +181,35 @@ def push_unparsed_manifest(args: PushProjectArgs):
 
 @app.post("/parse")
 def parse_project(args: ParseArgs):
-    state = StateController.parse_from_source(args.state_id, args)
+    state = StateController.parse_from_source(args)
     state.serialize_manifest()
-    state.update_state_id()
     state.update_cache()
 
     tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": args.state_id, "path": state.serialize_path},
+        content={"parsing": state.state_id or state.project_path, "path": state.serialize_path},
     )
-
-
-@app.post("/list")
-async def list_resources(args: ListArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_list(path, args, manifest)
-
-    encoded_results = jsonable_encoder(results)
-
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parsing": args.state_id,
-            "path": serialize_path,
-            "res": encoded_results,
-        },
-    )
-
-
-class dbtCommandArgs(BaseModel):
-    state_id: Optional[str]
-    command: List[str]
 
 
 @app.post("/async/dbt")
 async def dbt_entry(
-    # background_tasks: BackgroundTasks,
     args: dbtCommandArgs,
-    # request: Request,
-    # commons: list = Depends(common_parameters),
-    # args: list,
-    # response_model=schemas.Task,
     background_tasks: BackgroundTasks,
     response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
-    # example request: Post http://127.0.0.1:8580/async/dbt
-    # with body {"state_id": "123", "command":["run"]}
-    state = StateController.load_state(args.state_id, args)
+    # example body: {"state_id": "123", "command":["run", "--threads", 1]}
+    state = StateController.load_state(args)
 
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(state.state_id, task_id, "logs.stdout")
+    log_path = filesystem_service.get_log_path(task_id, state.state_id)
 
     task = schemas.Task(
         task_id=task_id,
         state=TaskState.PENDING,
-        command=(" ").join(args.command),
+        command=(" ").join(str(param) for param in args.command),
         log_path=log_path,
     )
 
@@ -265,13 +217,13 @@ async def dbt_entry(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(state.execute_async_command, task_id, state.state_id, args.command, db)
+    background_tasks.add_task(state.execute_async_command, task_id, args.command, db)
     return crud.create_task(db, task)
 
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id, sql)
+    state = StateController.load_state(sql)
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
@@ -289,7 +241,7 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id, sql)
+    state = StateController.load_state(sql)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 

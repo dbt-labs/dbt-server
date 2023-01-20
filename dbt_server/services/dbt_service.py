@@ -162,48 +162,6 @@ def deserialize_manifest(serialize_path):
     return dbt_deserialize_manifest(manifest_packed)
 
 
-def dbt_run(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("run", args, manifest, config)
-    return task.run()
-
-
-def dbt_test(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("test", args, manifest, config)
-    return task.run()
-
-
-def dbt_list(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("list", args, manifest, config)
-    return task.run()
-
-
-def dbt_seed(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("seed", args, manifest, config)
-    return task.run()
-
-
-def dbt_build(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("build", args, manifest, config)
-    return task.run()
-
-
-def dbt_run_operation(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("run_operation", args, manifest, config)
-    return task.run()
-
-
-def dbt_snapshot(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("snapshot", args, manifest, config)
-    return task.run()
-
-
 @handle_dbt_compilation_error
 @tracer.wrap
 def execute_sql(manifest, project_path, sql):
