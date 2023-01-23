@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from dbt_server import views, crud
 from dbt_server.state import StateController
 from dbt_server.models import Task, Base
-from dbt_server.services.filesystem_service import DBT_LOG_FILE_NAME
+from dbt_server.services.filesystem_service import DBT_LOG_FILE_NAME, DEFAULT_WORKING_DIR
 import os
 
 from sqlalchemy import create_engine
@@ -36,6 +36,7 @@ class TestDbtEntry(unittest.TestCase):
         app.dependency_overrides[crud.get_db] = self.mock_get_db
 
     def tearDown(self):
+        del os.environ["__DBT_WORKING_DIR"]
         self.db.close()
         self.temp_dir.cleanup()
 
