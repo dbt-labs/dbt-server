@@ -2,6 +2,7 @@ import os
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.helpers import set_profile_name
 from dbt_server import crud, tracer
 from dbt.lib import load_profile_project
 from dbt.cli.main import dbtRunner
@@ -217,8 +218,8 @@ class StateController(object):
         new_command += command
 
         logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
-
-        profile, project = load_profile_project(self.root_path, os.getenv("DBT_PROFILE_NAME", "user"),)
+        profile_name = set_profile_name()
+        profile, project = load_profile_project(self.root_path, profile_name)
 
         crud.set_task_running(db, db_task)
 
