@@ -13,7 +13,8 @@ from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
 
 
-models.Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine, checkfirst=True)
+
 dbt_service.disable_tracking()
 
 
