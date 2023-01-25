@@ -1,10 +1,5 @@
 import os
 from dbt_server.exceptions import InternalException
-from pydantic import BaseModel
-
-
-class Args(BaseModel):
-    profile: str = None
 
 
 def extract_compiled_code_from_node(result_node_dict):
@@ -23,13 +18,12 @@ def extract_compiled_code_from_node(result_node_dict):
     return compiled_code
 
 
-def set_profile_name(args=None):
-    # If no profile name is passed in args, we will attempt to set it from env vars
-    # If no profile is set, dbt will default to reading from dbt_project.yml
+def get_profile_name(args=None):
+    # If no profile name is passed in args, we will attempt to get it from env vars
+    # If profile is None, dbt will default to reading from dbt_project.yml
     if args and hasattr(args, "profile") and args.profile:
-        return args
-    if os.getenv("DBT_PROFILE_NAME"):
-        if args is None:
-            args = Args()
-        args.profile = os.getenv("DBT_PROFILE_NAME")
-    return args
+        return args.profile
+    env_profile_name = os.getenv("DBT_PROFILE_NAME")
+    if env_profile_name:
+        return env_profile_name
+    return None
