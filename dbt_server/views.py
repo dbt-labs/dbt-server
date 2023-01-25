@@ -79,6 +79,8 @@ class SQLConfig(BaseModel):
 class dbtCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
+    # TODO: Need to handle this differently
+    profile: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
