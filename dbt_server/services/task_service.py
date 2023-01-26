@@ -1,4 +1,5 @@
 import uuid
+
 try:
     from dbt.exceptions import RuntimeException
 except (ModuleNotFoundError, ImportError):

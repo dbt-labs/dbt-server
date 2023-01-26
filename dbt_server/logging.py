@@ -19,6 +19,7 @@ ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
 WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
 
+
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)
@@ -88,6 +89,7 @@ def configure_uvicorn_access_log():
     ual = logging.getLogger("uvicorn.access")
     ual.propagate = True
     ual.handlers = []
+
 
 @dataclass
 class ServerLog:
