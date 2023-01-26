@@ -21,7 +21,7 @@ def run_task(task_name, task_id, args, db):
 
     path = filesystem_service.get_root_path(args.state_id)
     serialize_path = filesystem_service.get_path(args.state_id, "manifest.msgpack")
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    # log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
     # log_manager = LogManager(log_path)
 
