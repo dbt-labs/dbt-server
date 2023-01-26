@@ -1,32 +1,23 @@
 import json
 import logging
-import uuid
 import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-from dbt.events.functions import EVENT_MANAGER
-from dbt.events.eventmgr import LoggerConfig, LineFormat, EventLevel
-from dbt.events.base_types import BaseEvent
+try:
+    from dbt.events.functions import STDOUT_LOG, FILE_LOG
+except (ModuleNotFoundError, ImportError):
+    STDOUT_LOG = None
+    FILE_LOG = None
+
 from pythonjsonlogger import jsonlogger
-from dbt_server.services import filesystem_service
-
-
 from dbt_server.models import TaskState
 
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
 WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
-
-dbt_event_to_python_root_log = {
-    EventLevel.DEBUG: logging.root.debug,
-    EventLevel.TEST: logging.root.debug,
-    EventLevel.INFO: logging.root.info,
-    EventLevel.WARN: logging.root.warn,
-    EventLevel.ERROR: logging.root.error,
-}
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
@@ -67,6 +58,12 @@ dbt_server_logger = logging.getLogger("dbt-server")
 dbt_server_logger.setLevel(logging.DEBUG)
 GLOBAL_LOGGER = dbt_server_logger
 
+# remove handlers from these loggers, so
+# that they propagate up to the root logger
+# for json formatting
+if STDOUT_LOG and FILE_LOG:
+    STDOUT_LOG.handlers = []
+    FILE_LOG.handlers = []
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
@@ -79,14 +76,6 @@ if logger_instance:
     logger.propagate = True
     logger_instance.handlers = []
 
-# Push event messages to stdout for datadog
-def log_event_to_console(event: BaseEvent):
-    logging_method = dbt_event_to_python_root_log[event.log_level()]
-    # If we want to pass more information along than this (like lineno from core),
-    # we would need to json format this separately
-    logging_method(event.info.msg)
-
-EVENT_MANAGER.callbacks.append(log_event_to_console)
 
 def configure_uvicorn_access_log():
     """Configure uvicorn access log.
@@ -107,25 +96,3 @@ class ServerLog:
 
     def to_json(self):
         return json.dumps(self.__dict__)
-
-
-# TODO: Make this a contextmanager
-class LogManager(object):
-    def __init__(self, log_path):
-        self.name = str(uuid.uuid4())
-        self.log_path = log_path
-        filesystem_service.ensure_dir_exists(self.log_path)
-        logger_config = LoggerConfig(
-            name=self.name,
-            line_format=LineFormat.Json,
-            level=EventLevel.INFO,
-            use_colors=True,
-            output_file_name=log_path,
-            # TODO: Add scrubber for secrets
-        )
-        EVENT_MANAGER.add_logger(logger_config)
-
-    def cleanup(self):
-        # TODO: verify that threading doesn't result in wonky list
-        EVENT_MANAGER.loggers = [log for log in EVENT_MANAGER.loggers if log.name != self.name]
-

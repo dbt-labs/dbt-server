@@ -1,9 +1,13 @@
 import uuid
-from dbt.exceptions import RuntimeException
+try:
+    from dbt.exceptions import RuntimeException
+except (ModuleNotFoundError, ImportError):
+    from dbt.exceptions import DbtRuntimeError as RuntimeException
+
 
 from dbt_server import crud, schemas
 from dbt_server.services import dbt_service, filesystem_service
-from dbt_server.logging import GLOBAL_LOGGER as logger, LogManager, ServerLog
+from dbt_server.logging import GLOBAL_LOGGER as logger, ServerLog
 from dbt_server.models import TaskState
 
 from fastapi import HTTPException
@@ -18,7 +22,7 @@ def run_task(task_name, task_id, args, db):
     serialize_path = filesystem_service.get_path(args.state_id, "manifest.msgpack")
     log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
-    log_manager = LogManager(log_path)
+    # log_manager = LogManager(log_path)
 
     # TODO: Structured logging doesn't have the concept of custom log lines like this,
     # need to follow up with core about a way to do this
@@ -47,12 +51,12 @@ def run_task(task_name, task_id, args, db):
             raise RuntimeException("Not an actual task")
     except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
-        log_manager.cleanup()
+        # log_manager.cleanup()
         raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
 
-    log_manager.cleanup()
+    # log_manager.cleanup()
 
     crud.set_task_done(db, db_task)
 
