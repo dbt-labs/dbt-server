@@ -1,3 +1,4 @@
+import re
 from fastapi.testclient import TestClient
 from unittest import TestCase
 
@@ -125,7 +126,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
             resp = self.compile_against_state(self.state_id, invalid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 400)
-        assert data["message"].startswith("Compilation Error in sql operation")
+        assert bool(re.match("compilation error", data["message"], re.I))
 
     def test_valid_query_call_macro(self):
         # Compile a query that calls a dbt user-space macro
@@ -144,7 +145,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
         self.assertEqual(resp.status_code, 400)
         data = resp.json()
         self.maxDiff = None
-        assert data["message"].startswith("Compilation Error in sql operation")
+        assert bool(re.match("compilation error", data["message"], re.I))
 
     def test_cached_compilation(self):
         # Test that compilation which uses the `graph` context variable
@@ -251,13 +252,7 @@ class InvalidManifestBuildingTestCase(ManifestBuildingTestCase):
 
             self.assertEqual(resp_parse.status_code, 400)
             data = resp_parse.json()
-            self.assertEqual(
-                data["message"],
-                """\
-Compilation Error in model model_2 (models/model_2.sql) Model \
-'model.my_new_project.model_2' (models/model_2.sql) depends on a \
-node named 'notfound' which was not found""",
-            )
+            self.assertTrue(bool(re.match("compilation error", data["message"], re.I)))
 
             valid_query = "select {{ 1 + 1 }}"
             resp = self.compile_against_state(state_id, valid_query)

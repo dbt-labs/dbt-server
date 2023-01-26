@@ -1,0 +1,7 @@
+kind: Fixes
+body: Conditional logic to support all dbt versions 1.2 -> 1.4
+time: 2023-01-26T12:02:52.648085-06:00
+custom:
+  Author: racheldaniel
+  Issue: "160"
+  PR: "159"
