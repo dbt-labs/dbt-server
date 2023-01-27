@@ -79,6 +79,8 @@ class SQLConfig(BaseModel):
 class dbtCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
+    # TODO: Need to handle this differently
+    profile: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -270,5 +272,15 @@ def get_manifest_metadata(state):
     }
 
 
-class Task(BaseModel):
-    task_id: str
+@app.get("/status/{task_id}")
+def get_task_status(
+    task_id: str,
+    db: Session = Depends(crud.get_db),
+):
+    task = crud.get_task(db, task_id)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": task.state
+        }
+    )

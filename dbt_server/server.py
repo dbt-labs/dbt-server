@@ -11,9 +11,15 @@ from dbt_server.views import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger, configure_uvicorn_access_log
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
+from sqlalchemy.exc import OperationalError
 
+# The default checkfirst=True should handle this, however we still
+# see a table exists error from time to time
+try:
+    models.Base.metadata.create_all(bind=engine, checkfirst=True)
+except OperationalError as err:
+    logger.debug(f"Handled error when creating database: {str(err)}")
 
-models.Base.metadata.create_all(bind=engine)
 dbt_service.disable_tracking()
 
 
