@@ -189,11 +189,10 @@ def parse_project(args: ParseArgs):
     )
 
 
-@app.post("/async/dbt")
+@app.post("/async/dbt", response_model=schemas.Task)
 async def dbt_entry(
     args: dbtCommandArgs,
     background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
     db: Session = Depends(crud.get_db),
 ):
     # example body: {"state_id": "123", "command":["run", "--threads", 1]}
