@@ -23,6 +23,7 @@ dbt_event_to_python_root_log = {
     EventLevel.ERROR: logging.root.error,
 }
 
+
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
     def add_fields(self, log_record, record, message_dict):
         super(CustomJsonFormatter, self).add_fields(log_record, record, message_dict)

@@ -1,15 +1,11 @@
-import os
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
-from dbt_server.helpers import get_profile_name
-from dbt_server import crud, tracer
-from dbt.lib import load_profile_project
-from dbt.cli.main import dbtRunner
-from dbt.exceptions import RuntimeException
+from dbt_server import tracer
+
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Tuple
 import threading
 
 
@@ -27,7 +23,9 @@ class CachedManifest:
     config: Optional[Any] = None
     parser: Optional[Any] = None
 
-    def set_last_parsed_manifest(self, state_id, project_path, root_path, manifest, manifest_size, config):
+    def set_last_parsed_manifest(
+        self, state_id, project_path, root_path, manifest, manifest_size, config
+    ):
         with MANIFEST_LOCK:
             self.state_id = state_id
             self.project_path = project_path
@@ -64,7 +62,15 @@ LAST_PARSED = CachedManifest()
 
 class StateController(object):
     def __init__(
-        self, state_id, project_path, root_path, manifest, config, parser, manifest_size, is_manifest_cached
+        self,
+        state_id,
+        project_path,
+        root_path,
+        manifest,
+        config,
+        parser,
+        manifest_size,
+        is_manifest_cached,
     ):
         self.state_id = state_id
         self.project_path = project_path
@@ -76,11 +82,15 @@ class StateController(object):
         self.is_manifest_cached = is_manifest_cached
 
         self.serialize_path = filesystem_service.get_path(root_path, "manifest.msgpack")
-        self.partial_parse_path = filesystem_service.get_path(root_path, "target", filesystem_service.PARTIAL_PARSE_FILE)
+        self.partial_parse_path = filesystem_service.get_path(
+            root_path, "target", filesystem_service.PARTIAL_PARSE_FILE
+        )
 
     @classmethod
     @tracer.wrap
-    def from_parts(cls, state_id, project_path, manifest, root_path, manifest_size, args=None):
+    def from_parts(
+        cls, state_id, project_path, manifest, root_path, manifest_size, args=None
+    ):
         config = dbt_service.create_dbt_config(root_path, args)
         parser = dbt_service.get_sql_parser(config, manifest)
 
@@ -117,15 +127,23 @@ class StateController(object):
         provided state_id. This method will cache the parsed manifest in memory
         before returning.
         """
-        root_path = filesystem_service.get_root_path(parse_args.state_id, parse_args.project_path)
+        root_path = filesystem_service.get_root_path(
+            parse_args.state_id, parse_args.project_path
+        )
         log_details = generate_log_details(parse_args.state_id, parse_args.project_path)
         logger.info(f"Parsing manifest from filetree ({log_details})")
 
         manifest = dbt_service.parse_to_manifest(root_path, parse_args)
 
-
         logger.info(f"Done parsing from source {log_details}")
-        return cls.from_parts(parse_args.state_id, parse_args.project_path, manifest, root_path, 0, parse_args)
+        return cls.from_parts(
+            parse_args.state_id,
+            parse_args.project_path,
+            manifest,
+            root_path,
+            0,
+            parse_args,
+        )
 
     @classmethod
     @tracer.wrap
@@ -139,13 +157,17 @@ class StateController(object):
         """
         cached = LAST_PARSED.lookup(args.state_id)
         if cached:
-            logger.info(f"Loading manifest from cache {generate_log_details(cached.state_id, cached.root_path)}")
+            logger.info(
+                f"Loading manifest from cache {generate_log_details(cached.state_id, cached.root_path)}"
+            )
             return cls.from_cached(cached)
         # Not in cache - need to go to filesystem to deserialize it
         state_id = filesystem_service.get_latest_state_id(args.state_id)
         project_path = filesystem_service.get_latest_project_path()
-    
-        logger.info(f"Manifest cache miss ({generate_log_details(state_id, project_path)})")
+
+        logger.info(
+            f"Manifest cache miss ({generate_log_details(state_id, project_path)})"
+        )
 
         # No state_id provided, and no latest-state-id.txt found
         if state_id is None and project_path is None:
@@ -161,12 +183,16 @@ class StateController(object):
         manifest = dbt_service.deserialize_manifest(manifest_path)
         manifest_size = filesystem_service.get_size(manifest_path)
 
-        return cls.from_parts(state_id, project_path, manifest, root_path, manifest_size, args)
+        return cls.from_parts(
+            state_id, project_path, manifest, root_path, manifest_size, args
+        )
 
     @tracer.wrap
     def serialize_manifest(self):
         logger.info(f"Serializing manifest to file system ({self.serialize_path})")
-        dbt_service.serialize_manifest(self.manifest, self.serialize_path, self.partial_parse_path)
+        dbt_service.serialize_manifest(
+            self.manifest, self.serialize_path, self.partial_parse_path
+        )
         self.manifest_size = filesystem_service.get_size(self.serialize_path)
 
     @tracer.wrap
@@ -174,12 +200,28 @@ class StateController(object):
         if self.state_id is not None:
             logger.info(f"Updating latest state id ({self.state_id})")
             filesystem_service.update_state_id(self.state_id)
-    
+
     @tracer.wrap
     def update_project_path(self):
         if self.project_path is not None:
             logger.info(f"Updating latest project path ({self.project_path})")
             filesystem_service.update_project_path(self.project_path)
+
+    @tracer.wrap
+    def update_cache(self):
+        logger.info(
+            f"Updating cache {generate_log_details(self.state_id, self.project_path)}"
+        )
+        self.update_state_id()
+        self.update_project_path()
+        LAST_PARSED.set_last_parsed_manifest(
+            self.state_id,
+            self.project_path,
+            self.root_path,
+            self.manifest,
+            self.manifest_size,
+            self.config,
+        )
 
     @tracer.wrap
     def compile_query(self, query):
@@ -195,49 +237,14 @@ class StateController(object):
         return dbt_service.execute_sql(self.manifest, self.root_path, query)
 
     @tracer.wrap
-    def update_cache(self):
-        logger.info(f"Updating cache {generate_log_details(self.state_id, self.project_path)}")
-        self.update_state_id()
-        self.update_project_path()
-        LAST_PARSED.set_last_parsed_manifest(
-            self.state_id, self.project_path, self.root_path, self.manifest, self.manifest_size, self.config
+    def execute_async_command(self, task_id, command, db) -> None:
+        return dbt_service.execute_async_command(
+            command, task_id, self.root_path, self.manifest, db, self.state_id
         )
 
     @tracer.wrap
-    def execute_async_command(self, task_id, command, db):
-        db_task = crud.get_task(db, task_id)
-        # For commands, only the log file destination directory is sent to --log-path
-        log_dir_path = filesystem_service.get_task_artifacts_path(task_id, self.state_id)
-
-        # Temporary solution for structured log formatting until core adds a cleaner interface
-        new_command = []
-        new_command.append("--log-format")
-        new_command.append("json")
-        new_command.append("--log-path")
-        new_command.append(log_dir_path)
-        new_command += command
-
-        logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
-        
-        # TODO: If a command contains a --profile flag, how should we access/pass it?
-        profile_name = get_profile_name()
-        profile, project = load_profile_project(self.root_path, profile_name)
-
-        crud.set_task_running(db, db_task)
-
-        logger.info(f"Running dbt ({task_id}) - kicking off task")
-
-        try:
-            dbt = dbtRunner(project, profile, self.manifest)
-            # TODO we might need to surface this to shipment later on
-            res, success = dbt.invoke(new_command)
-        except RuntimeException as e:
-            crud.set_task_errored(db, db_task, str(e))
-            raise e
-
-        logger.info(f"Running dbt ({task_id}) - done")
-
-        crud.set_task_done(db, db_task)
+    def execute_sync_command(self, command) -> Tuple:
+        return dbt_service.execute_sync_command(command, self.root_path, self.manifest)
 
 
 def generate_log_details(state_id, project_path):
@@ -246,4 +253,3 @@ def generate_log_details(state_id, project_path):
     elif state_id:
         return f"(state_id={state_id})"
     return ""
-    

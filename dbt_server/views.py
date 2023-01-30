@@ -143,7 +143,6 @@ async def ready():
     return JSONResponse(status_code=200, content={})
 
 
-
 @app.post("/push")
 def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
@@ -160,7 +159,9 @@ def push_unparsed_manifest(args: PushProjectArgs):
     # Stupid example of reusing an existing manifest
     if not os.path.exists(path):
         reuse = False
-        filesystem_service.write_unparsed_manifest_to_disk(state_id, previous_state_id, args.body)
+        filesystem_service.write_unparsed_manifest_to_disk(
+            state_id, previous_state_id, args.body
+        )
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
@@ -185,12 +186,15 @@ def parse_project(args: ParseArgs):
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": state.state_id or state.project_path, "path": state.serialize_path},
+        content={
+            "parsing": state.state_id or state.project_path,
+            "path": state.serialize_path,
+        },
     )
 
 
 @app.post("/async/dbt", response_model=schemas.Task)
-async def dbt_entry(
+async def dbt_entry_async(
     args: dbtCommandArgs,
     background_tasks: BackgroundTasks,
     db: Session = Depends(crud.get_db),
@@ -214,6 +218,23 @@ async def dbt_entry(
 
     background_tasks.add_task(state.execute_async_command, task_id, args.command, db)
     return crud.create_task(db, task)
+
+
+@app.post("/sync/dbt")
+async def dbt_entry_sync(args: dbtCommandArgs):
+    # example body: {"command":["list", "--output", "json"]}
+    state = StateController.load_state(args)
+    # TODO: See what if any useful info is returned when there's no success
+    results, _ = state.execute_sync_command(args.command)
+    encoded_results = jsonable_encoder(results.to_dict())
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": state.state_id or state.project_path,
+            "path": state.serialize_path,
+            "res": encoded_results,
+        },
+    )
 
 
 @app.post("/preview")
@@ -271,9 +292,4 @@ def get_task_status(
     db: Session = Depends(crud.get_db),
 ):
     task = crud.get_task(db, task_id)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "status": task.state
-        }
-    )
+    return JSONResponse(status_code=200, content={"status": task.state})
