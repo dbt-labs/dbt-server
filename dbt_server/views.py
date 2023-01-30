@@ -232,6 +232,7 @@ async def dbt_entry_sync(args: dbtCommandArgs):
         content={
             "parsing": state.state_id or state.project_path,
             "path": state.serialize_path,
+            "command": (" ").join(str(param) for param in args.command),
             "res": encoded_results,
         },
     )

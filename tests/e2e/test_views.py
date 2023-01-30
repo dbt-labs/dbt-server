@@ -7,12 +7,9 @@ import tempfile
 from fastapi.testclient import TestClient
 
 from dbt_server import views, crud
-from dbt_server.state import StateController
+from dbt_server.state import LAST_PARSED, StateController
 from dbt_server.models import Task, Base
-from dbt_server.services.filesystem_service import (
-    DBT_LOG_FILE_NAME,
-    DEFAULT_WORKING_DIR,
-)
+from dbt_server.services.filesystem_service import DBT_LOG_FILE_NAME
 import os
 
 from sqlalchemy import create_engine
@@ -20,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from dbt_server.views import app
 
 
-class TestDbtEntry(unittest.TestCase):
+class TestDbtEntryAsync(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -45,14 +42,15 @@ class TestDbtEntry(unittest.TestCase):
         del os.environ["__DBT_WORKING_DIR"]
         self.db.close()
         self.temp_dir.cleanup()
+        LAST_PARSED.reset()
 
     def mock_get_db(self):
         return self.SessionLocal()
 
     @patch("dbt.parser.manifest.ManifestLoader.track_project_load")
-    def test_dbt_entry_project_path(self, mock_tracking):
+    def test_dbt_entry_async_project_path(self, mock_tracking):
         """
-        Test that parse with a state-id results in manifest cacheing and
+        Test that parse with a project_path results in manifest cacheing and
         subsequent call of the async command endpoint pulls the correct manifest.
 
         Also test that expected log file is created and populated with valid json logs
@@ -137,3 +135,44 @@ class TestDbtEntry(unittest.TestCase):
         args = views.dbtCommandArgs(command=["run", "--threads", 1])
         response = self.client.post("/async/dbt", json=args.dict())
         self.assertEqual(response.status_code, 422)
+
+
+class TestDbtEntrySync(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+        self.temp_dir = tempfile.TemporaryDirectory()
+        os.environ["__DBT_WORKING_DIR"] = self.temp_dir.name
+
+        self.state_id = "test123"
+        self.state_dir = f"{self.temp_dir.name}/state-{self.state_id}"
+        shutil.copytree("tests/e2e/fixtures/test-project", self.state_dir)
+
+
+    def tearDown(self):
+        del os.environ["__DBT_WORKING_DIR"]
+        self.temp_dir.cleanup()
+        LAST_PARSED.reset()
+
+
+    @patch("dbt.parser.manifest.ManifestLoader.track_project_load")
+    def test_dbt_entry_sync_project_path(self, mock_tracking):
+        """
+        Test that parse with a project_path results in manifest cacheing and
+        subsequent call of the sync command endpoint pulls the correct manifest and returns
+        expected results
+        """
+        args = views.ParseArgs(project_path=self.state_dir)
+        state = StateController.parse_from_source(args)
+        state.serialize_manifest()
+        state.update_cache()
+
+        args = views.dbtCommandArgs(command=["run", "--threads", 1])
+        response = self.client.post("/sync/dbt", json=args.dict())
+
+        self.assertEqual(response.status_code, 200)
+        json_response = response.json()
+
+        self.assertIsNotNone(json_response["res"])
+        self.assertEqual(json_response["command"], "run --threads 1")
+        self.assertEqual(json_response["parsing"], self.state_dir)
+        self.assertEqual(json_response["path"], f"{self.state_dir}/manifest.msgpack")

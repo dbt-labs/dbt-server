@@ -2,7 +2,7 @@ import os
 import threading
 import uuid
 from inspect import getmembers, isfunction
-from typing import List, Optional
+from typing import List, Optional, Any
 
 # dbt Core imports
 import dbt.tracking
@@ -10,7 +10,6 @@ import dbt.lib
 import dbt.adapters.factory
 
 from sqlalchemy.orm import Session
-
 # These exceptions were removed in v1.4
 try:
     from dbt.exceptions import (
@@ -50,7 +49,6 @@ from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.helpers import get_profile_name
 from dbt_server import crud, tracer
-from dbt_server.state import CachedManifest, StateController
 from dbt.lib import load_profile_project
 from dbt.cli.main import dbtRunner
 
@@ -247,7 +245,7 @@ def execute_async_command(
     command: List,
     task_id: str,
     root_path: str,
-    manifest: CachedManifest,
+    manifest: Any,
     db: Session,
     state_id: Optional[str] = None,
 ) -> None:
@@ -288,7 +286,7 @@ def execute_async_command(
 
 
 @tracer.wrap
-def execute_sync_command(command: List, root_path: str, manifest: CachedManifest):
+def execute_sync_command(command: List, root_path: str, manifest: Any):
     str_command = (" ").join(str(param) for param in command)
     logger.info(
         f"Running dbt ({str_command}) - deserializing manifest found at {root_path}"
