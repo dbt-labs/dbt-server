@@ -43,13 +43,6 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 app = FastAPI()
 
 
-@app.middleware("http")
-async def log_request_start(request: Request, call_next):
-    logger.debug(f"Received request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    return response
-
-
 class FileInfo(BaseModel):
     contents: str
     hash: str
@@ -131,13 +124,14 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
 if ALLOW_ORCHESTRATED_SHUTDOWN:
 
     @app.post("/shutdown")
-    async def shutdown():
-        # raise 2 SIGTERM signals, just to
-        # make sure this really shuts down.
+    def shutdown():
         # raising a SIGKILL logs some
-        # warnings about leaked semaphores
-        signal.raise_signal(signal.SIGTERM)
-        signal.raise_signal(signal.SIGTERM)
+        # warnings about leaked semaphores--
+        # appears this is a known issue that should be
+        # solved once we move to python 3.9:
+        # https://bugs.python.org/issue45209
+        signal.raise_signal(signal.SIGKILL)
+        signal.raise_signal(signal.SIGKILL)
         return JSONResponse(
             status_code=200,
             content={},

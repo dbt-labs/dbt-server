@@ -218,7 +218,7 @@ class StateController(object):
         new_command += command
 
         logger.info(f"Running dbt ({task_id}) - deserializing manifest {self.serialize_path}")
-
+        
         # TODO: If a command contains a --profile flag, how should we access/pass it?
         profile_name = get_profile_name()
         profile, project = load_profile_project(self.root_path, profile_name)
