@@ -126,7 +126,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
             resp = self.compile_against_state(self.state_id, invalid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 400)
-        assert bool(re.match('compilation error', data["message"], re.I))
+        assert bool(re.match("compilation error", data["message"], re.I))
 
     def test_valid_query_call_macro(self):
         # Compile a query that calls a dbt user-space macro
@@ -145,8 +145,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
         self.assertEqual(resp.status_code, 400)
         data = resp.json()
         self.maxDiff = None
-        assert bool(re.match('compilation error', data["message"], re.I))
-
+        assert bool(re.match("compilation error", data["message"], re.I))
 
     def test_cached_compilation(self):
         # Test that compilation which uses the `graph` context variable
@@ -253,7 +252,7 @@ class InvalidManifestBuildingTestCase(ManifestBuildingTestCase):
 
             self.assertEqual(resp_parse.status_code, 400)
             data = resp_parse.json()
-            self.assertTrue(bool(re.match('compilation error', data["message"], re.I)))
+            self.assertTrue(bool(re.match("compilation error", data["message"], re.I)))
 
             valid_query = "select {{ 1 + 1 }}"
             resp = self.compile_against_state(state_id, valid_query)

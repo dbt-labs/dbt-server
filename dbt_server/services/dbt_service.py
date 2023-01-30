@@ -8,11 +8,20 @@ import dbt.tracking
 import dbt.lib
 import dbt.adapters.factory
 
-from dbt.exceptions import (
-    ValidationException,
-    CompilationException,
-    InvalidConnectionException,
-)
+
+# These exceptions were removed in v1.4
+try:
+    from dbt.exceptions import (
+        ValidationException,
+        CompilationException,
+        InvalidConnectionException,
+    )
+except (ModuleNotFoundError, ImportError):
+    from dbt.exceptions import (
+        DbtValidationError as ValidationException,
+        CompilationError as CompilationException,
+        InvalidConnectionError as InvalidConnectionException,
+    )
 
 from dbt.lib import (
     create_task,
