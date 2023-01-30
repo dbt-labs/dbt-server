@@ -10,6 +10,7 @@ import dbt.lib
 import dbt.adapters.factory
 
 from sqlalchemy.orm import Session
+
 # These exceptions were removed in v1.4
 try:
     from dbt.exceptions import (

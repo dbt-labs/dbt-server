@@ -147,12 +147,10 @@ class TestDbtEntrySync(unittest.TestCase):
         self.state_dir = f"{self.temp_dir.name}/state-{self.state_id}"
         shutil.copytree("tests/e2e/fixtures/test-project", self.state_dir)
 
-
     def tearDown(self):
         del os.environ["__DBT_WORKING_DIR"]
         self.temp_dir.cleanup()
         LAST_PARSED.reset()
-
 
     @patch("dbt.parser.manifest.ManifestLoader.track_project_load")
     def test_dbt_entry_sync_project_path(self, mock_tracking):
