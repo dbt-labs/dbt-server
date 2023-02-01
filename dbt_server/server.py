@@ -43,13 +43,13 @@ def startup_cache_initialize():
     root_path = filesystem_service.get_root_path(latest_state_id, latest_project_path)
 
     if root_path is None:
-        logger.info("[STARTUP] No latest state or project found - not loading manifest into cache")
+        logger.info(
+            "[STARTUP] No latest state or project found - not loading manifest into cache"
+        )
         return
 
     manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
-    logger.info(
-        f"[STARTUP] Loading manifest from file system (path={root_path})"
-    )
+    logger.info(f"[STARTUP] Loading manifest from file system (path={root_path})")
 
     try:
         manifest = dbt_service.deserialize_manifest(manifest_path)

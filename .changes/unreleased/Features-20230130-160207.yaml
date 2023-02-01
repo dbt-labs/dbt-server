@@ -1,0 +1,9 @@
+kind: Features
+body: This PR adds a new synchronous endpoint, which will block and return command
+  results rather than return a task_id. These tasks are not added to the db, and do
+  not output logs
+time: 2023-01-30T16:02:07.497161-06:00
+custom:
+  Author: racheldaniel
+  Issue: "162"
+  PR: "161"

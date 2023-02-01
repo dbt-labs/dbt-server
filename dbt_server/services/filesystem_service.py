@@ -9,6 +9,7 @@ PARTIAL_PARSE_FILE = "partial_parse.msgpack"
 DBT_LOG_FILE_NAME = "dbt.log"
 DEFAULT_WORKING_DIR = "./working-dir"
 
+
 def get_working_dir():
     return os.environ.get("__DBT_WORKING_DIR", DEFAULT_WORKING_DIR)
 
@@ -99,7 +100,9 @@ def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
         #  TODO: The target folder is usually created during command runs and won't exist on push/parse
         #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
         #  with the click API work
-        previous_partial_parse_path = get_path(get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE)
+        previous_partial_parse_path = get_path(
+            get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
+        )
         new_partial_parse_path = get_path(root_path, "target", PARTIAL_PARSE_FILE)
         if not os.path.exists(previous_partial_parse_path):
             return

@@ -2,12 +2,14 @@ import os
 import threading
 import uuid
 from inspect import getmembers, isfunction
+from typing import List, Optional, Any
 
 # dbt Core imports
 import dbt.tracking
 import dbt.lib
 import dbt.adapters.factory
 
+from sqlalchemy.orm import Session
 
 # These exceptions were removed in v1.4
 try:
@@ -15,16 +17,17 @@ try:
         ValidationException,
         CompilationException,
         InvalidConnectionException,
+        RuntimeException,
     )
 except (ModuleNotFoundError, ImportError):
     from dbt.exceptions import (
         DbtValidationError as ValidationException,
         CompilationError as CompilationException,
         InvalidConnectionError as InvalidConnectionException,
+        DbtRuntimeError as RuntimeException,
     )
 
 from dbt.lib import (
-    create_task,
     get_dbt_config as dbt_get_dbt_config,
     parse_to_manifest as dbt_parse_to_manifest,
     execute_sql as dbt_execute_sql,
@@ -44,8 +47,12 @@ from dbt.contracts.sql import (
 
 # dbt Server imports
 from dbt_server.services import filesystem_service
-from dbt_server import tracer
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.helpers import get_profile_name
+from dbt_server import crud, tracer
+from dbt.lib import load_profile_project
+from dbt.cli.main import dbtRunner
+
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -63,6 +70,7 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
 )
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
+
 
 class Args(BaseModel):
     profile: str = None
@@ -232,3 +240,64 @@ def compile_sql(manifest, config, parser, sql):
         )
 
     return result.to_dict()
+
+
+def execute_async_command(
+    command: List,
+    task_id: str,
+    root_path: str,
+    manifest: Any,
+    db: Session,
+    state_id: Optional[str] = None,
+) -> None:
+    db_task = crud.get_task(db, task_id)
+    # For commands, only the log file destination directory is sent to --log-path
+    log_dir_path = filesystem_service.get_task_artifacts_path(task_id, state_id)
+
+    # Temporary solution for structured log formatting until core adds a cleaner interface
+    new_command = []
+    new_command.append("--log-format")
+    new_command.append("json")
+    new_command.append("--log-path")
+    new_command.append(log_dir_path)
+    new_command += command
+
+    logger.info(
+        f"Running dbt ({task_id}) - deserializing manifest found at {root_path}"
+    )
+
+    # TODO: If a command contains a --profile flag, how should we access/pass it?
+    profile_name = get_profile_name()
+    profile, project = load_profile_project(root_path, profile_name)
+
+    crud.set_task_running(db, db_task)
+
+    logger.info(f"Running dbt ({task_id}) - kicking off task")
+
+    try:
+        dbt = dbtRunner(project, profile, manifest)
+        _, _ = dbt.invoke(new_command)
+    except RuntimeException as e:
+        crud.set_task_errored(db, db_task, str(e))
+        raise e
+
+    logger.info(f"Running dbt ({task_id}) - done")
+
+    crud.set_task_done(db, db_task)
+
+
+@tracer.wrap
+def execute_sync_command(command: List, root_path: str, manifest: Any):
+    str_command = (" ").join(str(param) for param in command)
+    logger.info(
+        f"Running dbt ({str_command}) - deserializing manifest found at {root_path}"
+    )
+
+    # TODO: If a command contains a --profile flag, how should we access/pass it?
+    profile_name = get_profile_name()
+    profile, project = load_profile_project(root_path, profile_name)
+
+    logger.info(f"Running dbt ({str_command})")
+
+    dbt = dbtRunner(project, profile, manifest)
+    return dbt.invoke(command)
