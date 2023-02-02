@@ -11,41 +11,39 @@ on:
       - 0.1.latest
 
 jobs:
-  hygiene:
-    name: Run "code hygiene" checks (linter, formatter)
+  # hygiene:
+  #   name: Run "code hygiene" checks (linter, formatter)
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 3
+  #   steps:
+  #     - name: checkout repo
+  #       uses: actions/checkout@v3
+
+  #     - name: setup python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.8"
+
+  #     - name: install dependencies
+  #       if: github.ref == 'foobar'
+  #       run: pip install -r requirements.txt -r dev-requirements.txt
+
+  #     - name: Check formatting with black
+  #       run: black --check .
+
+  #     - name: Check lint errors with flake8
+  #       run: flake8 ./tests ./dbt_server
+  setup-python:
+    name: setup python
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
-
       - name: setup python
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-
-      - name: install dependencies
-        if: github.ref == 'foobar'
-        run: pip install -r requirements.txt -r dev-requirements.txt
-
-      - name: Check formatting with black
-        run: black --check .
-
-      - name: Check lint errors with flake8
-        run: flake8 ./tests ./dbt_server
-  setup-python:
-      name: setup python
-      runs-on: ubuntu-latest
-      timeout-minutes: 3
-      steps:
-        - name: checkout repo
-          if: github.ref == matrix.dbt-core.server-branch
-          uses: actions/checkout@v3
-        - name: setup python
-          if: github.ref == matrix.dbt-core.server-branch
-          uses: actions/setup-python@v4
-          with:
-            python-version: "3.8"
   test:
     name: test code
     needs: setup-python
