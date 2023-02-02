@@ -69,11 +69,12 @@ class SQLConfig(BaseModel):
     profile: Optional[str] = None
 
 
-class dbtCommandArgs(BaseModel):
+class DBTCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
     # TODO: Need to handle this differently
     profile: Optional[str]
+    callback_url: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -195,7 +196,7 @@ def parse_project(args: ParseArgs):
 
 @app.post("/async/dbt", response_model=schemas.Task)
 async def dbt_entry_async(
-    args: dbtCommandArgs,
+    args: DBTCommandArgs,
     background_tasks: BackgroundTasks,
     db: Session = Depends(crud.get_db),
 ):

@@ -3,7 +3,7 @@ import tempfile
 from unittest import TestCase
 
 from dbt_server.state import StateController, LAST_PARSED
-from dbt_server.views import dbtCommandArgs
+from dbt_server.views import DBTCommandArgs
 from .helpers import profiles_dir
 from .fixtures import Profiles
 import os
@@ -30,7 +30,7 @@ class StateControllerTestCase(TestCase):
     def test_load_state(self):
         # CURRENTLY USING SNOWFLAKE DUE TO DBT VERSION MISMATCH WITH POSTGRES
         with profiles_dir(Profiles.Snowflake):
-            args = dbtCommandArgs(command=["run"], state_id=self.state_id)
+            args = DBTCommandArgs(command=["run"], state_id=self.state_id)
             result = StateController.load_state(args)
 
         assert result.state_id == self.state_id
