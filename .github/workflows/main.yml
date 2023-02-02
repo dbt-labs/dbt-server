@@ -74,16 +74,14 @@ jobs:
             package: "dbt-core~=1.4.0"
             server-branch: "refs/heads/0.1.latest"
     steps:
-      # - name: checkout repo
-      #   # if: github.ref == ${{ matrix.dbt-core.server-branch }}
-      #   if: contains(github.ref, matrix.dbt-core.server-branch)
-      #   uses: actions/checkout@v3
-      # - name: setup python
-      #   # if: github.ref == ${{ matrix.dbt-core.server-branch }}
-      #   if: contains(github.ref, matrix.dbt-core.server-branch)
-      #   uses: actions/setup-python@v4
-      #   with:
-      #     python-version: "3.8"
+      - name: checkout repo
+        if: github.ref == matrix.dbt-core.server-branch
+        uses: actions/checkout@v3
+      - name: setup python
+        if: github.ref == matrix.dbt-core.server-branch
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
       - name: run tests
         if: github.ref == matrix.dbt-core.server-branch
         # if: contains(github.ref, matrix.dbt-core.server-branch)
@@ -92,9 +90,9 @@ jobs:
           echo "${{ github.ref }}"
           echo ${{ matrix.dbt-core.server-branch }}
           echo ${{ matrix.dbt-core.version }}
-        # pip install -r requirements.txt -r dev-requirements.txt
-        # pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
-        # pytest
+          pip install -r requirements.txt -r dev-requirements.txt
+          pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
+          pytest
 
   # build-push:
   #   name: build and push dbt server images
