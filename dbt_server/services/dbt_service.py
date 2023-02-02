@@ -301,3 +301,13 @@ def execute_sync_command(command: List, root_path: str, manifest: Any):
 
     dbt = dbtRunner(project, profile, manifest)
     return dbt.invoke(command)
+
+
+def update_task_status(db, db_task, callback_url, status, error):
+    crud.set_task_state(db, db_task, status, error)
+
+    if callback_url:
+        session = requests.Session()
+        session.mount("http://", HTTPAdapter(max_retries=5))
+        session.post(callback_url, json={"task_id": db_task.task_id, "status": status})
+
