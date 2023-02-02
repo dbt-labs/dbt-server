@@ -130,6 +130,9 @@ jobs:
       - name: registry login
         uses: ./.github/actions/registry-login-action
         with:
+          development-registry-endpoint: ${{ secrets.DEV_FROM_ACCOUNT_PUBLIC }}.dkr.ecr.us-east-1.amazonaws.com
+          development-registry-username: ${{ secrets.DEV_AWS_ACCESS_KEY_ID_PUBLIC }}
+          development-registry-password: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY_PUBLIC }}
           staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
           staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
           staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
@@ -148,6 +151,7 @@ jobs:
             DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
             DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
             DATADOG_PACKAGE=ddtrace==1.4.4
+          development-registry-endpoint: ${{ secrets.DEV_FROM_ACCOUNT_PUBLIC }}.dkr.ecr.us-east-1.amazonaws.com
           staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
           production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
           push: ${{ github.event_name == 'push' }}
