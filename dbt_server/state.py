@@ -237,9 +237,9 @@ class StateController(object):
         return dbt_service.execute_sql(self.manifest, self.root_path, query)
 
     @tracer.wrap
-    def execute_async_command(self, task_id, command, db) -> None:
+    def execute_async_command(self, task_id, command, db, callback_url) -> None:
         return dbt_service.execute_async_command(
-            command, task_id, self.root_path, self.manifest, db, self.state_id
+            command, task_id, self.root_path, self.manifest, db, self.state_id, callback_url
         )
 
     @tracer.wrap

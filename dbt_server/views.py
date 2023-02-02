@@ -217,12 +217,12 @@ async def dbt_entry_async(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(state.execute_async_command, task_id, args.command, db)
+    background_tasks.add_task(state.execute_async_command, task_id, args.command, db, args.callback_url)
     return crud.create_task(db, task)
 
 
 @app.post("/sync/dbt")
-async def dbt_entry_sync(args: dbtCommandArgs):
+async def dbt_entry_sync(args: DBTCommandArgs):
     # example body: {"command":["list", "--output", "json"]}
     state = StateController.load_state(args)
     # TODO: See what if any useful info is returned when there's no success
