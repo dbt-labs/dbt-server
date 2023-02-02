@@ -152,12 +152,15 @@ jobs:
   #     - name: registry login
   #       uses: ./.github/actions/registry-login-action
   #       with:
-  #         staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
-  #         staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
-  #         staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
-  #         production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
-  #         production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
-  #         production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
+  #           development-registry-endpoint: ${{ secrets.DEV_REGISTRY_ENDPOINT }}
+  #           development-registry-username: ${{ secrets.DEV_AWS_ACCESS_KEY_ID }}
+  #           development-registry-password: ${{ secrets.DEV_AWS_SECRET_ACCESS_KEY }}
+  #           staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+  #           staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+  #           staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+  #           production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+  #           production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
+  #           production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
 
   #     - name: build and push dbt server images
   #       if: ${{github.ref}} ==  ${{ matrix.dbt-core.server-branch }}
@@ -171,6 +174,7 @@ jobs:
   #           DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
   #           DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
   #           DATADOG_PACKAGE=ddtrace==1.4.4
+  #           development-registry-endpoint: ${{ secrets.DEV_REGISTRY_ENDPOINT }}
   #         staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
   #         production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
   #         push: ${{ github.event_name == 'push' }}
