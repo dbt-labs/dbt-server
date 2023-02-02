@@ -33,20 +33,9 @@ jobs:
 
   #     - name: Check lint errors with flake8
   #       run: flake8 ./tests ./dbt_server
-  setup-python:
-    name: setup python
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - name: checkout repo
-        uses: actions/checkout@v3
-      - name: setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
+
   test:
     name: test code
-    needs: setup-python
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
@@ -58,7 +47,7 @@ jobs:
           - version: "1.3.0-latest"
             package: "dbt-core~=1.3.0"
             server-branch: "refs/heads/0.1.latest"
-          # TODO: Only main for testing until 1.5, then only run on latest if available
+          # TODO: Only main for testing until 1.5, then only run on latest if
           - version: "1.4.0-pre"
             package: "dbt-core~=1.4.0b1"
             server-branch: "refs/head/main"
@@ -66,6 +55,14 @@ jobs:
             package: "dbt-core~=1.4.0"
             server-branch: "refs/heads/0.1.latest"
     steps:
+      - name: checkout repo
+        if: github.ref == matrix.dbt-core.server-branch
+        uses: actions/checkout@v3
+      - name: setup python
+        if: github.ref == matrix.dbt-core.server-branch
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.8"
       - name: run tests
         if: github.ref == matrix.dbt-core.server-branch
         run: |
