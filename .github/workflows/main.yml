@@ -85,7 +85,7 @@ jobs:
       #   with:
       #     python-version: "3.8"
       - name: run tests
-        if: github.ref == ${{ matrix.dbt-core.server-branch }}
+        if: github.ref == matrix.dbt-core.server-branch
         # if: contains(github.ref, matrix.dbt-core.server-branch)
         run: |
           echo 'HELLO'
