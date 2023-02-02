@@ -12,21 +12,26 @@ import dbt.adapters.factory
 from sqlalchemy.orm import Session
 
 # These exceptions were removed in v1.4
-try:
-    from dbt.exceptions import (
-        ValidationException,
-        CompilationException,
-        InvalidConnectionException,
-        RuntimeException,
-    )
-except (ModuleNotFoundError, ImportError):
-    from dbt.exceptions import (
+# try:
+#     from dbt.exceptions import (
+#         ValidationException,
+#         CompilationException,
+#         InvalidConnectionException,
+#         RuntimeException,
+#     )
+# except (ModuleNotFoundError, ImportError):
+#     from dbt.exceptions import (
+#         DbtValidationError as ValidationException,
+#         CompilationError as CompilationException,
+#         InvalidConnectionError as InvalidConnectionException,
+#         DbtRuntimeError as RuntimeException,
+#     )
+from dbt.exceptions import (
         DbtValidationError as ValidationException,
         CompilationError as CompilationException,
         InvalidConnectionError as InvalidConnectionException,
         DbtRuntimeError as RuntimeException,
     )
-
 from dbt.lib import (
     get_dbt_config as dbt_get_dbt_config,
     parse_to_manifest as dbt_parse_to_manifest,
@@ -60,7 +65,6 @@ from dbt_server.exceptions import (
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
-from dbt_server.helpers import get_profile_name
 from pydantic import BaseModel
 
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (

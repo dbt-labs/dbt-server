@@ -32,6 +32,8 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Check formatting with black
+      run: echo "inside DBP dawg"
     - name: setup docker buildx
       id: buildx
       uses: docker/setup-buildx-action@v1

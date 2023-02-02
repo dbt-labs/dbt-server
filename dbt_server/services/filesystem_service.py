@@ -1,6 +1,5 @@
 import os
 import shutil
-from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
@@ -123,6 +122,8 @@ def get_latest_state_id(state_id):
 @tracer.wrap
 def get_latest_project_path():
     path = os.path.abspath(get_latest_project_path_file_path())
+    print('*' * 100)
+    print("path: ", path)
     if not os.path.exists(path):
         return None
     with open(path, "r") as latest_path_file:

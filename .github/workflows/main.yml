@@ -4,13 +4,37 @@ on:
   push:
     branches:
       - main
+      - 0.1.latest
   pull_request:
     branches:
       - main
+      - 0.1.latest
 
 jobs:
-  hygiene:
-    name: Run "code hygiene" checks (linter, formatter)
+  # hygiene:
+  #   name: Run "code hygiene" checks (linter, formatter)
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 3
+  #   steps:
+  #     - name: checkout repo
+  #       uses: actions/checkout@v3
+
+  #     - name: setup python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.8"
+
+  #     - name: install dependencies
+  #       if: github.ref == 'foobar'
+  #       run: pip install -r requirements.txt -r dev-requirements.txt
+
+  #     - name: Check formatting with black
+  #       run: black --check .
+
+  #     - name: Check lint errors with flake8
+  #       run: flake8 ./tests ./dbt_server
+  setup:
+    name: setup python
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -21,137 +45,186 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-
       - name: install dependencies
         run: pip install -r requirements.txt -r dev-requirements.txt
-
-      - name: Check formatting with black
-        run: black --check .
-
-      - name: Check lint errors with flake8
-        run: flake8 ./tests ./dbt_server
 
   test:
     name: test code
     runs-on: ubuntu-latest
+    needs: setup
     timeout-minutes: 3
-    steps:
-      - name: checkout repo
-        uses: actions/checkout@v3
-
-      - name: setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-
-      - name: run tests
-        run: |
-          pip install -r requirements.txt -r dev-requirements.txt
-          pip install dbt-core dbt-postgres
-          pytest
-
-  build-push:
-    name: build and push dbt server images
-    runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
         dbt-core:
           - version: "1.0.0"
             package: "dbt-core~=1.0.0"
+            server-branch: "refs/heads/0.1.latest"
           - version: "1.0.1"
             package: "dbt-core~=1.0.1"
+            server-branch: "refs/heads/0.1.latest"
           - version: "1.1.0-pre"
             package: "dbt-core~=1.1.0b1"
+            server-branch: "refs/heads/0.1.latest"
           - version: "1.1.0-latest"
             package: "dbt-core~=1.1.1"
+            server-branch: "refs/heads/0.1.latest"
           - version: "1.2.0-pre"
             package: "dbt-core~=1.2.0b1"
+            server-branch: "refs/heads/0.1.latest"
             prerelease: true
           - version: "1.2.0-latest"
             package: "dbt-core~=1.2.0"
+            server-branch: "refs/heads/0.1.latest"
           - version: "1.3.0-pre"
             package: "dbt-core~=1.3.0b1"
+            server-branch: "refs/heads/0.1.latest"
             prerelease: true
           - version: "1.3.0-latest"
             package: "dbt-core~=1.3.0"
+            server-branch: "refs/heads/0.1.latest"
+            # TODO: Only main for testing until 1.5
           - version: "1.4.0-pre"
             package: "dbt-core~=1.4.0b1"
+            server-branch: "refs/pull/*"
             prerelease: true
           - version: "1.4.0-latest"
             package: "dbt-core~=1.4.0"
-        dbt-database-adapter:
-          - name: snowflake
-            package: dbt-snowflake
-          - name: bigquery
-            package: dbt-bigquery
-          - name: postgres
-            package: dbt-postgres
-          - name: redshift
-            package: dbt-redshift
-        include:
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: snowflake
-              package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: postgres
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: redshift
-              package: "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift"
-          - dbt-core:
-              version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            dbt-database-adapter:
-              name: bigquery
-              package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
+            server-branch: "refs/heads/0.1.latest"
     steps:
-      - name: checkout code
-        uses: actions/checkout@v2
-
-      - name: registry login
-        uses: ./.github/actions/registry-login-action
+      - name: checkout repo
+        if: github.ref ==  ${{ matrix.dbt-core.server-branch }}
+        uses: actions/checkout@v3
+      - name: setup python
+        # if: github.ref ==  ${{ matrix.dbt-core.server-branch }}
+        uses: actions/setup-python@v4
         with:
-          staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
-          staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
-          staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
-          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
-          production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
-          production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
+          python-version: "3.8"
+      - name: run tests
+        if: github.ref ==  ${{ matrix.dbt-core.server-branch }}
+        # if: github.ref != 'foobar'
+        run: |
+          echo 'HELLO'
+          echo "${{ github.ref }}"
+          echo ${{ matrix.dbt-core.server-branch }}
+          echo ${{ matrix.dbt-core.version }}
+          pip install -r requirements.txt -r dev-requirements.txt
+          pip install dbt-core=${{ matrix.dbt-core.version }} dbt-postgres=${{ matrix.dbt-core.version }} dbt-snowflake=${{ matrix.dbt-core.version }}
+        # pytest
 
-      - name: build and push dbt server images
-        uses: ./.github/actions/docker-build-publish
-        with:
-          image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
-          docker-file-path: Dockerfile
-          docker-build-args: |
-            # Use --pre flag when installing this version if it's a prerelease
-            DBT_PIP_FLAGS=${{ (matrix.dbt-core.prerelease && '--pre') || '' }}
-            DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
-            DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
-            DATADOG_PACKAGE=ddtrace==1.4.4
-          staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
-          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
-          push: ${{ github.event_name == 'push' }}
+  # build-push:
+  #   name: build and push dbt server images
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       dbt-core:
+  #         - version: "1.0.0"
+  #           package: "dbt-core~=1.0.0"
+  #           server-branch: "refs/heads/0.1.latest"
+  #         - version: "1.0.1"
+  #           package: "dbt-core~=1.0.1"
+  #           server-branch: "refs/heads/0.1.latest"
+  #         - version: "1.1.0-pre"
+  #           package: "dbt-core~=1.1.0b1"
+  #           server-branch: "refs/heads/0.1.latest"
+  #         - version: "1.1.0-latest"
+  #           package: "dbt-core~=1.1.1"
+  #           server-branch: "refs/heads/0.1.latest"
+  #         - version: "1.2.0-pre"
+  #           package: "dbt-core~=1.2.0b1"
+  #           server-branch: "refs/heads/0.1.latest"
+  #           prerelease: true
+  #         - version: "1.2.0-latest"
+  #           package: "dbt-core~=1.2.0"
+  #           server-branch: "refs/heads/0.1.latest"
+  #         - version: "1.3.0-pre"
+  #           package: "dbt-core~=1.3.0b1"
+  #           server-branch: "refs/heads/0.1.latest"
+  #           prerelease: true
+  #         - version: "1.3.0-latest"
+  #           package: "dbt-core~=1.3.0"
+  #           server-branch: "refs/heads/0.1.latest"
+  #           # TODO: Only main for testing until 1.5
+  #         - version: "1.4.0-pre"
+  #           package: "dbt-core~=1.4.0b1"
+  #           server-branch: "refs/heads/main"
+  #           prerelease: true
+  #         - version: "1.4.0-latest"
+  #           package: "dbt-core~=1.4.0"
+  #           server-branch: "refs/heads/0.1.latest"
+  #       dbt-database-adapter:
+  #         - name: snowflake
+  #           package: dbt-snowflake
+  #         - name: bigquery
+  #           package: dbt-bigquery
+  #         - name: postgres
+  #           package: dbt-postgres
+  #         - name: redshift
+  #           package: dbt-redshift
+  #       include:
+  #         - dbt-core:
+  #             version: head
+  #             package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+  #           dbt-database-adapter:
+  #             name: snowflake
+  #             package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
+  #         - dbt-core:
+  #             version: head
+  #             package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+  #           dbt-database-adapter:
+  #             name: postgres
+  #             package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
+  #         - dbt-core:
+  #             version: head
+  #             package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+  #           dbt-database-adapter:
+  #             name: redshift
+  #             package: "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift"
+  #         - dbt-core:
+  #             version: head
+  #             package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+  #           dbt-database-adapter:
+  #             name: bigquery
+  #             package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
+  #   steps:
+  #     - name: checkout code
+  #       uses: actions/checkout@v2
 
-      - name: notify runtime of new images
-        uses: ./.github/actions/notify-dbt-runtime
-        if: ${{ github.event_name == 'push' }}
-        with:
-          image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
-          production-notifier-passphrase: ${{ secrets.INFRA_ROOT_NOTIFIER_PASSPHRASE }}
-          production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
-          production-runtime-endpoint: ${{ secrets.PRODUCTION_RUNTIME_ENDPOINT }}
-          production-emea-notifier-passphrase: ${{ secrets.PRODUCTION_EMEA_NOTIFIER_PASSPHRASE }}
-          production-emea-runtime-endpoint: ${{ secrets.PRODUCTION_EMEA_RUNTIME_ENDPOINT }}
-          production-au-notifier-passphrase: ${{ secrets.PRODUCTION_AU_NOTIFIER_PASSPHRASE }}
-          production-au-runtime-endpoint: ${{ secrets.PRODUCTION_AU_RUNTIME_ENDPOINT }}
+  #     - name: registry login
+  #       uses: ./.github/actions/registry-login-action
+  #       with:
+  #         staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+  #         staging-registry-username: ${{ secrets.STAGING_AWS_ACCESS_KEY_ID }}
+  #         staging-registry-password: ${{ secrets.STAGING_AWS_SECRET_ACCESS_KEY }}
+  #         production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+  #         production-registry-username: ${{ secrets.INFRA_ROOT_AWS_ACCESS_KEY_ID }}
+  #         production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
+
+  #     - name: build and push dbt server images
+  #       if: ${{github.ref}} ==  ${{ matrix.dbt-core.server-branch }}
+  #       uses: ./.github/actions/docker-build-publish
+  #       with:
+  #         image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
+  #         docker-file-path: Dockerfile
+  #         docker-build-args: |
+  #           # Use --pre flag when installing this version if it's a prerelease
+  #           DBT_PIP_FLAGS=${{ (matrix.dbt-core.prerelease && '--pre') || '' }}
+  #           DBT_CORE_PACKAGE=${{ matrix.dbt-core.package }}
+  #           DBT_DATABASE_ADAPTER_PACKAGE=${{ matrix.dbt-database-adapter.package }}
+  #           DATADOG_PACKAGE=ddtrace==1.4.4
+  #         staging-registry-endpoint: ${{ secrets.STAGING_REGISTRY_ENDPOINT }}
+  #         production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+  #         push: ${{ github.event_name == 'push' }}
+
+  #     - name: notify runtime of new images
+  #       uses: ./.github/actions/notify-dbt-runtime
+  #       if: ${{ github.event_name == 'push' }} && ${{github.ref}} ==  ${{ matrix.dbt-core.server-branch }}
+  #       with:
+  #         image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
+  #         production-notifier-passphrase: ${{ secrets.INFRA_ROOT_NOTIFIER_PASSPHRASE }}
+  #         production-registry-endpoint: ${{ secrets.INFRA_ROOT_REGISTRY_ENDPOINT }}
+  #         production-runtime-endpoint: ${{ secrets.PRODUCTION_RUNTIME_ENDPOINT }}
+  #         production-emea-notifier-passphrase: ${{ secrets.PRODUCTION_EMEA_NOTIFIER_PASSPHRASE }}
+  #         production-emea-runtime-endpoint: ${{ secrets.PRODUCTION_EMEA_RUNTIME_ENDPOINT }}
+  #         production-au-notifier-passphrase: ${{ secrets.PRODUCTION_AU_NOTIFIER_PASSPHRASE }}
+  #         production-au-runtime-endpoint: ${{ secrets.PRODUCTION_AU_RUNTIME_ENDPOINT }}

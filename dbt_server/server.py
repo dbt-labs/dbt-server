@@ -13,6 +13,8 @@ from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
 from sqlalchemy.exc import OperationalError
 
+from dbt.exceptions import UninstalledPackagesFound
+
 # The default checkfirst=True should handle this, however we still
 # see a table exists error from time to time
 try:
@@ -69,10 +71,15 @@ def startup_cache_initialize():
 
     manifest_size = filesystem_service.get_size(manifest_path)
     config = dbt_service.create_dbt_config(root_path, config_args)
-
-    LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, latest_project_path, root_path, manifest, manifest_size, config
-    )
+    try:
+        LAST_PARSED.set_last_parsed_manifest(
+            latest_state_id, latest_project_path, root_path, manifest, manifest_size, config
+        )
+    except (UninstalledPackagesFound):
+        logger.error(
+            "[STARTUP] Uninstalled packages found - not loading manifest. Please run a deps command followed by a parse."
+        )
+        return
 
     logger.info(f"[STARTUP] Cached manifest in memory (path={root_path})")
 
