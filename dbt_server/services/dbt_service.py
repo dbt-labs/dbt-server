@@ -273,7 +273,6 @@ def execute_async_command(
     profile_name = get_profile_name()
     profile, project = load_profile_project(root_path, profile_name)
 
-    # crud.set_task_running(db, db_task)
     update_task_status(db, db_task, callback_url, models.TaskState.RUNNING, None)
 
     logger.info(f"Running dbt ({task_id}) - kicking off task")
@@ -282,13 +281,11 @@ def execute_async_command(
         dbt = dbtRunner(project, profile, manifest)
         _, _ = dbt.invoke(new_command)
     except RuntimeException as e:
-        # crud.set_task_errored(db, db_task, str(e))
         update_task_status(db, db_task, callback_url, models.TaskState.ERROR, str(e))
         raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
 
-    # crud.set_task_done(db, db_task)
     update_task_status(db, db_task, callback_url, models.TaskState.FINISHED, None)
 
 
