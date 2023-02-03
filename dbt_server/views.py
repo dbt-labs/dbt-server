@@ -218,7 +218,17 @@ async def dbt_entry_async(
         raise HTTPException(status_code=400, detail="Task already registered")
 
     background_tasks.add_task(state.execute_async_command, task_id, args.command, db, args.callback_url)
-    return crud.create_task(db, task)
+    created_task = crud.create_task(db, task)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "task_id": created_task.task_id,
+            "state_id": state.state_id,
+            "state": created_task.state,
+            "command": created_task.command,
+            "log_path": created_task.log_path
+        },
+    )
 
 
 @app.post("/sync/dbt")
