@@ -194,7 +194,7 @@ def parse_project(args: ParseArgs):
     )
 
 
-@app.post("/async/dbt", response_model=schemas.Task)
+@app.post("/async/dbt")
 async def dbt_entry_async(
     args: DBTCommandArgs,
     background_tasks: BackgroundTasks,
