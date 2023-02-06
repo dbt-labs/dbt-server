@@ -12,6 +12,7 @@ import requests
 from requests.adapters import HTTPAdapter
 
 from sqlalchemy.orm import Session
+from urllib3 import Retry
 
 # These exceptions were removed in v1.4
 try:
@@ -310,7 +311,9 @@ def update_task_status(db, db_task, callback_url, status, error):
     crud.set_task_state(db, db_task, status, error)
 
     if callback_url:
+        retries = Retry(total=5, allowed_methods=frozenset(['POST']))
+
         session = requests.Session()
-        session.mount("http://", HTTPAdapter(max_retries=5))
+        session.mount("http://", HTTPAdapter(max_retries=retries))
         session.post(callback_url, json={"task_id": db_task.task_id, "status": status})
 
