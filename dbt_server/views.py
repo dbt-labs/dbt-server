@@ -69,7 +69,7 @@ class SQLConfig(BaseModel):
     profile: Optional[str] = None
 
 
-class DBTCommandArgs(BaseModel):
+class DbtCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
     # TODO: Need to handle this differently
@@ -196,7 +196,7 @@ def parse_project(args: ParseArgs):
 
 @app.post("/async/dbt")
 async def dbt_entry_async(
-    args: DBTCommandArgs,
+    args: DbtCommandArgs,
     background_tasks: BackgroundTasks,
     db: Session = Depends(crud.get_db),
 ):
@@ -232,7 +232,7 @@ async def dbt_entry_async(
 
 
 @app.post("/sync/dbt")
-async def dbt_entry_sync(args: DBTCommandArgs):
+async def dbt_entry_sync(args: DbtCommandArgs):
     # example body: {"command":["list", "--output", "json"]}
     state = StateController.load_state(args)
     # TODO: See what if any useful info is returned when there's no success

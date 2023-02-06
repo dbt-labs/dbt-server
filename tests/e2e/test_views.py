@@ -60,7 +60,7 @@ class TestDbtEntryAsync(unittest.TestCase):
         state.serialize_manifest()
         state.update_cache()
 
-        args = views.DBTCommandArgs(command=["run", "--threads", 1])
+        args = views.DbtCommandArgs(command=["run", "--threads", 1])
         response = self.client.post("/async/dbt", json=args.dict())
 
         self.assertEqual(response.status_code, 200)
@@ -106,7 +106,7 @@ class TestDbtEntryAsync(unittest.TestCase):
         state.serialize_manifest()
         state.update_cache()
 
-        args = views.DBTCommandArgs(command=["run", "--threads", 1])
+        args = views.DbtCommandArgs(command=["run", "--threads", 1])
         response = self.client.post("/async/dbt", json=args.dict())
 
         self.assertEqual(response.status_code, 200)
@@ -132,7 +132,7 @@ class TestDbtEntryAsync(unittest.TestCase):
         Test that calling the async/dbt endpoint without first calling parse
         results in a properly handled StateNotFoundException
         """
-        args = views.DBTCommandArgs(command=["run", "--threads", 1])
+        args = views.DbtCommandArgs(command=["run", "--threads", 1])
         response = self.client.post("/async/dbt", json=args.dict())
         self.assertEqual(response.status_code, 422)
 
@@ -164,7 +164,7 @@ class TestDbtEntrySync(unittest.TestCase):
         state.serialize_manifest()
         state.update_cache()
 
-        args = views.DBTCommandArgs(command=["run", "--threads", 1])
+        args = views.DbtCommandArgs(command=["run", "--threads", 1])
         response = self.client.post("/sync/dbt", json=args.dict())
 
         self.assertEqual(response.status_code, 200)
