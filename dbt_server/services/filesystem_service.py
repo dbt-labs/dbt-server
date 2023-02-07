@@ -1,13 +1,14 @@
 import os
 import shutil
-from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
+
 PARTIAL_PARSE_FILE = "partial_parse.msgpack"
+DEFAULT_WORKING_DIR = "./working-dir"
+DATABASE_FILE_NAME = "sql_app.db"
 # This is defined in dbt-core-- dir path is configurable but not filename
 DBT_LOG_FILE_NAME = "dbt.log"
-DEFAULT_WORKING_DIR = "./working-dir"
 
 
 def get_working_dir():
@@ -33,6 +34,13 @@ def get_task_artifacts_path(task_id, state_id=None):
 def get_log_path(task_id, state_id=None):
     artifacts_path = get_task_artifacts_path(task_id, state_id)
     return os.path.join(artifacts_path, DBT_LOG_FILE_NAME)
+
+
+def get_db_path():
+    working_dir = get_working_dir()
+    path = os.path.join(working_dir, DATABASE_FILE_NAME)
+    ensure_dir_exists(path)
+    return path
 
 
 def get_latest_state_file_path():
