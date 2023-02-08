@@ -1,0 +1,7 @@
+kind: Features
+body: Add new task status callback functionality to the async dbt endpoint
+time: 2023-02-06T12:04:26.954999-05:00
+custom:
+  Author: jp-dbt
+  Issue: "165"
+  PR: "164"

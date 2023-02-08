@@ -69,11 +69,12 @@ class SQLConfig(BaseModel):
     profile: Optional[str] = None
 
 
-class dbtCommandArgs(BaseModel):
+class DbtCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
     # TODO: Need to handle this differently
     profile: Optional[str]
+    callback_url: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -193,9 +194,9 @@ def parse_project(args: ParseArgs):
     )
 
 
-@app.post("/async/dbt", response_model=schemas.Task)
+@app.post("/async/dbt")
 async def dbt_entry_async(
-    args: dbtCommandArgs,
+    args: DbtCommandArgs,
     background_tasks: BackgroundTasks,
     db: Session = Depends(crud.get_db),
 ):
@@ -216,12 +217,22 @@ async def dbt_entry_async(
     if db_task:
         raise HTTPException(status_code=400, detail="Task already registered")
 
-    background_tasks.add_task(state.execute_async_command, task_id, args.command, db)
-    return crud.create_task(db, task)
+    background_tasks.add_task(state.execute_async_command, task_id, args.command, db, args.callback_url)
+    created_task = crud.create_task(db, task)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "task_id": created_task.task_id,
+            "state_id": state.state_id,
+            "state": created_task.state,
+            "command": created_task.command,
+            "log_path": created_task.log_path
+        },
+    )
 
 
 @app.post("/sync/dbt")
-async def dbt_entry_sync(args: dbtCommandArgs):
+async def dbt_entry_sync(args: DbtCommandArgs):
     # example body: {"command":["list", "--output", "json"]}
     state = StateController.load_state(args)
     # TODO: See what if any useful info is returned when there's no success

@@ -8,8 +8,11 @@ from typing import List, Optional, Any
 import dbt.tracking
 import dbt.lib
 import dbt.adapters.factory
+import requests
+from requests.adapters import HTTPAdapter
 
 from sqlalchemy.orm import Session
+from urllib3 import Retry
 
 # These exceptions were removed in v1.4
 try:
@@ -49,7 +52,7 @@ from dbt.contracts.sql import (
 from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.helpers import get_profile_name
-from dbt_server import crud, tracer
+from dbt_server import crud, tracer, models
 from dbt.lib import load_profile_project
 from dbt.cli.main import dbtRunner
 
@@ -249,6 +252,7 @@ def execute_async_command(
     manifest: Any,
     db: Session,
     state_id: Optional[str] = None,
+    callback_url: Optional[str] = None
 ) -> None:
     db_task = crud.get_task(db, task_id)
     # For commands, only the log file destination directory is sent to --log-path
@@ -270,7 +274,7 @@ def execute_async_command(
     profile_name = get_profile_name()
     profile, project = load_profile_project(root_path, profile_name)
 
-    crud.set_task_running(db, db_task)
+    update_task_status(db, db_task, callback_url, models.TaskState.RUNNING, None)
 
     logger.info(f"Running dbt ({task_id}) - kicking off task")
 
@@ -278,12 +282,12 @@ def execute_async_command(
         dbt = dbtRunner(project, profile, manifest)
         _, _ = dbt.invoke(new_command)
     except RuntimeException as e:
-        crud.set_task_errored(db, db_task, str(e))
+        update_task_status(db, db_task, callback_url, models.TaskState.ERROR, str(e))
         raise e
 
     logger.info(f"Running dbt ({task_id}) - done")
 
-    crud.set_task_done(db, db_task)
+    update_task_status(db, db_task, callback_url, models.TaskState.FINISHED, None)
 
 
 @tracer.wrap
@@ -301,3 +305,15 @@ def execute_sync_command(command: List, root_path: str, manifest: Any):
 
     dbt = dbtRunner(project, profile, manifest)
     return dbt.invoke(command)
+
+
+def update_task_status(db, db_task, callback_url, status, error):
+    crud.set_task_state(db, db_task, status, error)
+
+    if callback_url:
+        retries = Retry(total=5, allowed_methods=frozenset(['POST']))
+
+        session = requests.Session()
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        session.post(callback_url, json={"task_id": db_task.task_id, "status": status})
+
