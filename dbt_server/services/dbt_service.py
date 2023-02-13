@@ -281,9 +281,12 @@ def execute_async_command(
         # which can result in a packages dir creation at the app root.
         # Until custom target paths are supported, this will ensure package folders are created
         # at the project root.
+        last_dir = os.getcwd()
         os.chdir(root_path)
         dbt = dbtRunner(project, profile, manifest)
         _, _ = dbt.invoke(new_command)
+        # Return to app root
+        os.chdir(last_dir)
     except RuntimeException as e:
         crud.set_task_errored(db, db_task, str(e))
         raise e
