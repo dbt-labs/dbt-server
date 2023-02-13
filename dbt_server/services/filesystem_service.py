@@ -6,6 +6,7 @@ from dbt_server import tracer
 
 PARTIAL_PARSE_FILE = "partial_parse.msgpack"
 DEFAULT_WORKING_DIR = "./working-dir"
+DEFAULT_TARGET_DIR = "./target"
 DATABASE_FILE_NAME = "sql_app.db"
 # This is defined in dbt-core-- dir path is configurable but not filename
 DBT_LOG_FILE_NAME = "dbt.log"
@@ -15,9 +16,16 @@ def get_working_dir():
     return os.environ.get("__DBT_WORKING_DIR", DEFAULT_WORKING_DIR)
 
 
+def get_target_path():
+    # TODO: The --target-path flag should override this, but doesn't
+    # appear to be working on invoke. When it does, need to revisit
+    # how partial parsing is working
+    return os.environ.get("DBT_TARGET_PATH", DEFAULT_TARGET_DIR)
+
+
 def get_root_path(state_id=None, project_path=None):
     if project_path is not None:
-        return project_path
+        return os.path.abspath(project_path)
     if state_id is None:
         return None
     working_dir = get_working_dir()
@@ -34,6 +42,11 @@ def get_task_artifacts_path(task_id, state_id=None):
 def get_log_path(task_id, state_id=None):
     artifacts_path = get_task_artifacts_path(task_id, state_id)
     return os.path.join(artifacts_path, DBT_LOG_FILE_NAME)
+
+
+def get_partial_parse_path():
+    target_path = get_target_path()
+    return os.path.join(target_path, PARTIAL_PARSE_FILE)
 
 
 def get_db_path():
@@ -107,7 +120,7 @@ def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
     if previous_state_id and state_id != previous_state_id:
         #  TODO: The target folder is usually created during command runs and won't exist on push/parse
         #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
-        #  with the click API work
+        #  with the click API work. This bypasses other use DBT_TARGET_PATH
         previous_partial_parse_path = get_path(
             get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
         )
