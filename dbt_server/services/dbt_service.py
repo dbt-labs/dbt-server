@@ -270,6 +270,19 @@ def execute_async_command(
         f"Running dbt ({task_id}) - deserializing manifest found at {root_path}"
     )
 
+    
+    # TODO: this is a tmp solution to set profile_dir to global flags
+    # we should provide a better programatical interface of core to sort out
+    # the creation of project, profile
+    from dbt.flags import set_from_args
+    from argparse import Namespace
+    from dbt.cli.resolvers import default_profiles_dir
+    if os.getenv("DBT_PROFILES_DIR"):
+        profiles_dir = os.getenv("DBT_PROFILES_DIR")
+    else:
+        profiles_dir = default_profiles_dir()
+    set_from_args(Namespace(profiles_dir=profiles_dir), None)
+
     # TODO: If a command contains a --profile flag, how should we access/pass it?
     profile_name = get_profile_name()
     profile, project = load_profile_project(root_path, profile_name)
