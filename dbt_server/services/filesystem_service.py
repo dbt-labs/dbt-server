@@ -120,7 +120,7 @@ def write_unparsed_manifest_to_disk(state_id, previous_state_id, filedict):
     if previous_state_id and state_id != previous_state_id:
         #  TODO: The target folder is usually created during command runs and won't exist on push/parse
         #  of a new state. It can also be named by env var or flag -- hardcoding as this will change
-        #  with the click API work. This bypasses other use DBT_TARGET_PATH
+        #  with the click API work. This bypasses the DBT_TARGET_PATH env var.
         previous_partial_parse_path = get_path(
             get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
         )
