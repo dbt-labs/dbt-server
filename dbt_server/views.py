@@ -75,6 +75,7 @@ class DbtCommandArgs(BaseModel):
     # TODO: Need to handle this differently
     profile: Optional[str]
     callback_url: Optional[str]
+    task_id: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -203,7 +204,11 @@ async def dbt_entry_async(
     # example body: {"state_id": "123", "command":["run", "--threads", 1]}
     state = StateController.load_state(args)
 
-    task_id = str(uuid.uuid4())
+    if args.task_id:
+        task_id = args.task_id
+    else:
+        task_id = str(uuid.uuid4())
+
     log_path = filesystem_service.get_log_path(task_id, state.state_id)
 
     task = schemas.Task(
