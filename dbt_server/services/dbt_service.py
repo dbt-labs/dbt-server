@@ -304,7 +304,7 @@ def execute_async_command(
         _, _ = dbt.invoke(new_command)
         # Return to app root
         os.chdir(last_dir)
-    except RuntimeException as e:
+    except Exception as e:
         update_task_status(db, db_task, callback_url, models.TaskState.ERROR, str(e))
         raise e
 
