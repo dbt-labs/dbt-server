@@ -242,7 +242,10 @@ async def dbt_entry_sync(args: DbtCommandArgs):
     state = StateController.load_state(args)
     # TODO: See what if any useful info is returned when there's no success
     results, _ = state.execute_sync_command(args.command)
-    encoded_results = jsonable_encoder(results.to_dict())
+    try:
+        encoded_results = jsonable_encoder(results.to_dict())
+    except AttributeError:
+        encoded_results = jsonable_encoder(results)
     return JSONResponse(
         status_code=200,
         content={
