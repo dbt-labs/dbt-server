@@ -14,7 +14,7 @@
 #
 # Example run:
 # # Under root directory.
-# python3 -m tests.e2e.smoke_test
+# python3 -m tests.e2e.smoke_test --local_task_db_path=./working-dir/sql_app.db
 #
 from absl import app
 from absl import flags
