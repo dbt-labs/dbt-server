@@ -16,3 +16,5 @@ sql_app.db
 /env
 /venv
 dbt-core-server-exploration/
+dbt.log
+.DS_Store
