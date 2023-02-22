@@ -68,7 +68,7 @@ LOCAL_URL = "http://127.0.0.1"
 # Test case files.
 IDE_COMMAND_SUCCESS_FILE = "./tests/e2e/testcases/ide_commands.txt"
 IDE_COMMAND_FAILURE_FILE = "./tests/e2e/testcases/ide_commands_failure.txt"
-# How long of interval we get task status from task db.
+# How long we will get task status from task db periodically.
 ASYNC_POLLING_SECONDS = 1
 
 ASYNC_DBT_URL = "async/dbt"
