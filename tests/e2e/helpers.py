@@ -1,5 +1,9 @@
 import os
+from importlib import util
 from unittest import TestCase
+
+DBT_POSTGRES_PACKAGE_NAME = "dbt-postgres"
+DBT_SNOWFLAKE_PACKAGE_NAME = "dbt-snowflake"
 
 class DbtCoreTestBase(TestCase):
     """ A base class to setup local dbt core environments and delete after 
@@ -22,3 +26,18 @@ class DbtCoreTestBase(TestCase):
     def tearDown(self) -> None:
         del os.environ["__DBT_WORKING_DIR"]
         del os.environ["DBT_PROFILES_DIR"]
+
+def _is_packge_installed(package_name: str):
+    """ Returns if `package_name` is installed in python env.
+    """
+    return util.find_spec(package_name) is not None
+
+def miss_postgres_adaptor_package():
+    """ Returns true if postgres adaptor isn't installed in python env.
+    """
+    return not _is_packge_installed(DBT_POSTGRES_PACKAGE_NAME)
+
+def miss_snowflake_adaptor_package():
+    """ Returns true if snowflake adaptor isn't installed in python env.
+    """
+    return not _is_packge_installed(DBT_SNOWFLAKE_PACKAGE_NAME)

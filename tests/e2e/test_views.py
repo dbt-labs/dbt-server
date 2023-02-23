@@ -1,6 +1,5 @@
 import json
 import shutil
-import unittest
 from unittest.mock import patch
 import uuid
 import tempfile
@@ -10,15 +9,16 @@ from dbt_server import views, crud
 from dbt_server.state import LAST_PARSED, StateController
 from dbt_server.models import Task, Base
 from dbt_server.services.filesystem_service import DBT_LOG_FILE_NAME
-import os
-
+from dbt_server.views import app
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from tests.e2e.helpers import DbtCoreTestBase
+from tests.e2e.helpers import miss_postgres_adaptor_package
 from tests.e2e.fixtures import Profiles
-from dbt_server.views import app
 
-
+@pytest.mark.skipif(miss_postgres_adaptor_package(),
+                    reason="This test requires dbt-postgres installed.")
 class TestDbtEntryAsync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)
@@ -138,7 +138,8 @@ class TestDbtEntryAsync(DbtCoreTestBase):
         response = self.client.post("/async/dbt", json=args.dict())
         self.assertEqual(response.status_code, 422)
 
-
+@pytest.mark.skipif(miss_postgres_adaptor_package(),
+                    reason="This test requires dbt-postgres installed.")
 class TestDbtEntrySync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)

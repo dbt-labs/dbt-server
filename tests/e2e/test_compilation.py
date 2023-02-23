@@ -5,11 +5,12 @@ from unittest import TestCase
 from dbt_server.server import app
 from tests.e2e.fixtures import simple, simple2, invalid, Profiles
 from tests.e2e.helpers import DbtCoreTestBase
+from tests.e2e.helpers import miss_postgres_adaptor_package
 
 import hashlib
 import json
+import pytest
 import tempfile
-import os
 
 client = TestClient(app)
 
@@ -17,6 +18,8 @@ client = TestClient(app)
 TEST_PROFILE = "user"
 
 
+@pytest.mark.skipif(miss_postgres_adaptor_package(),
+                    reason="This test requires dbt-postgres installed.")
 class ManifestBuildingTestBase(DbtCoreTestBase):
     """ ManifestBuildingTestBase provides helper function API parse, compile, 
     push endpoints functionality with predefined profiles files in real 
