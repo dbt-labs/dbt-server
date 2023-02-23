@@ -1,6 +1,5 @@
 import json
 import shutil
-import unittest
 from unittest.mock import patch
 import uuid
 import tempfile
@@ -10,18 +9,21 @@ from dbt_server import views, crud
 from dbt_server.state import LAST_PARSED, StateController
 from dbt_server.models import Task, Base
 from dbt_server.services.filesystem_service import DBT_LOG_FILE_NAME
-import os
-
+from dbt_server.views import app
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from dbt_server.views import app
+from tests.e2e.helpers import DbtCoreTestBase
+from tests.e2e.helpers import miss_postgres_adaptor_package
+from tests.e2e.fixtures import Profiles
 
-
-class TestDbtEntryAsync(unittest.TestCase):
+@pytest.mark.skipif(miss_postgres_adaptor_package(),
+                    reason="This test requires dbt-postgres installed.")
+class TestDbtEntryAsync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)
         self.temp_dir = tempfile.TemporaryDirectory()
-        os.environ["__DBT_WORKING_DIR"] = self.temp_dir.name
+        self.set_envs(self.temp_dir.name, Profiles.Postgres)
 
         self.state_id = "test123"
         self.state_dir = f"{self.temp_dir.name}/state-{self.state_id}"
@@ -39,7 +41,7 @@ class TestDbtEntryAsync(unittest.TestCase):
         app.dependency_overrides[crud.get_db] = self.mock_get_db
 
     def tearDown(self):
-        del os.environ["__DBT_WORKING_DIR"]
+        super().tearDown()
         self.db.close()
         self.temp_dir.cleanup()
         LAST_PARSED.reset()
@@ -136,19 +138,20 @@ class TestDbtEntryAsync(unittest.TestCase):
         response = self.client.post("/async/dbt", json=args.dict())
         self.assertEqual(response.status_code, 422)
 
-
-class TestDbtEntrySync(unittest.TestCase):
+@pytest.mark.skipif(miss_postgres_adaptor_package(),
+                    reason="This test requires dbt-postgres installed.")
+class TestDbtEntrySync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)
         self.temp_dir = tempfile.TemporaryDirectory()
-        os.environ["__DBT_WORKING_DIR"] = self.temp_dir.name
+        self.set_envs(self.temp_dir.name, Profiles.Postgres)
 
         self.state_id = "test123"
         self.state_dir = f"{self.temp_dir.name}/state-{self.state_id}"
         shutil.copytree("tests/e2e/fixtures/test-project", self.state_dir)
 
     def tearDown(self):
-        del os.environ["__DBT_WORKING_DIR"]
+        super().tearDown()
         self.temp_dir.cleanup()
         LAST_PARSED.reset()
 
