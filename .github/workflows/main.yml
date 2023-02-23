@@ -57,15 +57,15 @@ jobs:
             server-branch: "main"
     steps:
       - name: checkout repo
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name|| matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
+        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         uses: actions/checkout@v3
       - name: setup python
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name|| matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
+        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
       - name: run tests
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name|| matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
+        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
           pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
