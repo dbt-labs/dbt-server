@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - 0.1.latest
   pull_request:
     branches:
       - main
+      - 0.1.latest
 
 jobs:
   hygiene:
@@ -68,7 +70,7 @@ jobs:
         if: ${{ matrix.dbt-core.server-branch == github.ref_name|| matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
-          pip install dbt-core dbt-postgres
+          pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
           pytest
   build-push:
     name: build and push dbt server images
