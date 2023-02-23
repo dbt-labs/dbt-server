@@ -291,22 +291,23 @@ def execute_async_command(
 
     logger.info(f"Running dbt ({task_id}) - kicking off task")
 
+    # Passing a custom target path is not currently working through the
+    # core API. As a result, the target is defaulting to a relative `./dbt_packages`
+    # This chdir action is taken in core for several commands, but not for others,
+    # which can result in a packages dir creation at the app root.
+    # Until custom target paths are supported, this will ensure package folders are created
+    # at the project root.
+    dbt_server_root = os.getcwd()
     try:
-        # Passing a custom target path is not currently working through the
-        # core API. As a result, the target is defaulting to a relative `./dbt_packages`
-        # This chdir action is taken in core for several commands, but not for others,
-        # which can result in a packages dir creation at the app root.
-        # Until custom target paths are supported, this will ensure package folders are created
-        # at the project root.
-        last_dir = os.getcwd()
         os.chdir(root_path)
         dbt = dbtRunner(project, profile, manifest)
         _, _ = dbt.invoke(new_command)
-        # Return to app root
-        os.chdir(last_dir)
-    except RuntimeException as e:
+    except Exception as e:
         update_task_status(db, db_task, callback_url, models.TaskState.ERROR, str(e))
         raise e
+    finally:
+        # Return to dbt server root
+        os.chdir(dbt_server_root)
 
     logger.info(f"Running dbt ({task_id}) - done")
 
