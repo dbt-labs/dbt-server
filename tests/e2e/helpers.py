@@ -2,8 +2,8 @@ import os
 from importlib import util
 from unittest import TestCase
 
-DBT_POSTGRES_PACKAGE_NAME = "dbt-postgres"
-DBT_SNOWFLAKE_PACKAGE_NAME = "dbt-snowflake"
+DBT_POSTGRES_PACKAGE_NAME = "dbt.adapters.postgres"
+DBT_SNOWFLAKE_PACKAGE_NAME = "dbt.adapters.snowflake"
 
 class DbtCoreTestBase(TestCase):
     """ A base class to setup local dbt core environments and delete after 
