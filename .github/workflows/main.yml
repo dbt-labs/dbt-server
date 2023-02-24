@@ -170,7 +170,7 @@ jobs:
           production-registry-password: ${{ secrets.INFRA_ROOT_AWS_SECRET_ACCESS_KEY }}
 
       - name: build and push dbt server images
-        if: github.ref_name == matrix.dbt-core.server-branch
+        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         uses: ./.github/actions/docker-build-publish
         with:
           image-name: dbt-server-${{ matrix.dbt-database-adapter.name }}-${{ matrix.dbt-core.version }}
