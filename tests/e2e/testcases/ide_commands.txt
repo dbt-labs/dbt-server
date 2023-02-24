@@ -75,6 +75,6 @@ seed -s %MODEL
 seed --select %MODEL
 seed --exclude %MODEL
 seed --selector %SELECTOR
-run-operation %MACRO
-run-operation %MACRO --vars %VARIABLE
-run-operation %MACRO --args %MACRO_ARGS
+run-operation %MACRO_NAME
+run-operation %MACRO_NAME --vars %VARIABLE
+run-operation %MACRO_NAME --args %MACRO_ARGS

@@ -8,11 +8,10 @@
 #
 from absl import app
 from absl import flags
-import asyncio
 import logging
 from dbt_server.models import TaskState
-from tests.e2e.smoke_test import DbtServerSmokeTest
-from tests.e2e.smoke_test import read_testcase_file
+from tests.e2e.smoke_test_utils import DbtServerSmokeTest
+from tests.e2e.smoke_test_utils import read_testcase_file
 
 flags.DEFINE_integer(
     "command_exec_timeout_seconds",
@@ -50,7 +49,8 @@ flags.mark_flag_as_required("local_task_db_path")
 flags.mark_flag_as_required("dbt_project_path")
 
 
-async def entry_point() -> None:
+def main(argv):
+    del argv  # Unused.
     dbt_local_server_port = flags.FLAGS.dbt_local_server_port
     local_task_db_path = flags.FLAGS.local_task_db_path
     dbt_project_path = flags.FLAGS.dbt_project_path
@@ -65,18 +65,12 @@ async def entry_point() -> None:
     commands = read_testcase_file(testcase_path)
     for command in commands:
         try:
-            await smoke_test.run_async_testcase(
+            smoke_test.run_async_testcase(
                 command.split(), TaskState.FINISHED,
                 command_exec_timeout_seconds
             )
         except Exception as e:
             logging.error(str(e))
-
-
-def main(argv):
-    del argv  # Unused.
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(entry_point())
 
 
 if __name__ == "__main__":

@@ -9,5 +9,5 @@ run
 compile
 test
 seed
-run-operation %MACRO
+run-operation %MACRO_NAME
 # snapshot is not covered yet

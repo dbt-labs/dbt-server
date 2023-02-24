@@ -5,6 +5,12 @@ from unittest import TestCase
 DBT_POSTGRES_PACKAGE_NAME = "dbt.adapters.postgres"
 DBT_SNOWFLAKE_PACKAGE_NAME = "dbt.adapters.snowflake"
 
+def set_dbt_working_dir_env(working_dir: str):
+    os.environ["__DBT_WORKING_DIR"] = working_dir
+
+def set_dbt_profiles_dir_env(profiles_dir: str):
+    os.environ["DBT_PROFILES_DIR"] = profiles_dir
+
 class DbtCoreTestBase(TestCase):
     """ A base class to setup local dbt core environments and delete after 
     tests.
@@ -20,8 +26,8 @@ class DbtCoreTestBase(TestCase):
                 super().tearDown()
     """
     def set_envs(self, working_dir, profiles_dir) -> None:
-        os.environ["__DBT_WORKING_DIR"] = working_dir
-        os.environ["DBT_PROFILES_DIR"] = profiles_dir
+        set_dbt_working_dir_env(working_dir)
+        set_dbt_profiles_dir_env(profiles_dir)
 
     def tearDown(self) -> None:
         del os.environ["__DBT_WORKING_DIR"]
