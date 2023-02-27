@@ -17,8 +17,10 @@ from tests.e2e.helpers import DbtCoreTestBase
 from tests.e2e.helpers import miss_postgres_adaptor_package
 from tests.e2e.fixtures import Profiles
 
-@pytest.mark.skipif(miss_postgres_adaptor_package(),
-                    reason="This test requires dbt-postgres installed.")
+
+@pytest.mark.skipif(
+    miss_postgres_adaptor_package(), reason="This test requires dbt-postgres installed."
+)
 class TestDbtEntryAsync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)
@@ -138,8 +140,10 @@ class TestDbtEntryAsync(DbtCoreTestBase):
         response = self.client.post("/async/dbt", json=args.dict())
         self.assertEqual(response.status_code, 422)
 
-@pytest.mark.skipif(miss_postgres_adaptor_package(),
-                    reason="This test requires dbt-postgres installed.")
+
+@pytest.mark.skipif(
+    miss_postgres_adaptor_package(), reason="This test requires dbt-postgres installed."
+)
 class TestDbtEntrySync(DbtCoreTestBase):
     def setUp(self):
         self.client = TestClient(app)

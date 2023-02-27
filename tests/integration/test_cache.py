@@ -93,9 +93,9 @@ class StartupCacheTest(DbtCoreTestBase):
         "dbt_server.services.dbt_service.deserialize_manifest",
         side_effect=TypeError("bad"),
     )
-    def test_startup_cache_fails_bad_manifest(self, mock_dbt,
-                                              mock_get_latest_project_path,
-                                              mock_fs):
+    def test_startup_cache_fails_bad_manifest(
+        self, mock_dbt, mock_get_latest_project_path, mock_fs
+    ):
         # Make sure it's not errantly cached
         assert LAST_PARSED.manifest is None
 
@@ -104,7 +104,8 @@ class StartupCacheTest(DbtCoreTestBase):
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
         mock_dbt.assert_called_once_with(
-            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack")
+            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+        )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None
 
@@ -120,10 +121,9 @@ class StartupCacheTest(DbtCoreTestBase):
         "dbt_server.services.filesystem_service.read_serialized_manifest",
         side_effect=StateNotFoundException(),
     )
-    def test_startup_cache_fails_specified_state_is_missing(self,
-                                                            mock_dbt,
-                                                            mock_get_latest_project_path,
-                                                            mock_fs):
+    def test_startup_cache_fails_specified_state_is_missing(
+        self, mock_dbt, mock_get_latest_project_path, mock_fs
+    ):
         # Make sure it's not errantly cached
         assert LAST_PARSED.manifest is None
 
@@ -132,6 +132,7 @@ class StartupCacheTest(DbtCoreTestBase):
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
         mock_dbt.assert_called_once_with(
-            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack")
+            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+        )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None

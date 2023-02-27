@@ -10,8 +10,10 @@ import pytest
 from tests.e2e.helpers import miss_snowflake_adaptor_package
 
 
-@pytest.mark.skipif(miss_snowflake_adaptor_package(),
-                    reason="This test requires dbt-snowflake installed.")
+@pytest.mark.skipif(
+    miss_snowflake_adaptor_package(),
+    reason="This test requires dbt-snowflake installed.",
+)
 class StateControllerTestCase(DbtCoreTestBase):
     """
     Full functionality test class using a real dbt project manifest
