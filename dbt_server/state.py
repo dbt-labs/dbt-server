@@ -27,8 +27,8 @@ class CachedManifest:
     # Indicates local dbt project path. It might be None when clients push
     # source code to dbt-server thus we don't have a local project path.
     project_path: Optional[str] = None
-    # Root path points to dbt project path, it equals to project_path when 
-    # project_path is not None, otherwise it points to a temporary directory 
+    # Root path points to dbt project path, it equals to project_path when
+    # project_path is not None, otherwise it points to a temporary directory
     # that stores pushed dbt project files.
     root_path: Optional[str] = None
     # Dbt core Manifest object. If it's none, it indicates the cache is not set
