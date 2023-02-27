@@ -20,14 +20,12 @@ try:
         ValidationException,
         CompilationException,
         InvalidConnectionException,
-        RuntimeException,
     )
 except (ModuleNotFoundError, ImportError):
     from dbt.exceptions import (
         DbtValidationError as ValidationException,
         CompilationError as CompilationException,
         InvalidConnectionError as InvalidConnectionException,
-        DbtRuntimeError as RuntimeException,
     )
 
 from dbt.lib import (
@@ -63,7 +61,6 @@ from dbt_server.exceptions import (
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
-from dbt_server.helpers import get_profile_name
 from pydantic import BaseModel
 
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
@@ -252,7 +249,7 @@ def execute_async_command(
     manifest: Any,
     db: Session,
     state_id: Optional[str] = None,
-    callback_url: Optional[str] = None
+    callback_url: Optional[str] = None,
 ) -> None:
     db_task = crud.get_task(db, task_id)
     # For commands, only the log file destination directory is sent to --log-path
@@ -270,13 +267,13 @@ def execute_async_command(
         f"Running dbt ({task_id}) - deserializing manifest found at {root_path}"
     )
 
-    
     # TODO: this is a tmp solution to set profile_dir to global flags
     # we should provide a better programatical interface of core to sort out
     # the creation of project, profile
     from dbt.flags import set_from_args
     from argparse import Namespace
     from dbt.cli.resolvers import default_profiles_dir
+
     if os.getenv("DBT_PROFILES_DIR"):
         profiles_dir = os.getenv("DBT_PROFILES_DIR")
     else:
@@ -335,9 +332,8 @@ def update_task_status(db, db_task, callback_url, status, error):
     crud.set_task_state(db, db_task, status, error)
 
     if callback_url:
-        retries = Retry(total=5, allowed_methods=frozenset(['POST']))
+        retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
 
         session = requests.Session()
         session.mount("http://", HTTPAdapter(max_retries=retries))
         session.post(callback_url, json={"task_id": db_task.task_id, "status": status})
-

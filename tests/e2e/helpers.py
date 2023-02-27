@@ -12,7 +12,7 @@ def set_dbt_profiles_dir_env(profiles_dir: str):
     os.environ["DBT_PROFILES_DIR"] = profiles_dir
 
 class DbtCoreTestBase(TestCase):
-    """ A base class to setup local dbt core environments and delete after 
+    """A base class to setup local dbt core environments and delete after
     tests.
     Example:
         from tests.e2e.fixtures import Profiles
@@ -25,6 +25,7 @@ class DbtCoreTestBase(TestCase):
                 # DbtCoreTestBase.tearDown() will executed automatically.
                 super().tearDown()
     """
+
     def set_envs(self, working_dir, profiles_dir) -> None:
         set_dbt_working_dir_env(working_dir)
         set_dbt_profiles_dir_env(profiles_dir)
@@ -33,17 +34,17 @@ class DbtCoreTestBase(TestCase):
         del os.environ["__DBT_WORKING_DIR"]
         del os.environ["DBT_PROFILES_DIR"]
 
+
 def _is_packge_installed(package_name: str):
-    """ Returns if `package_name` is installed in python env.
-    """
+    """Returns if `package_name` is installed in python env."""
     return util.find_spec(package_name) is not None
 
+
 def miss_postgres_adaptor_package():
-    """ Returns true if postgres adaptor isn't installed in python env.
-    """
+    """Returns true if postgres adaptor isn't installed in python env."""
     return not _is_packge_installed(DBT_POSTGRES_PACKAGE_NAME)
 
+
 def miss_snowflake_adaptor_package():
-    """ Returns true if snowflake adaptor isn't installed in python env.
-    """
+    """Returns true if snowflake adaptor isn't installed in python env."""
     return not _is_packge_installed(DBT_SNOWFLAKE_PACKAGE_NAME)

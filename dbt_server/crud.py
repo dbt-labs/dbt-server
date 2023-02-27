@@ -24,7 +24,9 @@ def create_task(db: Session, task: schemas.Task):
     return db_task
 
 
-def set_task_state(db: Session, task: schemas.Task, state: models.TaskState, error: str):
+def set_task_state(
+    db: Session, task: schemas.Task, state: models.TaskState, error: str
+):
     db_task = get_task(db, task.task_id)
     db_task.state = state
 
