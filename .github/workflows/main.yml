@@ -37,40 +37,34 @@ jobs:
     name: test code
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    strategy:
-      matrix:
-        dbt-core:
-          - version: "1.2.0-latest"
-            package: "dbt-core~=1.2.0"
-            server-branch: "0.1.latest"
-          - version: "1.3.0-latest"
-            package: "dbt-core~=1.3.0"
-            server-branch: "0.1.latest"
-          - version: "1.4.0-latest"
-            package: "dbt-core~=1.4.0"
-            server-branch: "0.1.latest"
+    # TODO: Add this back when 1.5.0-pre has been released
+    # strategy:
+    #   matrix:
+    #     dbt-core:
           # - version: "1.5.0-pre"
           #   package: "dbt-core~=1.5.0b1"
-          #   server-branch: "main"
-          - version: "head"
-            package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            server-branch: "main"
+
     steps:
       - name: checkout repo
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         uses: actions/checkout@v3
 
       - name: setup python
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-
-      - name: run tests
-        if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
+      # TODO: see above note
+      # - name: run tests - releases
+      #   run: |
+      #     pip install -r requirements.txt -r dev-requirements.txt
+      #     pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
+      #     pytest
+    
+      - name: run tests - head
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
-          pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
+          pip install https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+          pip install https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
+          pip install https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
           pytest
   build-push:
     name: build and push dbt server images
