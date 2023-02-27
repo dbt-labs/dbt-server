@@ -1,6 +1,5 @@
 import re
 from fastapi.testclient import TestClient
-from unittest import TestCase
 
 from dbt_server.server import app
 from tests.e2e.fixtures import simple, simple2, invalid, Profiles

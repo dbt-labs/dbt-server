@@ -1,6 +1,5 @@
 import shutil
 import tempfile
-from unittest import TestCase
 
 from dbt_server.state import StateController, LAST_PARSED
 from dbt_server.views import DbtCommandArgs

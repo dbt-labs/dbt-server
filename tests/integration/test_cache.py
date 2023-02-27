@@ -1,7 +1,5 @@
-import os
 from fastapi.testclient import TestClient
 from unittest.mock import patch
-import unittest
 
 from dbt_server.server import app, startup_cache_initialize
 from dbt_server.state import LAST_PARSED

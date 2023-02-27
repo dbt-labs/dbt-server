@@ -20,14 +20,12 @@ try:
         ValidationException,
         CompilationException,
         InvalidConnectionException,
-        RuntimeException,
     )
 except (ModuleNotFoundError, ImportError):
     from dbt.exceptions import (
         DbtValidationError as ValidationException,
         CompilationError as CompilationException,
         InvalidConnectionError as InvalidConnectionException,
-        DbtRuntimeError as RuntimeException,
     )
 
 from dbt.lib import (
@@ -63,7 +61,6 @@ from dbt_server.exceptions import (
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
-from dbt_server.helpers import get_profile_name
 from pydantic import BaseModel
 
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
