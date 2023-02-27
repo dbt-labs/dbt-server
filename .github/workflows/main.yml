@@ -52,9 +52,10 @@ jobs:
           # - version: "1.5.0-pre"
           #   package: "dbt-core~=1.5.0b1"
           #   server-branch: "main"
-          - version: "head"
-            package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-            server-branch: "main"
+          # TODO: Cannot test head this way, need adapter package paths as in matrix below as well
+          # - version: "head"
+          #   package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+          #   server-branch: "main"
     steps:
       - name: checkout repo
         if: ${{ matrix.dbt-core.server-branch == github.ref_name || matrix.dbt-core.server-branch == github.event.pull_request.base.ref }}
