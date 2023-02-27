@@ -77,8 +77,7 @@ dbt_server_start_timestamp_seconds = None
 
 
 def _start_dbt_server():
-    """ Starts dbt server locally.
-    """
+    """Starts dbt server locally. """
     # If state file or project path file exists, dbt-server will try to
     # initialize local manifest cache, it may cause dbt-server crash.
     # We are not able to config those file pathes hence just delete them
@@ -108,9 +107,8 @@ start_dbt_server()
 
 class TestJaffleShopBase(TestCase):
     def wait_dbt_server(self):
-        """ Waits until dbt server is ready. It will block current working
-        threads.
-        """
+        """Waits until dbt server is ready. It will block current working
+        threads."""
         logging.info("Wait dbt-server setup.")
         while True:
             now = time()
@@ -122,9 +120,8 @@ class TestJaffleShopBase(TestCase):
             sleep(DBT_SERVER_WAIT_SECONDS)
 
     def materialize_profiles_yml(self) -> None:
-        """ Materializes profiles.yml in testing folder.
-        Derived class should override this function.
-        """
+        """Materializes profiles.yml in testing folder.
+        Derived class should override this function."""
         raise NotImplementedError("Not implemented.")
 
     def setUp(self) -> None:
@@ -138,8 +135,7 @@ class TestJaffleShopBase(TestCase):
         self.wait_dbt_server()
 
     def write_profile(self, profile_content: str):
-        """ Writes `profile_content` to profile path.
-        """
+        """Writes `profile_content` to profile path. """
         with open(path.join(self.temp_dir, PROFILE_YML), "w") as output_file:
             output_file.write(profile_content)
 
@@ -147,8 +143,7 @@ class TestJaffleShopBase(TestCase):
         rmtree(self.temp_dir)
 
     def get_jaffle_shop_override_placeholder_reference(self):
-        """ Returns common placeholder refenrece for jaffle shop testing
-        project.
+        """Returns common placeholder refenrece for jaffle shop testing project.
         """
         return {
             "%STATE_DIR": f"{self.temp_dir}/{JAFFLE_SHOP_STATE_DIR}",
