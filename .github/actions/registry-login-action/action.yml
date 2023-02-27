@@ -1,5 +1,5 @@
 name: "Registry Login Action"
-description: "Logins to development, staging and production registries"
+description: "Logins to staging and production registries"
 inputs:
   staging-registry-endpoint:
     description: "The staging registry where the image should be stored"
