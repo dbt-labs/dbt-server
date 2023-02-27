@@ -6,8 +6,6 @@ from dbt_server.views import ParseArgs
 from unittest import TestCase
 from unittest import mock
 
-import logging
-
 TEST_STATE_ID = "test_state"
 TEST_PROJECT_PATH = "test_project_path"
 TEST_ROOT_PATH = "test_root_path"
@@ -314,9 +312,9 @@ class TestStateController(TestCase):
     @mock.patch("dbt_server.services.filesystem_service.update_project_path")
     @mock.patch("dbt_server.services.dbt_service.get_sql_parser",
                 return_value=TEST_SQL_PARSER)
-    def test_update_cache_state_id(self, mock_get_sql_parser,
-                                   mock_update_project_path,
-                                   mock_update_state_id):
+    def test_update_cache_project_path(self, mock_get_sql_parser,
+                                       mock_update_project_path,
+                                       mock_update_state_id):
         state_controller = StateController(
             None, TEST_PROJECT_PATH, TEST_ROOT_PATH, TEST_MANIFEST,
             TEST_CONFIG, TEST_SQL_PARSER, TEST_MANIFEST_SIZE, False)
