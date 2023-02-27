@@ -62,9 +62,9 @@ jobs:
       - name: run tests - head
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
-          pip install https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
-          pip install https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
-          pip install https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
+          pip install "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core"
+          pip install "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres"
+          pip install "https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake"
           pytest
   build-push:
     name: build and push dbt server images
