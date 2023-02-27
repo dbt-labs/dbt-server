@@ -1,6 +1,5 @@
 import re
 from fastapi.testclient import TestClient
-from unittest import TestCase
 
 from dbt_server.server import app
 from tests.e2e.fixtures import simple, simple2, invalid, Profiles
@@ -18,13 +17,14 @@ client = TestClient(app)
 TEST_PROFILE = "user"
 
 
-@pytest.mark.skipif(miss_postgres_adaptor_package(),
-                    reason="This test requires dbt-postgres installed.")
+@pytest.mark.skipif(
+    miss_postgres_adaptor_package(), reason="This test requires dbt-postgres installed."
+)
 class ManifestBuildingTestBase(DbtCoreTestBase):
-    """ ManifestBuildingTestBase provides helper function API parse, compile, 
-    push endpoints functionality with predefined profiles files in real 
+    """ManifestBuildingTestBase provides helper function API parse, compile,
+    push endpoints functionality with predefined profiles files in real
     environment.
-    Notice: you need to install dbt-postgres package to run this test 
+    Notice: you need to install dbt-postgres package to run this test
     successfully.
     """
 
@@ -38,9 +38,9 @@ class ManifestBuildingTestBase(DbtCoreTestBase):
         self.temp_dir.cleanup()
 
     def push_fixture_data(self, file_dict):
-        """ Calls dbt server push end point to push `file_dict`.
+        """Calls dbt server push end point to push `file_dict`.
 
-        Args: 
+        Args:
             file_dict: key is the file path, value is file content.
         """
         manifest = {
@@ -55,13 +55,12 @@ class ManifestBuildingTestBase(DbtCoreTestBase):
         unparsed = json.dumps(manifest)
         state_id = hashlib.md5(unparsed.encode()).hexdigest()
 
-        response = client.post(
-            "/push", json={"state_id": state_id, "body": manifest})
+        response = client.post("/push", json={"state_id": state_id, "body": manifest})
 
         return response
 
     def parse_fixture_data(self, profile, state_id):
-        """ Calls dbt server parse end point to parse fixture data using 
+        """Calls dbt server parse end point to parse fixture data using
         `profile` specified by `state_id` which is pushed already.
         """
         response = client.post(
@@ -75,7 +74,7 @@ class ManifestBuildingTestBase(DbtCoreTestBase):
         return response
 
     def compile_against_state(self, state_id, sql):
-        """ Calls dbt server compile end point to compile given `sql` according 
+        """Calls dbt server compile end point to compile given `sql` according
         to fixture specified by `state_id`.
         """
         response = client.post(
@@ -268,14 +267,12 @@ class InvalidManifestBuildingTestCase(ManifestBuildingTestBase):
 
         self.assertEqual(resp_parse.status_code, 400)
         data = resp_parse.json()
-        self.assertTrue(
-            bool(re.match("compilation error", data["message"], re.I)))
+        self.assertTrue(bool(re.match("compilation error", data["message"], re.I)))
 
         valid_query = "select {{ 1 + 1 }}"
         resp = self.compile_against_state(state_id, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 422)
         self.assertTrue(
-            data["message"].startswith(
-                "[Errno 2] No such file or directory")
+            data["message"].startswith("[Errno 2] No such file or directory")
         )

@@ -310,7 +310,8 @@ class StateController(object):
             callback_url: string, will be called back eventually.
         """
         dbt_service.execute_async_command(
-            command, task_id, self.root_path, self.manifest, db, self.state_id, callback_url
+            command, task_id, self.root_path, self.manifest, db, self.state_id,
+            callback_url
         )
 
     @tracer.wrap
