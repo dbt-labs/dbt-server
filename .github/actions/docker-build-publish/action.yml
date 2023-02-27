@@ -50,5 +50,5 @@ runs:
         target: ${{ inputs.docker-file-target }}
         context: ${{ inputs.docker-context }}
         ssh: ${{ inputs.ssh }}
-        tags: ${{ format('{0}, {1}', env.STAGING_VERSION_TAG, env.STAGING_LATEST_TAG) }}
+        tags: ${{ format('{0}, {1}, {2}, {3}', env.STAGING_VERSION_TAG, env.STAGING_LATEST_TAG, env.PRODUCTION_VERSION_TAG, env.PRODUCTION_LATEST_TAG) }}
         push: ${{ inputs.push }}
