@@ -37,12 +37,11 @@ jobs:
     name: test code
     runs-on: ubuntu-latest
     timeout-minutes: 3
-    # TODO: Add this back when 1.5.0-pre has been released
-    # strategy:
-    #   matrix:
-    #     dbt-core:
-          # - version: "1.5.0-pre"
-          #   package: "dbt-core~=1.5.0b1"
+    strategy:
+      matrix:
+        dbt-core:
+          - version: "1.5.0-pre"
+            package: "dbt-core~=1.5.0b1"
 
     steps:
       - name: checkout repo
@@ -52,12 +51,11 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-      # TODO: see above note
-      # - name: run tests - releases
-      #   run: |
-      #     pip install -r requirements.txt -r dev-requirements.txt
-      #     pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
-      #     pytest
+      - name: run tests - releases
+        run: |
+          pip install -r requirements.txt -r dev-requirements.txt
+          pip install ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
+          pytest
     
       - name: run tests - head
         run: |
@@ -106,10 +104,10 @@ jobs:
           - version: "1.4.0-latest"
             package: "dbt-core~=1.4.0"
             server-branch: "0.1.latest"
-          # - version: "1.5.0-pre"
-          #   package: "dbt-core~=1.5.0b1"
-          #   server-branch: "main"
-          #   prerelease: true
+          - version: "1.5.0-pre"
+            package: "dbt-core~=1.5.0b1"
+            server-branch: "main"
+            prerelease: true
         dbt-database-adapter:
           - name: snowflake
             package: dbt-snowflake
