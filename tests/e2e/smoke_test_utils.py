@@ -27,8 +27,9 @@ class DbtServerSmokeTest:
 
     This class is thread-safe."""
 
-    def __init__(self, dbt_project_dir: str, dbt_local_server_port: int,
-                 local_task_db_path: str):
+    def __init__(
+        self, dbt_project_dir: str, dbt_local_server_port: int, local_task_db_path: str
+    ):
         """Initializes smoke test environment.
 
         Args:
@@ -74,13 +75,11 @@ class DbtServerSmokeTest:
             Exception: if response status code is not 200."""
         if profile_dir:
             set_dbt_profiles_dir_env(profile_dir)
-        self.post_request("parse", {
-            "project_path": self.dbt_project_dir
-        })
+        self.post_request("parse", {"project_path": self.dbt_project_dir})
 
     def wait_async_exec(
-            self, task_id: str,
-            command_exec_timeout_seconds: int = 60) -> TaskState:
+        self, task_id: str, command_exec_timeout_seconds: int = 60
+    ) -> TaskState:
         """Waits task with `task_id` to be finished. Returns task final state.
         Raises Exception if task is not finished after given timeout config.
 
@@ -89,22 +88,26 @@ class DbtServerSmokeTest:
                 according to task_id.
             command_exec_timeout_seconds: timeout seconds of each command."""
         start_timestamp_seconds = time()
-        while (time()
-               < start_timestamp_seconds + command_exec_timeout_seconds):
+        while time() < start_timestamp_seconds + command_exec_timeout_seconds:
             stmt = select(Task).where(Task.task_id == task_id)
             with self.task_db_engine.connect() as conn:
                 tasks = list(conn.execute(stmt))
                 if len(tasks) == 1 and tasks[0].state in [
-                    TaskState.FINISHED, TaskState.ERROR
+                    TaskState.FINISHED,
+                    TaskState.ERROR,
                 ]:
                     return tasks[0].state
             sleep(POLLING_SECONDS)
         raise Exception(
-            f"Task {task_id} is not finished after {command_exec_timeout_seconds}s")
+            f"Task {task_id} is not finished after {command_exec_timeout_seconds}s"
+        )
 
-    def run_async_testcase(self, command_list: List[str],
-                           expected_db_task_status: TaskState,
-                           command_exec_timeout_seconds: int = 60) -> None:
+    def run_async_testcase(
+        self,
+        command_list: List[str],
+        expected_db_task_status: TaskState,
+        command_exec_timeout_seconds: int = 60,
+    ) -> None:
         """Sends post request to async endpoints with `command_list` as request
         body. If execution is timeout after `command_exec_timeout_seconds`
         seconds or task status is not `expected_db_task_status` or local log
@@ -114,42 +117,41 @@ class DbtServerSmokeTest:
             expected_db_task_status: task state we expect.
             command_exec_timeout_seconds: timeout seconds of each command."""
         logging.info(
-            f"Start async test case {str(command_list)}, expect {expected_db_task_status}")
-        resp = self.post_request(ASYNC_DBT_URL, {
-            "command": command_list
-        })
+            f"Start async test case {str(command_list)}, expect {expected_db_task_status}"
+        )
+        resp = self.post_request(ASYNC_DBT_URL, {"command": command_list})
         task_id = resp["task_id"]
-        task_status = self.wait_async_exec(task_id,
-                                           command_exec_timeout_seconds)
+        task_status = self.wait_async_exec(task_id, command_exec_timeout_seconds)
         if task_status != expected_db_task_status:
             raise Exception(
-                f'Error task_id={task_id}, status != {expected_db_task_status}, error = {resp["error"]}')
+                f'Error task_id={task_id}, status != {expected_db_task_status}, error = {resp["error"]}'
+            )
         # Ensure log file is created when task is finished but won't check
         # details.
-        if (task_status == TaskState.FINISHED
-            and not path.isfile(path.join(self.dbt_project_dir,
-                                          resp["log_path"]))):
+        if task_status == TaskState.FINISHED and not path.isfile(
+            path.join(self.dbt_project_dir, resp["log_path"])
+        ):
             raise Exception(f"Can't find log file for task_id={task_id}")
 
 
 def copy_jaffle_shop_fixture(dir: str):
     """Copy jaffle shop test fixture to `dir`."""
-    copytree(path.join(TESTING_FIXTURE, JAFFLE_SHOP_DIR),
-             dir, dirs_exist_ok=True)
+    copytree(path.join(TESTING_FIXTURE, JAFFLE_SHOP_DIR), dir, dirs_exist_ok=True)
 
 
 def read_testcase_file(path: str) -> List[str]:
     """Reads testcase file and filter out empty line or starts with # which
     is comment."""
     with open(path, "r") as f:
-        return list(filter(
-            lambda line: (not line.startswith("#")) and line,
-            [line.strip() for line in f.readlines()])
+        return list(
+            filter(
+                lambda line: (not line.startswith("#")) and line,
+                [line.strip() for line in f.readlines()],
+            )
         )
 
 
-def parse_placeholder_string(placeholder_reference: dict,
-                             input_string: str) -> str:
+def parse_placeholder_string(placeholder_reference: dict, input_string: str) -> str:
     """Parses input `input_string` based on `placeholder_reference`,
     return parsed string.
 
@@ -166,8 +168,9 @@ def parse_placeholder_string(placeholder_reference: dict,
     return input_string
 
 
-def replace_placeholders(placeholder_reference: dict,
-                         input_string_list: List[str]) -> None:
+def replace_placeholders(
+    placeholder_reference: dict, input_string_list: List[str]
+) -> None:
     """Similar to parse_placeholder_string, replaces input `input_string_list`
     based on `placeholder_reference`.
 

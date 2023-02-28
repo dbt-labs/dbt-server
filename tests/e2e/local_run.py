@@ -17,33 +17,24 @@ flags.DEFINE_integer(
     "command_exec_timeout_seconds",
     60,
     "How many seconds shall we wait after command is issued. Test will fail if"
-    "timeout happens."
+    "timeout happens.",
 )
 
 flags.DEFINE_integer(
-    "dbt_local_server_port",
-    8580,
-    "Dbt local server port for testing."
+    "dbt_local_server_port", 8580, "Dbt local server port for testing."
 )
 
 flags.DEFINE_string(
     "local_task_db_path",
     None,
-    "A local path point to dbt-server sqlite db file, task status will be "
-    "checked."
+    "A local path point to dbt-server sqlite db file, task status will be " "checked.",
 )
 
 flags.DEFINE_string(
-    "testcase_path",
-    "tests/e2e/testcases/local_run.txt",
-    "Testcase file path."
+    "testcase_path", "tests/e2e/testcases/local_run.txt", "Testcase file path."
 )
 
-flags.DEFINE_string(
-    "dbt_project_path",
-    None,
-    "Dbt project path."
-)
+flags.DEFINE_string("dbt_project_path", None, "Dbt project path.")
 
 flags.mark_flag_as_required("local_task_db_path")
 flags.mark_flag_as_required("dbt_project_path")
@@ -66,8 +57,7 @@ def main(argv):
     for command in commands:
         try:
             smoke_test.run_async_testcase(
-                command.split(), TaskState.FINISHED,
-                command_exec_timeout_seconds
+                command.split(), TaskState.FINISHED, command_exec_timeout_seconds
             )
         except Exception as e:
             logging.error(str(e))

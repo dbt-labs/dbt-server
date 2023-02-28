@@ -45,7 +45,7 @@ import uvicorn
 POSTGRES_PROFILE_PLACEHOLDER_REFERENCE = {
     "%USER": os.getenv("SMOKE_TEST_POSTGRES_USER", ""),
     "%PASSWORD": os.getenv("SMOKE_TEST_POSTGRES_PASSWORD", ""),
-    "%PORT": os.getenv("SMOKE_TEST_POSTGRES_PORT", "5432")
+    "%PORT": os.getenv("SMOKE_TEST_POSTGRES_PORT", "5432"),
 }
 
 SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE = {
@@ -77,7 +77,7 @@ dbt_server_start_timestamp_seconds = None
 
 
 def _start_dbt_server():
-    """Starts dbt server locally. """
+    """Starts dbt server locally."""
     # If state file or project path file exists, dbt-server will try to
     # initialize local manifest cache, it may cause dbt-server crash.
     # We are not able to config those file pathes hence just delete them
@@ -91,11 +91,10 @@ def _start_dbt_server():
     # any commands.
     global dbt_server_start_timestamp_seconds
     dbt_server_start_timestamp_seconds = time()
-    logging.info(
-        f"Start dbt-server locally, port = {TEST_LOCAL_DBT_SERVER_PORT}")
-    uvicorn.run("dbt_server.server:app", port=TEST_LOCAL_DBT_SERVER_PORT,
-                loop='asyncio'
-                )
+    logging.info(f"Start dbt-server locally, port = {TEST_LOCAL_DBT_SERVER_PORT}")
+    uvicorn.run(
+        "dbt_server.server:app", port=TEST_LOCAL_DBT_SERVER_PORT, loop="asyncio"
+    )
 
 
 def start_dbt_server() -> None:
@@ -113,8 +112,10 @@ class TestJaffleShopBase(TestCase):
         while True:
             now = time()
             global dbt_server_start_timestamp_seconds
-            if (dbt_server_start_timestamp_seconds
-                    and now > dbt_server_start_timestamp_seconds + DBT_SERVER_WAIT_SECONDS):
+            if (
+                dbt_server_start_timestamp_seconds
+                and now > dbt_server_start_timestamp_seconds + DBT_SERVER_WAIT_SECONDS
+            ):
                 logging.info("Dbt-server is ready.")
                 return
             sleep(DBT_SERVER_WAIT_SECONDS)
@@ -128,14 +129,13 @@ class TestJaffleShopBase(TestCase):
         self.temp_dir = TemporaryDirectory().name
         copy_jaffle_shop_fixture(self.temp_dir)
         self.materialize_profiles_yml()
-        self.smoke_test = DbtServerSmokeTest(self.temp_dir,
-                                             TEST_LOCAL_DBT_SERVER_PORT,
-                                             TEST_LOCAL_TASK_DB_PATH
-                                             )
+        self.smoke_test = DbtServerSmokeTest(
+            self.temp_dir, TEST_LOCAL_DBT_SERVER_PORT, TEST_LOCAL_TASK_DB_PATH
+        )
         self.wait_dbt_server()
 
     def write_profile(self, profile_content: str):
-        """Writes `profile_content` to profile path. """
+        """Writes `profile_content` to profile path."""
         with open(path.join(self.temp_dir, PROFILE_YML), "w") as output_file:
             output_file.write(profile_content)
 
@@ -143,30 +143,32 @@ class TestJaffleShopBase(TestCase):
         rmtree(self.temp_dir)
 
     def get_jaffle_shop_override_placeholder_reference(self):
-        """Returns common placeholder refenrece for jaffle shop testing project.
-        """
+        """Returns common placeholder refenrece for jaffle shop testing project."""
         return {
             "%STATE_DIR": f"{self.temp_dir}/{JAFFLE_SHOP_STATE_DIR}",
             "%SELECTOR": "test_selector",
             "%VARIABLE": "test_var: 1",
             "%MODEL": "customers",
             "%MACRO_NAME": "test_macro",
-            "%MACRO_ARGS": "int_value: 1"
+            "%MACRO_ARGS": "int_value: 1",
         }
 
 
-@pytest.mark.skipif("" in POSTGRES_PROFILE_PLACEHOLDER_REFERENCE.values(),
-                    reason=f"""Smoke test for postgres adaptor requires env vars set for placeholders = {
-                        str(list(POSTGRES_PROFILE_PLACEHOLDER_REFERENCE.keys()))}"""
-                    )
+@pytest.mark.skipif(
+    "" in POSTGRES_PROFILE_PLACEHOLDER_REFERENCE.values(),
+    reason=f"""Smoke test for postgres adaptor requires env vars set for placeholders = {
+                        str(list(POSTGRES_PROFILE_PLACEHOLDER_REFERENCE.keys()))}""",
+)
 class TestJaffleShopPostgresBase(TestJaffleShopBase):
     def materialize_profiles_yml(self) -> None:
-        with open(path.join(TESTING_FIXTURE, POSTGRES_PROFILES_TEMPLATE_PATH
-                            ), "r") as template_file:
+        with open(
+            path.join(TESTING_FIXTURE, POSTGRES_PROFILES_TEMPLATE_PATH), "r"
+        ) as template_file:
             self.write_profile(
-                parse_placeholder_string(POSTGRES_PROFILE_PLACEHOLDER_REFERENCE,
-                                         template_file.read()
-                                         ))
+                parse_placeholder_string(
+                    POSTGRES_PROFILE_PLACEHOLDER_REFERENCE, template_file.read()
+                )
+            )
 
     def setUp(self) -> None:
         super().setUp()
@@ -177,18 +179,21 @@ class TestJaffleShopPostgresBase(TestJaffleShopBase):
         super().tearDown()
 
 
-@pytest.mark.skipif("" in SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE.values(),
-                    reason=f"""Smoke test for snowflake adaptor requires env vars set for placeholders = {
-                        str(list(SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE.keys()))}"""
-                    )
+@pytest.mark.skipif(
+    "" in SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE.values(),
+    reason=f"""Smoke test for snowflake adaptor requires env vars set for placeholders = {
+                        str(list(SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE.keys()))}""",
+)
 class TestJaffleShopSnowflakeBase(TestJaffleShopBase):
     def materialize_profiles_yml(self) -> None:
-        with open(path.join(TESTING_FIXTURE, SNOWFLAKE_PROFILES_TEMPLATE_PATH
-                            ), "r") as template_file:
+        with open(
+            path.join(TESTING_FIXTURE, SNOWFLAKE_PROFILES_TEMPLATE_PATH), "r"
+        ) as template_file:
             self.write_profile(
-                parse_placeholder_string(SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE,
-                                         template_file.read()
-                                         ))
+                parse_placeholder_string(
+                    SNOWFLAKE_PROFILE_PLACEHOLDER_REFERENCE, template_file.read()
+                )
+            )
 
     def setUp(self) -> None:
         super().setUp()
@@ -199,8 +204,7 @@ class TestJaffleShopSnowflakeBase(TestJaffleShopBase):
         super().tearDown()
 
 
-@pytest.mark.skip("Test is slow. If you want to manually run, comment pytest "
-                  "mark.")
+@pytest.mark.skip("Test is slow. If you want to manually run, comment pytest " "mark.")
 # TODO(dichen): Consider add pytest mark to testcases so we can group them
 # together.
 class TestIde(TestJaffleShopBase):
@@ -212,22 +216,18 @@ class TestIde(TestJaffleShopBase):
         for command in success_commands:
             command_list = command.split()
             replace_placeholders(
-                self.get_jaffle_shop_override_placeholder_reference(),
-                command_list
+                self.get_jaffle_shop_override_placeholder_reference(), command_list
             )
-            self.smoke_test.run_async_testcase(command_list,
-                                               TaskState.FINISHED)
+            self.smoke_test.run_async_testcase(command_list, TaskState.FINISHED)
 
     def _test_error(self) -> None:
         failure_command = read_testcase_file(self.IDE_COMMAND_FAILURE_FILE)
         for command in failure_command:
             command_list = command.split()
             replace_placeholders(
-                self.get_jaffle_shop_override_placeholder_reference(),
-                command_list
+                self.get_jaffle_shop_override_placeholder_reference(), command_list
             )
-            self.smoke_test.run_async_testcase(command_list,
-                                               TaskState.ERROR)
+            self.smoke_test.run_async_testcase(command_list, TaskState.ERROR)
 
 
 class TestIdePostgres(TestJaffleShopPostgresBase, TestIde):
@@ -255,22 +255,18 @@ class TestSimple(TestJaffleShopBase):
         for command in success_commands:
             command_list = command.split()
             replace_placeholders(
-                self.get_jaffle_shop_override_placeholder_reference(),
-                command_list
+                self.get_jaffle_shop_override_placeholder_reference(), command_list
             )
-            self.smoke_test.run_async_testcase(command_list,
-                                               TaskState.FINISHED)
+            self.smoke_test.run_async_testcase(command_list, TaskState.FINISHED)
 
     def _test_error(self) -> None:
         failure_command = read_testcase_file(self.SIMPLE_COMMAND_FAILURE_FILE)
         for command in failure_command:
             command_list = command.split()
             replace_placeholders(
-                self.get_jaffle_shop_override_placeholder_reference(),
-                command_list
+                self.get_jaffle_shop_override_placeholder_reference(), command_list
             )
-            self.smoke_test.run_async_testcase(command_list,
-                                               TaskState.ERROR)
+            self.smoke_test.run_async_testcase(command_list, TaskState.ERROR)
 
 
 class TestSimplePostgres(TestJaffleShopPostgresBase, TestSimple):
