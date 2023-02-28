@@ -168,7 +168,7 @@ def read_serialized_manifest(path: str):
 @tracer.wrap
 def write_unparsed_manifest_to_disk(state_id: str, previous_state_id: str,
                                     filedict: dict):
-    """Writes files in `filedict` to root path specified by `state_id`, then 
+    """Writes files in `filedict` to root path specified by `state_id`, then
     copies previous partial parsed msgpack to current root path.
 
     Args:
