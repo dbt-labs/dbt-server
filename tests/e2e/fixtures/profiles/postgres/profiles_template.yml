@@ -1,0 +1,12 @@
+jaffle_shop:
+  target: postgres
+  outputs:
+    postgres:
+      type: postgres
+      database: postgres
+      host: localhost
+      user: %USER
+      password: %PASSWORD
+      port: %PORT
+      schema: analytics
+      threads: 4

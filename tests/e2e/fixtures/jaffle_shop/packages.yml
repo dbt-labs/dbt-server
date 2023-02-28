@@ -1,0 +1,4 @@
+# Testing purpose.
+packages:
+  - package: tnightengale/dbt_meta_testing
+    version: 0.3.6
