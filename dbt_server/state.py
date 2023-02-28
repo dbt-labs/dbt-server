@@ -113,7 +113,7 @@ class StateController(object):
         self.config = config
         self.parser = parser
         self.manifest_size = manifest_size
-        # TODO
+        # If it's true, the menifest is loaded from cache.
         self.is_manifest_cached = is_manifest_cached
 
         # Serialized manifest.msgpack path.
