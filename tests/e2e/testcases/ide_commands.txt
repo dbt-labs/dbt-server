@@ -1,0 +1,80 @@
+# Commands for IDE use case.
+docs generate
+source freshness
+source freshness --vars %VARIABLE
+source freshness --selector %SELECTOR
+deps
+list
+build
+build --vars %VARIABLE
+build -x
+build --fail-fast
+build --store-failures
+build --resource-type test
+build --resource-type seed
+build --resource-type snapshot
+build --resource-type model
+build --resource-type all
+build -s %MODEL
+build --select %MODEL
+build --exclude %MODEL
+build --selector %SELECTOR
+build --threads 4
+build --state %STATE_DIR --defer
+build --no-defer
+build --full-refresh
+build -f
+snapshot
+snapshot --vars %VARIABLE
+snapshot --threads 4
+snapshot -m %MODEL
+snapshot --models %MODEL
+snapshot -s %MODEL
+snapshot --select %MODEL
+snapshot --exclude %MODEL
+snapshot --selector %SELECTOR
+snapshot --state %STATE_DIR --defer
+snapshot --no-defer
+run
+run --vars %VARIABLE
+run -x
+run --fail-fast
+run -s %MODEL
+run --select %MODEL
+run --exclude %MODEL
+run --selector %SELECTOR
+run --threads 4
+run --state %STATE_DIR --defer
+run --no-defer
+run --full-refresh
+run -f
+compile
+test
+test --vars %VARIABLE
+test -x
+test --fail-fast
+test --store-failures
+test --indirect-selection eager
+test --indirect-selection cautious
+test --threads 4
+test --no-version-check
+test -m %MODEL
+test --models %MODEL
+test -s %MODEL
+test --select %MODEL
+test --exclude %MODEL
+test --selector %SELECTOR
+test --state %STATE_DIR --defer
+test --no-defer
+seed
+seed --full-refresh
+seed --no-version-check
+seed -m %MODEL
+seed --models %MODEL
+seed -s %MODEL
+seed --select %MODEL
+seed --exclude %MODEL
+seed --selector %SELECTOR
+run-operation %MACRO_NAME
+run-operation %MACRO_NAME --vars %VARIABLE
+run-operation %MACRO_NAME --args %MACRO_ARGS

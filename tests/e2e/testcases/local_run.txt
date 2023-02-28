@@ -1,0 +1,2 @@
+# Intentionally leave it blank. You can add test commands below and work with
+# tests/e2e/local_run.py to test your dbt server.

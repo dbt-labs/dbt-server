@@ -1,0 +1,7 @@
+kind: Features
+body: Add smoke test.
+time: 2023-02-21T18:34:01.400318-08:00
+custom:
+  Author: dichenqiandbt
+  Issue: "727"
+  PR: "170"

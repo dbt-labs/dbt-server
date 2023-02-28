@@ -2,12 +2,17 @@ import os
 import threading
 import uuid
 from inspect import getmembers, isfunction
+from typing import List, Optional, Any
 
 # dbt Core imports
 import dbt.tracking
 import dbt.lib
 import dbt.adapters.factory
+import requests
+from requests.adapters import HTTPAdapter
 
+from sqlalchemy.orm import Session
+from urllib3 import Retry
 
 # These exceptions were removed in v1.4
 try:
@@ -24,7 +29,6 @@ except (ModuleNotFoundError, ImportError):
     )
 
 from dbt.lib import (
-    create_task,
     get_dbt_config as dbt_get_dbt_config,
     parse_to_manifest as dbt_parse_to_manifest,
     execute_sql as dbt_execute_sql,
@@ -44,8 +48,12 @@ from dbt.contracts.sql import (
 
 # dbt Server imports
 from dbt_server.services import filesystem_service
-from dbt_server import tracer
-from dbt_server.logging import GLOBAL_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.helpers import get_profile_name
+from dbt_server import crud, tracer, models
+from dbt.lib import load_profile_project
+from dbt.cli.main import dbtRunner
+
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -53,7 +61,7 @@ from dbt_server.exceptions import (
     dbtCoreCompilationException,
     UnsupportedQueryException,
 )
-from dbt_server.helpers import set_profile_name
+from pydantic import BaseModel
 
 ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lower() in (
     "true",
@@ -62,6 +70,10 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
 )
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
+
+
+class Args(BaseModel):
+    profile: str = None
 
 
 def inject_dd_trace_into_core_lib():
@@ -124,7 +136,10 @@ def get_sql_parser(config, manifest):
 @tracer.wrap
 def create_dbt_config(project_path, args=None):
     try:
-        args = set_profile_name(args)
+        if not args:
+            args = Args()
+        if hasattr(args, "profile"):
+            args.profile = get_profile_name(args)
         # This needs a lock to prevent two threads from mutating an adapter concurrently
         with CONFIG_GLOBAL_LOCK:
             return dbt_get_dbt_config(project_path, args)
@@ -159,57 +174,16 @@ def parse_to_manifest(project_path, args):
 
 
 @tracer.wrap
-def serialize_manifest(manifest, serialize_path):
+def serialize_manifest(manifest, serialize_path, partial_parse_path):
     manifest_msgpack = dbt_serialize_manifest(manifest)
     filesystem_service.write_file(serialize_path, manifest_msgpack)
+    filesystem_service.write_file(partial_parse_path, manifest_msgpack)
 
 
 @tracer.wrap
 def deserialize_manifest(serialize_path):
     manifest_packed = filesystem_service.read_serialized_manifest(serialize_path)
     return dbt_deserialize_manifest(manifest_packed)
-
-
-def dbt_run(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("run", args, manifest, config)
-    return task.run()
-
-
-def dbt_test(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("test", args, manifest, config)
-    return task.run()
-
-
-def dbt_list(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("list", args, manifest, config)
-    return task.run()
-
-
-def dbt_seed(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("seed", args, manifest, config)
-    return task.run()
-
-
-def dbt_build(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("build", args, manifest, config)
-    return task.run()
-
-
-def dbt_run_operation(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("run_operation", args, manifest, config)
-    return task.run()
-
-
-def dbt_snapshot(project_path, args, manifest):
-    config = create_dbt_config(project_path, args)
-    task = create_task("snapshot", args, manifest, config)
-    return task.run()
 
 
 @handle_dbt_compilation_error
@@ -266,3 +240,100 @@ def compile_sql(manifest, config, parser, sql):
         )
 
     return result.to_dict()
+
+
+def execute_async_command(
+    command: List,
+    task_id: str,
+    root_path: str,
+    manifest: Any,
+    db: Session,
+    state_id: Optional[str] = None,
+    callback_url: Optional[str] = None,
+) -> None:
+    db_task = crud.get_task(db, task_id)
+    # For commands, only the log file destination directory is sent to --log-path
+    log_dir_path = filesystem_service.get_task_artifacts_path(task_id, state_id)
+
+    # Temporary solution for structured log formatting until core adds a cleaner interface
+    new_command = []
+    new_command.append("--log-format")
+    new_command.append("json")
+    new_command.append("--log-path")
+    new_command.append(log_dir_path)
+    new_command += command
+
+    logger.info(
+        f"Running dbt ({task_id}) - deserializing manifest found at {root_path}"
+    )
+
+    # TODO: this is a tmp solution to set profile_dir to global flags
+    # we should provide a better programatical interface of core to sort out
+    # the creation of project, profile
+    from dbt.flags import set_from_args
+    from argparse import Namespace
+    from dbt.cli.resolvers import default_profiles_dir
+
+    if os.getenv("DBT_PROFILES_DIR"):
+        profiles_dir = os.getenv("DBT_PROFILES_DIR")
+    else:
+        profiles_dir = default_profiles_dir()
+    set_from_args(Namespace(profiles_dir=profiles_dir), None)
+
+    # TODO: If a command contains a --profile flag, how should we access/pass it?
+    profile_name = get_profile_name()
+    profile, project = load_profile_project(root_path, profile_name)
+
+    update_task_status(db, db_task, callback_url, models.TaskState.RUNNING, None)
+
+    logger.info(f"Running dbt ({task_id}) - kicking off task")
+
+    # Passing a custom target path is not currently working through the
+    # core API. As a result, the target is defaulting to a relative `./dbt_packages`
+    # This chdir action is taken in core for several commands, but not for others,
+    # which can result in a packages dir creation at the app root.
+    # Until custom target paths are supported, this will ensure package folders are created
+    # at the project root.
+    dbt_server_root = os.getcwd()
+    try:
+        os.chdir(root_path)
+        dbt = dbtRunner(project, profile, manifest)
+        _, _ = dbt.invoke(new_command)
+    except Exception as e:
+        update_task_status(db, db_task, callback_url, models.TaskState.ERROR, str(e))
+        raise e
+    finally:
+        # Return to dbt server root
+        os.chdir(dbt_server_root)
+
+    logger.info(f"Running dbt ({task_id}) - done")
+
+    update_task_status(db, db_task, callback_url, models.TaskState.FINISHED, None)
+
+
+@tracer.wrap
+def execute_sync_command(command: List, root_path: str, manifest: Any):
+    str_command = (" ").join(str(param) for param in command)
+    logger.info(
+        f"Running dbt ({str_command}) - deserializing manifest found at {root_path}"
+    )
+
+    # TODO: If a command contains a --profile flag, how should we access/pass it?
+    profile_name = get_profile_name()
+    profile, project = load_profile_project(root_path, profile_name)
+
+    logger.info(f"Running dbt ({str_command})")
+
+    dbt = dbtRunner(project, profile, manifest)
+    return dbt.invoke(command)
+
+
+def update_task_status(db, db_task, callback_url, status, error):
+    crud.set_task_state(db, db_task, status, error)
+
+    if callback_url:
+        retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
+
+        session = requests.Session()
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        session.post(callback_url, json={"task_id": db_task.task_id, "status": status})

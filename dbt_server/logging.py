@@ -5,19 +5,23 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
-try:
-    from dbt.events.functions import STDOUT_LOG, FILE_LOG
-except (ModuleNotFoundError, ImportError):
-    STDOUT_LOG = None
-    FILE_LOG = None
-
+from dbt.events.eventmgr import EventLevel
+from dbt.events.base_types import BaseEvent
 from pythonjsonlogger import jsonlogger
-from dbt_server.models import TaskState
 
+from dbt_server.models import TaskState
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
 WORKSPACE_ID = os.environ.get("WORKSPACE_ID")
+
+dbt_event_to_python_root_log = {
+    EventLevel.DEBUG: logging.root.debug,
+    EventLevel.TEST: logging.root.debug,
+    EventLevel.INFO: logging.root.info,
+    EventLevel.WARN: logging.root.warn,
+    EventLevel.ERROR: logging.root.error,
+}
 
 
 class CustomJsonFormatter(jsonlogger.JsonFormatter):
@@ -37,9 +41,9 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
             log_record["workspaceID"] = WORKSPACE_ID
 
 
-# setup json logging
+# setup json logging for stdout and datadog
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 stdout = logging.StreamHandler()
 if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
     formatter = logging.Formatter(
@@ -55,16 +59,11 @@ else:
     )
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
-dbt_server_logger = logging.getLogger("dbt-server")
-dbt_server_logger.setLevel(logging.DEBUG)
-GLOBAL_LOGGER = dbt_server_logger
 
-# remove handlers from these loggers, so
-# that they propagate up to the root logger
-# for json formatting
-if STDOUT_LOG and FILE_LOG:
-    STDOUT_LOG.handlers = []
-    FILE_LOG.handlers = []
+# Use standard python logger for all dbt-server logs-- these will be sent to
+# stdout but will not be written to task log files
+DBT_SERVER_LOGGER = logging.getLogger("dbt-server")
+DBT_SERVER_LOGGER.setLevel(logging.DEBUG)
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
@@ -91,6 +90,21 @@ def configure_uvicorn_access_log():
     ual.handlers = []
 
 
+# Push event messages to root python logger for formatting
+def log_event_to_console(event: BaseEvent):
+    logging_method = dbt_event_to_python_root_log[event.log_level()]
+    if logging_method == logging.root.debug:
+        # Only log debug level for dbt-server logs
+        return
+    logging_method(event.info.msg)
+
+
+# TODO: Core is still working on a way to add a callback to the eventlogger using the
+# newer format. We will still need to do this for events emitted by core
+# EVENT_MANAGER.callbacks.append(log_event_to_console)
+
+
+# TODO: This should be some type of event. We may also choose to send events for all task state updates.
 @dataclass
 class ServerLog:
     state: TaskState

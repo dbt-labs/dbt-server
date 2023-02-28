@@ -45,6 +45,8 @@ class CompilationInterfaceTests(unittest.TestCase):
         state_mock = Mock(
             return_value=StateController(
                 state_id=state_id,
+                project_path=None,
+                root_path=f"./working-dir/state-{state_id}",
                 manifest=None,
                 config=None,
                 parser=None,
@@ -70,9 +72,8 @@ class CompilationInterfaceTests(unittest.TestCase):
             )
 
             state_mock.assert_called_once_with(
-                state_id,
                 SQLConfig(
-                    state_id="goodid", sql="select {{ 1 + 1 }}", target="new_target"
+                    state_id=state_id, sql="select {{ 1 + 1 }}", target="new_target"
                 ),
             )
             query_mock.assert_called_once_with(source_query)
@@ -103,7 +104,6 @@ class CompilationInterfaceTests(unittest.TestCase):
             )
 
             state.assert_called_once_with(
-                state_id,
                 SQLConfig(
                     state_id="badid",
                     sql="select {{ exceptions.raise_compiler_error('bad')}}",
@@ -122,7 +122,8 @@ class CompilationInterfaceTests(unittest.TestCase):
     def test_compilation_interface_cache_hit(self):
         # Cache hit for load_state
         with patch("dbt_server.state.LAST_PARSED") as last_parsed:
-            state = StateController.load_state("abc123")
+            args = SQLConfig(state_id="abc123", sql="")
+            state = StateController.load_state(args)
             last_parsed.lookup.assert_called_once_with("abc123")
             assert state.manifest is not None
 
@@ -132,7 +133,8 @@ class CompilationInterfaceTests(unittest.TestCase):
             # We expect this to raise because abc123 is not a real state...
             # that's fine for this test, we just want to make sure that we lookup abc123
             with self.assertRaises(StateNotFoundException):
-                StateController.load_state("abc123")
+                args = SQLConfig(state_id="abc123", sql="")
+                StateController.load_state(args)
 
             lookup.assert_called_once_with("abc123")
 
@@ -155,13 +157,22 @@ class CompilationInterfaceTests(unittest.TestCase):
             "dbt_server.services.dbt_service",
             get_sql_parser=Mock(),
         ):
-            cached.set_last_parsed_manifest("abc123", manifest_mock, 512, config_mock)
+            cached.set_last_parsed_manifest(
+                "abc123",
+                None,
+                "./working_dir/state-abc123",
+                manifest_mock,
+                512,
+                config_mock,
+            )
 
             assert cached.state_id == "abc123"
             assert cached.manifest is not None
             assert cached.manifest_size == 512
             assert cached.config == config_mock
             assert cached.parser is not None
+            assert cached.root_path == "./working_dir/state-abc123"
+            assert cached.project_path is None
 
         assert cached.lookup(None) is not None
         manifest_mock.reset_mock()
@@ -180,14 +191,20 @@ class CompilationInterfaceTests(unittest.TestCase):
             get_sql_parser=Mock(),
         ):
             cached.set_last_parsed_manifest(
-                "def456", new_manifest_mock, 1024, new_config_mock
+                None,
+                "../jaffle-shop",
+                "../jaffle-shop",
+                new_manifest_mock,
+                1024,
+                new_config_mock,
             )
-            assert cached.state_id == "def456"
+            assert cached.state_id is None
             assert cached.manifest is not None
             assert cached.manifest_size == 1024
             assert cached.config == new_config_mock
             assert cached.parser is not None
+            assert cached.root_path == "../jaffle-shop"
+            assert cached.project_path == "../jaffle-shop"
 
         assert cached.lookup(None) is not None
-        assert cached.lookup("def456") is not None
         assert cached.lookup("abc123") is None

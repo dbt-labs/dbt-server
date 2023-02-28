@@ -2,25 +2,21 @@ from collections import deque
 import dbt.events.functions
 import os
 import signal
+import uuid
 
-from sse_starlette.sse import EventSourceResponse
-from fastapi import FastAPI, BackgroundTasks, Depends, status
+from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Dict, Any
 
+from dbt_server import crud, schemas, tracer, helpers
+from dbt_server.services import filesystem_service
+from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.models import TaskState
 from dbt_server.state import StateController
-from dbt_server import crud, schemas, helpers
-from dbt_server import tracer
-
-from dbt_server.services import (
-    filesystem_service,
-    dbt_service,
-    task_service,
-)
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -28,7 +24,6 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
-from dbt_server.logging import GLOBAL_LOGGER as logger
 
 # ORM stuff
 from sqlalchemy.orm import Session
@@ -48,13 +43,6 @@ ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
 app = FastAPI()
 
 
-@app.middleware("http")
-async def log_request_start(request: Request, call_next):
-    logger.debug(f"Received request: {request.method} {request.url.path}")
-    response = await call_next(request)
-    return response
-
-
 class FileInfo(BaseModel):
     contents: str
     hash: str
@@ -67,124 +55,11 @@ class PushProjectArgs(BaseModel):
 
 
 class ParseArgs(BaseModel):
-    state_id: str
+    state_id: Optional[str] = None
+    project_path: Optional[str] = None
     version_check: Optional[bool] = None
     profile: Optional[str] = None
     target: Optional[str] = None
-
-
-class BuildArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    resource_types: Optional[List[str]] = None
-    select: Union[None, str, List[str]] = None
-    threads: Optional[int] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
-
-
-class RunArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
-
-
-class TestArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    data_type: bool = Field(False, alias="data")
-    schema_type: bool = Field(False, alias="schema")
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-    fail_fast: Optional[bool] = None
-    store_failures: Optional[bool] = None
-    full_refresh: Optional[bool] = None
-    indirect_selection: str = ""
-    version_check: Optional[bool] = None
-
-
-class SeedArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    show: Optional[bool] = None
-    state: Optional[str] = None
-    selector_name: Optional[str] = None
-    full_refresh: Optional[bool] = None
-    version_check: Optional[bool] = None
-
-
-class ListArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    output: Optional[str] = "name"
-    output_keys: Union[None, str, List[str]] = None
-    state: Optional[str] = None
-    indirect_selection: str = "eager"
-
-
-class SnapshotArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    single_threaded: Optional[bool] = None
-    threads: Optional[int] = None
-    resource_types: Optional[List[str]] = None
-    models: Union[None, str, List[str]] = None
-    select: Union[None, str, List[str]] = None
-    exclude: Union[None, str, List[str]] = None
-    selector_name: Optional[str] = None
-    state: Optional[str] = None
-    defer: Optional[bool] = None
-
-
-class RunOperationArgs(BaseModel):
-    state_id: str
-    profile: Optional[str] = None
-    target: Optional[str] = None
-    macro: str
-    single_threaded: Optional[bool] = None
-    args: str = Field(default="{}")
 
 
 class SQLConfig(BaseModel):
@@ -192,6 +67,15 @@ class SQLConfig(BaseModel):
     sql: str
     target: Optional[str] = None
     profile: Optional[str] = None
+
+
+class DbtCommandArgs(BaseModel):
+    command: List[Any]
+    state_id: Optional[str]
+    # TODO: Need to handle this differently
+    profile: Optional[str]
+    callback_url: Optional[str]
+    task_id: Optional[str]
 
 
 @app.exception_handler(InvalidConfigurationException)
@@ -242,13 +126,14 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
 if ALLOW_ORCHESTRATED_SHUTDOWN:
 
     @app.post("/shutdown")
-    async def shutdown():
-        # raise 2 SIGTERM signals, just to
-        # make sure this really shuts down.
+    def shutdown():
         # raising a SIGKILL logs some
-        # warnings about leaked semaphores
-        signal.raise_signal(signal.SIGTERM)
-        signal.raise_signal(signal.SIGTERM)
+        # warnings about leaked semaphores--
+        # appears this is a known issue that should be
+        # solved once we move to python 3.9:
+        # https://bugs.python.org/issue45209
+        signal.raise_signal(signal.SIGKILL)
+        signal.raise_signal(signal.SIGKILL)
         return JSONResponse(
             status_code=200,
             content={},
@@ -263,6 +148,7 @@ async def ready():
 @app.post("/push")
 def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
+    previous_state_id = filesystem_service.get_latest_state_id(None)
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
     size_in_files = len(args.body)
@@ -275,7 +161,9 @@ def push_unparsed_manifest(args: PushProjectArgs):
     # Stupid example of reusing an existing manifest
     if not os.path.exists(path):
         reuse = False
-        filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
+        filesystem_service.write_unparsed_manifest_to_disk(
+            state_id, previous_state_id, args.body
+        )
 
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
@@ -292,122 +180,88 @@ def push_unparsed_manifest(args: PushProjectArgs):
 
 @app.post("/parse")
 def parse_project(args: ParseArgs):
-    state = StateController.parse_from_source(args.state_id, args)
+    state = StateController.parse_from_source(args)
     state.serialize_manifest()
-    state.update_state_id()
     state.update_cache()
 
     tracer.add_tags_to_current_span({"manifest_size": state.manifest_size})
 
     return JSONResponse(
         status_code=200,
-        content={"parsing": args.state_id, "path": state.serialize_path},
-    )
-
-
-@app.post("/run")
-async def run_models(args: RunArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
-
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_run(path, args, manifest)
-    encoded_results = jsonable_encoder(results.to_dict())
-    return JSONResponse(
-        status_code=200,
         content={
-            "parsing": args.state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "parsing": state.state_id or state.project_path,
+            "path": state.serialize_path,
         },
     )
 
 
-@app.post("/list")
-async def list_resources(args: ListArgs):
-    state_id = filesystem_service.get_latest_state_id(args.state_id)
-    path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+@app.post("/async/dbt")
+async def dbt_entry_async(
+    args: DbtCommandArgs,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(crud.get_db),
+):
+    # example body: {"state_id": "123", "command":["run", "--threads", 1]}
+    state = StateController.load_state(args)
 
-    manifest = dbt_service.deserialize_manifest(serialize_path)
-    results = dbt_service.dbt_list(path, args, manifest)
+    if args.task_id:
+        task_id = args.task_id
+    else:
+        task_id = str(uuid.uuid4())
 
-    encoded_results = jsonable_encoder(results)
+    log_path = filesystem_service.get_log_path(task_id, state.state_id)
 
+    task = schemas.Task(
+        task_id=task_id,
+        state=TaskState.PENDING,
+        command=(" ").join(str(param) for param in args.command),
+        log_path=log_path,
+    )
+
+    db_task = crud.get_task(db, task_id)
+    if db_task:
+        raise HTTPException(status_code=400, detail="Task already registered")
+
+    background_tasks.add_task(
+        state.execute_async_command, task_id, args.command, db, args.callback_url
+    )
+    created_task = crud.create_task(db, task)
     return JSONResponse(
         status_code=200,
         content={
-            "parsing": args.state_id,
-            "path": serialize_path,
-            "res": encoded_results,
+            "task_id": created_task.task_id,
+            "state_id": state.state_id,
+            "state": created_task.state,
+            "command": created_task.command,
+            "log_path": created_task.log_path,
         },
     )
 
 
-@app.post("/run-async")
-async def run_models_async(
-    args: RunArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.run_async(background_tasks, db, args)
-
-
-@app.post("/test-async")
-async def test_async(
-    args: TestArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.test_async(background_tasks, db, args)
-
-
-@app.post("/seed-async")
-async def seed_async(
-    args: SeedArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.seed_async(background_tasks, db, args)
-
-
-@app.post("/build-async")
-async def build_async(
-    args: BuildArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.build_async(background_tasks, db, args)
-
-
-@app.post("/snapshot-async")
-async def snapshot_async(
-    args: SnapshotArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.snapshot_async(background_tasks, db, args)
-
-
-@app.post("/run-operation-async")
-async def run_operation_async(
-    args: RunOperationArgs,
-    background_tasks: BackgroundTasks,
-    response_model=schemas.Task,
-    db: Session = Depends(crud.get_db),
-):
-    return task_service.run_operation_async(background_tasks, db, args)
+@app.post("/sync/dbt")
+async def dbt_entry_sync(args: DbtCommandArgs):
+    # example body: {"command":["list", "--output", "json"]}
+    state = StateController.load_state(args)
+    # TODO: See what if any useful info is returned when there's no success
+    results, _ = state.execute_sync_command(args.command)
+    try:
+        encoded_results = jsonable_encoder(results.to_dict())
+    except AttributeError:
+        encoded_results = jsonable_encoder(results)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": state.state_id or state.project_path,
+            "path": state.serialize_path,
+            "command": (" ").join(str(param) for param in args.command),
+            "res": encoded_results,
+        },
+    )
 
 
 @app.post("/preview")
 async def preview_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id, sql)
+    state = StateController.load_state(sql)
     result = state.execute_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
@@ -425,7 +279,7 @@ async def preview_sql(sql: SQLConfig):
 
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
-    state = StateController.load_state(sql.state_id, sql)
+    state = StateController.load_state(sql)
     result = state.compile_query(sql.sql)
     compiled_code = helpers.extract_compiled_code_from_node(result)
 
@@ -454,15 +308,10 @@ def get_manifest_metadata(state):
     }
 
 
-class Task(BaseModel):
-    task_id: str
-
-
-@app.get("/stream-logs/{task_id}")
-async def log_endpoint(
+@app.get("/status/{task_id}")
+def get_task_status(
     task_id: str,
-    request: Request,
     db: Session = Depends(crud.get_db),
 ):
-    event_generator = task_service.tail_logs_for_path(db, task_id, request)
-    return EventSourceResponse(event_generator, ping=2)
+    task = crud.get_task(db, task_id)
+    return JSONResponse(status_code=200, content={"status": task.state})

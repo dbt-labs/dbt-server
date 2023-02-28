@@ -1,0 +1,14 @@
+user:
+  outputs:
+    default:
+      account: %ACCOUNT
+      client_session_keep_alive: false
+      database: %DATABASE
+      password: %PASSWORD
+      role: %ROLE
+      schema: %SCHEMA
+      threads: 4
+      type: snowflake
+      user: %USER
+      warehouse: %WAREHOUSE
+  target: default

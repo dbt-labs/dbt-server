@@ -1,5 +1,7 @@
+absl-py==1.4.0
 black==22.6.0
 flake8==5.0.0
+httpx==0.23.0
 ipdb==0.13.9
 pytest==7.1.2
 pre-commit==2.20.0

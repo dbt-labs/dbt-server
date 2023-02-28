@@ -8,12 +8,18 @@ from dbt_server import models
 from dbt_server.database import engine
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.views import app
-from dbt_server.logging import GLOBAL_LOGGER as logger, configure_uvicorn_access_log
+from dbt_server.logging import DBT_SERVER_LOGGER as logger, configure_uvicorn_access_log
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
+from sqlalchemy.exc import OperationalError
 
+# The default checkfirst=True should handle this, however we still
+# see a table exists error from time to time
+try:
+    models.Base.metadata.create_all(bind=engine, checkfirst=True)
+except OperationalError as err:
+    logger.debug(f"Handled error when creating database: {str(err)}")
 
-models.Base.metadata.create_all(bind=engine)
 dbt_service.disable_tracking()
 
 
@@ -25,23 +31,25 @@ class ConfigArgs(BaseModel):
 def startup_cache_initialize():
     """
     Initialize the manifest cache at startup. The cache will only be populated if there is
-    a latest-state-id.txt file pointing to a state folder with a pre-compiled manifest.
-    If any step fails (the latest-state-id.txt file is missing, there's no compiled manifest,
-    or it can't be deserialized) then continue without caching.
+    a latest-state-id.txt file or latest-project-path.txt file pointing to a state or project folder
+    with a pre-compiled manifest. If any step fails (the latest-state-id.txt file is missing,
+    there's no compiled manifest, or it can't be deserialized) then continue without caching.
     """
 
     # If an exception is raised in this method, the dbt-server will fail to start up.
     # Be careful here :)
-
     latest_state_id = filesystem_service.get_latest_state_id(None)
-    if latest_state_id is None:
-        logger.info("[STARTUP] No latest state found - not loading manifest into cache")
+    latest_project_path = filesystem_service.get_latest_project_path()
+    root_path = filesystem_service.get_root_path(latest_state_id, latest_project_path)
+
+    if root_path is None:
+        logger.info(
+            "[STARTUP] No latest state or project found - not loading manifest into cache"
+        )
         return
 
-    manifest_path = filesystem_service.get_path(latest_state_id, "manifest.msgpack")
-    logger.info(
-        f"[STARTUP] Loading manifest from file system (state_id={latest_state_id})"
-    )
+    manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
+    logger.info(f"[STARTUP] Loading manifest from file system (path={root_path})")
 
     try:
         manifest = dbt_service.deserialize_manifest(manifest_path)
@@ -50,7 +58,7 @@ def startup_cache_initialize():
         return
     except (StateNotFoundException):
         logger.error(
-            f"[STARTUP] Specified latest state not found - not loading manifest (state_id={latest_state_id})"
+            f"[STARTUP] Specified root path not found - not loading manifest (path={root_path})"
         )
         return
 
@@ -59,15 +67,14 @@ def startup_cache_initialize():
         target_name = None
     config_args = ConfigArgs(target=target_name)
 
-    source_path = filesystem_service.get_root_path(latest_state_id)
     manifest_size = filesystem_service.get_size(manifest_path)
-    config = dbt_service.create_dbt_config(source_path, config_args)
+    config = dbt_service.create_dbt_config(root_path, config_args)
 
     LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, manifest, manifest_size, config
+        latest_state_id, latest_project_path, root_path, manifest, manifest_size, config
     )
 
-    logger.info(f"[STARTUP] Cached manifest in memory (state_id={latest_state_id})")
+    logger.info(f"[STARTUP] Cached manifest in memory (path={root_path})")
 
 
 @tracer.wrap

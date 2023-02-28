@@ -1,0 +1,10 @@
+kind: Features
+body: With this PR, dbt-server users/clients can pass a project path directly through
+  /parse rather than sending a dictionary of file contents to /push. If a user does
+  this, they can then call other endpoints such as /async/dbt and /compile without
+  a state_id, and the server will default to using that project path.
+time: 2023-01-17T08:38:48.019196-06:00
+custom:
+  Author: racheldaniel
+  Issue: "155"
+  PR: "154"

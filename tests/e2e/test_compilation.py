@@ -1,31 +1,48 @@
 import re
 from fastapi.testclient import TestClient
-from unittest import TestCase
 
 from dbt_server.server import app
-from .helpers import profiles_dir
-from .fixtures import simple, simple2, invalid, Profiles
+from tests.e2e.fixtures import simple, simple2, invalid, Profiles
+from tests.e2e.helpers import DbtCoreTestBase
+from tests.e2e.helpers import miss_postgres_adaptor_package
 
 import hashlib
 import json
+import pytest
 import tempfile
-import os
 
 client = TestClient(app)
 
+# Match profile file.
+TEST_PROFILE = "user"
 
-class ManifestBuildingTestCase(TestCase):
-    def setUp(self):
+
+@pytest.mark.skipif(
+    miss_postgres_adaptor_package(), reason="This test requires dbt-postgres installed."
+)
+class ManifestBuildingTestBase(DbtCoreTestBase):
+    """ManifestBuildingTestBase provides helper function API parse, compile,
+    push endpoints functionality with predefined profiles files in real
+    environment.
+    Notice: you need to install dbt-postgres package to run this test
+    successfully.
+    """
+
+    def setUp(self, profiles_dir):
         # Override working-dir path to keep things clean in dev...
         self.temp_dir = tempfile.TemporaryDirectory()
-        os.environ["__DBT_WORKING_DIR"] = self.temp_dir.name
+        self.set_envs(self.temp_dir.name, profiles_dir)
 
     def tearDown(self):
+        super().tearDown()
         self.temp_dir.cleanup()
-        del os.environ["__DBT_WORKING_DIR"]
 
-    @classmethod
-    def push_fixture_data(cls, file_dict):
+    def push_fixture_data(self, file_dict):
+        """Calls dbt server push end point to push `file_dict`.
+
+        Args:
+            file_dict: key is the file path, value is file content.
+        """
         manifest = {
             key: {
                 "contents": value,
@@ -42,20 +59,24 @@ class ManifestBuildingTestCase(TestCase):
 
         return response
 
-    @classmethod
-    def parse_fixture_data(cls, state_id):
+    def parse_fixture_data(self, profile, state_id):
+        """Calls dbt server parse end point to parse fixture data using
+        `profile` specified by `state_id` which is pushed already.
+        """
         response = client.post(
             "/parse",
             json={
                 "state_id": state_id,
-                "profile": "user",
+                "profile": profile,
             },
         )
 
         return response
 
-    @classmethod
-    def compile_against_state(cls, state_id, sql):
+    def compile_against_state(self, state_id, sql):
+        """Calls dbt server compile end point to compile given `sql` according
+        to fixture specified by `state_id`.
+        """
         response = client.post(
             "/compile",
             json={
@@ -67,26 +88,24 @@ class ManifestBuildingTestCase(TestCase):
         return response
 
 
-class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
+class TestManifestBuildingPostgres(ManifestBuildingTestBase):
     def setUp(self):
-        super().setUp()
-        # Stub out profiles.yml file
-        with profiles_dir(Profiles.Postgres):
-            # Push project code
-            resp_push = self.push_fixture_data(simple.FILES)
-            self.assertEqual(resp_push.status_code, 200)
-            data = resp_push.json()
-            self.state_id = data["state"]
+        super().setUp(Profiles.Postgres)
 
-            # parse project code
-            resp_parse = self.parse_fixture_data(self.state_id)
-            self.assertEqual(resp_parse.status_code, 200)
+        # Push project code
+        resp_push = self.push_fixture_data(simple.FILES)
+        self.assertEqual(resp_push.status_code, 200)
+        data = resp_push.json()
+        self.state_id = data["state"]
+
+        # parse project code
+        resp_parse = self.parse_fixture_data(TEST_PROFILE, self.state_id)
+        self.assertEqual(resp_parse.status_code, 200)
 
     def test_valid_query(self):
         # Compile a query with state
         valid_query = "select {{ 1 + 1 }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, valid_query)
+        resp = self.compile_against_state(self.state_id, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(data["compiled_code"], "select 2")
@@ -94,8 +113,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
     def test_valid_query_implicit_state(self):
         # Compile a query with implicit latest state
         valid_query = "select {{ 2 + 2 }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(None, valid_query)
+        resp = self.compile_against_state(None, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(data["compiled_code"], "select 4")
@@ -103,8 +121,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
     def test_valid_model_reference(self):
         # Compile a query which results in a dbt compilation error
         valid_query = "select * from {{ ref('model_1') }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, valid_query)
+        resp = self.compile_against_state(self.state_id, valid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 200)
         compiled = 'select * from "analytics"."analytics"."model_1"'
@@ -113,8 +130,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
     def test_invalid_query_python_error(self):
         # Compile a query which results in a python error
         invalid_query = "select {{ 1 / 0 }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, invalid_query)
+        resp = self.compile_against_state(self.state_id, invalid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 400)
         self.assertEqual(data["message"], "division by zero")
@@ -122,8 +138,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
     def test_invalid_query_dbt_compilation_error(self):
         # Compile a query which results in a dbt compilation error
         invalid_query = "select * from {{ ref('not_a_model') }}"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, invalid_query)
+        resp = self.compile_against_state(self.state_id, invalid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 400)
         assert bool(re.match("compilation error", data["message"], re.I))
@@ -131,8 +146,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
     def test_valid_query_call_macro(self):
         # Compile a query that calls a dbt user-space macro
         valid_macro_query = "select '{{ my_new_project.my_macro('josh wills') }}'"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, valid_macro_query)
+        resp = self.compile_against_state(self.state_id, valid_macro_query)
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         assert "compiled_code" in data
@@ -140,8 +154,7 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
 
     def test_invalid_query_call_macro(self):
         valid_macro_query = "select '{{ my_macro(unexpected=true) }}'"
-        with profiles_dir(Profiles.Postgres):
-            resp = self.compile_against_state(self.state_id, valid_macro_query)
+        resp = self.compile_against_state(self.state_id, valid_macro_query)
         self.assertEqual(resp.status_code, 400)
         data = resp.json()
         self.maxDiff = None
@@ -158,24 +171,26 @@ class ValidManifestBuildingTestCase(ManifestBuildingTestCase):
         #
         # This test ensures that this property is accessible on the cached
         # manifest
-        with profiles_dir(Profiles.Postgres):
-            resp_push = self.push_fixture_data(simple.FILES)
-            self.assertEqual(resp_push.status_code, 200)
-            data = resp_push.json()
-            state_id = data["state"]
+        resp_push = self.push_fixture_data(simple.FILES)
+        self.assertEqual(resp_push.status_code, 200)
+        data = resp_push.json()
+        state_id = data["state"]
 
-            resp_parse = self.parse_fixture_data(state_id)
-            self.assertEqual(resp_parse.status_code, 200)
+        resp_parse = self.parse_fixture_data(TEST_PROFILE, state_id)
+        self.assertEqual(resp_parse.status_code, 200)
 
-            valid_macro_query = "select '{{ graph.nodes.values() }}'"
-            resp = self.compile_against_state(state_id, valid_macro_query)
+        valid_macro_query = "select '{{ graph.nodes.values() }}'"
+        resp = self.compile_against_state(state_id, valid_macro_query)
 
-            self.assertEqual(resp.status_code, 200)
-            data = resp.json()
-            assert "compiled_code" in data
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        assert "compiled_code" in data
 
 
-class CodeChangeTestCase(ManifestBuildingTestCase):
+class CodeChangeTestCase(ManifestBuildingTestBase):
+    def setUp(self):
+        super().setUp(Profiles.Postgres)
+
     def test_changing_code(self):
         """
         This test exists to ensure that manifest/config caching does not prevent callers
@@ -183,81 +198,81 @@ class CodeChangeTestCase(ManifestBuildingTestCase):
         While only one of these states will be cached in memory at each time, callers
         should be able to compile queries against a state of their choosing in arbitrary order.
         """
-        with profiles_dir(Profiles.Postgres):
-            # Push project code (first project)
-            resp_push = self.push_fixture_data(simple.FILES)
-            self.assertEqual(resp_push.status_code, 200)
-            data = resp_push.json()
-            state_id_1 = data["state"]
+        # Push project code (first project)
+        resp_push = self.push_fixture_data(simple.FILES)
+        self.assertEqual(resp_push.status_code, 200)
+        data = resp_push.json()
+        state_id_1 = data["state"]
 
-            # parse project code
-            resp_parse = self.parse_fixture_data(state_id_1)
-            self.assertEqual(resp_parse.status_code, 200)
+        # parse project code
+        resp_parse = self.parse_fixture_data(TEST_PROFILE, state_id_1)
+        self.assertEqual(resp_parse.status_code, 200)
 
-            # Compile a query with state
-            valid_query = "select * from {{ ref('model_1') }}"
-            resp = self.compile_against_state(state_id_1, valid_query)
-            data = resp.json()
-            self.assertEqual(resp.status_code, 200)
-            self.assertEqual(
-                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
-            )
+        # Compile a query with state
+        valid_query = "select * from {{ ref('model_1') }}"
+        resp = self.compile_against_state(state_id_1, valid_query)
+        data = resp.json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+        )
 
-            # ------- reparse with different code -------#
+        # ------- reparse with different code -------#
 
-            # Push project code (second project)
-            resp_push = self.push_fixture_data(simple2.FILES)
-            self.assertEqual(resp_push.status_code, 200)
-            data = resp_push.json()
-            state_id_2 = data["state"]
+        # Push project code (second project)
+        resp_push = self.push_fixture_data(simple2.FILES)
+        self.assertEqual(resp_push.status_code, 200)
+        data = resp_push.json()
+        state_id_2 = data["state"]
 
-            # parse project code
-            resp_parse = self.parse_fixture_data(state_id_2)
-            self.assertEqual(resp_parse.status_code, 200)
+        # parse project code
+        resp_parse = self.parse_fixture_data(TEST_PROFILE, state_id_2)
+        self.assertEqual(resp_parse.status_code, 200)
 
-            # Compile a query with state
-            valid_query = "select * from {{ ref('model_1') }}"
-            resp = self.compile_against_state(state_id_2, valid_query)
-            data = resp.json()
-            self.assertEqual(resp.status_code, 200)
-            self.assertEqual(
-                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
-            )
+        # Compile a query with state
+        valid_query = "select * from {{ ref('model_1') }}"
+        resp = self.compile_against_state(state_id_2, valid_query)
+        data = resp.json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+        )
 
-            assert state_id_1 != state_id_2
+        assert state_id_1 != state_id_2
 
-            # ------- compile with initial state-------#
+        # ------- compile with initial state-------#
 
-            valid_query = "select * from {{ ref('model_1') }}"
-            resp = self.compile_against_state(state_id_1, valid_query)
-            data = resp.json()
-            self.assertEqual(resp.status_code, 200)
-            self.assertEqual(
-                data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
-            )
+        valid_query = "select * from {{ ref('model_1') }}"
+        resp = self.compile_against_state(state_id_1, valid_query)
+        data = resp.json()
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            data["compiled_code"], 'select * from "analytics"."analytics"."model_1"'
+        )
 
 
-class InvalidManifestBuildingTestCase(ManifestBuildingTestCase):
+class InvalidManifestBuildingTestCase(ManifestBuildingTestBase):
+    def setUp(self):
+        super().setUp(Profiles.Postgres)
+
     def test_compilation_with_invalid_manifest(self):
-        # Stub out profiles.yml file
-        with profiles_dir(Profiles.Postgres):
-            # Push project code
-            resp_push = self.push_fixture_data(invalid.FILES)
-            self.assertEqual(resp_push.status_code, 200)
-            data = resp_push.json()
-            state_id = data["state"]
+        # Push project code
+        resp_push = self.push_fixture_data(invalid.FILES)
+        self.assertEqual(resp_push.status_code, 200)
+        data = resp_push.json()
+        state_id = data["state"]
 
-            # parse project code
-            resp_parse = self.parse_fixture_data(state_id)
+        # parse project code
+        resp_parse = self.parse_fixture_data(TEST_PROFILE, state_id)
 
-            self.assertEqual(resp_parse.status_code, 400)
-            data = resp_parse.json()
-            self.assertTrue(bool(re.match("compilation error", data["message"], re.I)))
+        self.assertEqual(resp_parse.status_code, 400)
+        data = resp_parse.json()
+        self.assertTrue(bool(re.match("compilation error", data["message"], re.I)))
 
-            valid_query = "select {{ 1 + 1 }}"
-            resp = self.compile_against_state(state_id, valid_query)
-            data = resp.json()
-            self.assertEqual(resp.status_code, 422)
-            self.assertTrue(
-                data["message"].startswith("[Errno 2] No such file or directory")
-            )
+        valid_query = "select {{ 1 + 1 }}"
+        resp = self.compile_against_state(state_id, valid_query)
+        data = resp.json()
+        self.assertEqual(resp.status_code, 422)
+        self.assertTrue(
+            data["message"].startswith("[Errno 2] No such file or directory")
+        )
