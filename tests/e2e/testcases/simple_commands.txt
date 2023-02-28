@@ -1,0 +1,13 @@
+# Simple test cases.
+docs generate
+source freshness
+deps
+list
+build
+snapshot
+run
+compile
+test
+seed
+run-operation %MACRO_NAME
+# snapshot is not covered yet

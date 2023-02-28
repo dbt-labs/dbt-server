@@ -1,0 +1,36 @@
+
+# Project Name
+name: dbt_meta_testing_integration_tests
+version: '1.0.0'
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'integration_tests'
+
+config-version: 2
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_modules"]
+
+models:
+  dbt_meta_testing_integration_tests:
+    +required_docs: true
+    staging:
+      +required_tests: true
+    marts:
+      +required_tests: {"unique": 1}
+      model_2:
+        +required_tests:
+          "mocker.*|unique": 1
+          "mock_schema_test": 1
+          ".*data_test": 1
+
+vars:
+  running_intergration_tests: true
+
+dispatch:
+  - macro_namespace: dbt_meta_testing
+    search_order: ['dbt_meta_testing']  # enable override
