@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - 0.1.latest
   pull_request:
     branches:
       - main
-      - 0.1.latest
 
 jobs:
   hygiene:
