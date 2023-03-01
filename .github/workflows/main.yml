@@ -34,9 +34,9 @@ jobs:
   test:
     env:
       # Smoke test required envs.
-      - SMOKE_TEST_POSTGRES_USER: root
-      - SMOKE_TEST_POSTGRES_PASSWORD: testpassword
-      - SMOKE_TEST_DBT_SERVER_START_UP_SECONDS: 15
+      SMOKE_TEST_POSTGRES_USER: root
+      SMOKE_TEST_POSTGRES_PASSWORD: testpassword
+      SMOKE_TEST_DBT_SERVER_START_UP_SECONDS: 15
     name: test code
     runs-on: ubuntu-latest
     timeout-minutes: 3
