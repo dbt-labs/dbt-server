@@ -19,9 +19,11 @@ class InMemoryFlag:
         """
         self.default_value = default_value
         self.env_var = env_var
-        self.value = (environ[self.env_var]
-                      if self.env_var is not None and self.env_var in environ
-                      else self.default_value)
+        self.value = (
+            environ[self.env_var]
+            if self.env_var is not None and self.env_var in environ
+            else self.default_value
+        )
 
     def get(self) -> str:
         """Returns flag value."""
