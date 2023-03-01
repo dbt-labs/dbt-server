@@ -117,8 +117,7 @@ class StateController(object):
         self.is_manifest_cached = is_manifest_cached
 
         # Serialized manifest.msgpack path.
-        self.serialize_path = filesystem_service.get_path(
-            root_path, "manifest.msgpack")
+        self.serialize_path = filesystem_service.get_path(root_path, "manifest.msgpack")
 
     @classmethod
     @tracer.wrap
@@ -165,7 +164,8 @@ class StateController(object):
             parse_args.state_id, parse_args.project_path
         )
         log_details = _generate_log_details(
-            parse_args.state_id, parse_args.project_path)
+            parse_args.state_id, parse_args.project_path
+        )
         logger.info(f"Parsing manifest from filetree ({log_details})")
 
         manifest = dbt_service.parse_to_manifest(root_path, parse_args)
@@ -211,8 +211,7 @@ class StateController(object):
         root_path = filesystem_service.get_root_path(state_id, project_path)
 
         # Don't cache on deserialize - that's only for /parse
-        manifest_path = filesystem_service.get_path(
-            root_path, "manifest.msgpack")
+        manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
         logger.info(f"Loading manifest from file system ({manifest_path})")
         manifest = dbt_service.deserialize_manifest(manifest_path)
         manifest_size = filesystem_service.get_size(manifest_path)
@@ -225,8 +224,7 @@ class StateController(object):
     def serialize_manifest(self):
         """Serialize manifest object to local serialized_path and partial parse
         path, updates manifest_size to the file size."""
-        logger.info(
-            f"Serializing manifest to file system ({self.serialize_path})")
+        logger.info(f"Serializing manifest to file system ({self.serialize_path})")
         partial_parse_path = filesystem_service.get_partial_parse_path()
         dbt_service.serialize_manifest(
             self.manifest, self.serialize_path, partial_parse_path
@@ -283,8 +281,9 @@ class StateController(object):
         return dbt_service.execute_sql(self.manifest, self.root_path, query)
 
     @tracer.wrap
-    def execute_async_command(self, task_id: str, command: List[str],
-                              db: Any, callback_url: str) -> None:
+    def execute_async_command(
+        self, task_id: str, command: List[str], db: Any, callback_url: str
+    ) -> None:
         """Executes core async command. Raises any exception got by core.
 
         Args:
@@ -312,7 +311,7 @@ class StateController(object):
 
 
 def _generate_log_details(state_id: str, project_path: str):
-    """ Helper function to generate a log string including `state_id` and
+    """Helper function to generate a log string including `state_id` and
     `project_path`.
     """
     if state_id is None and project_path:
