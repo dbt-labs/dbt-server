@@ -70,7 +70,7 @@ TEST_LOCAL_TASK_DB_PATH = "working-dir/sql_app.db"
 TEST_LOCAL_STATE_ID_FILE = "working-dir/latest-state-id.txt"
 TEST_LOCAL_PROJECT_PATH_FILE = "working-dir/latest-project-path.txt"
 
-DBT_SERVER_WAIT_SECONDS = 5
+DBT_SERVER_WAIT_SECONDS = int(os.getenv("SMOKE_TEST_DBT_SERVER_START_UP_SECONDS", 5))
 
 
 dbt_server_start_timestamp_seconds = None
