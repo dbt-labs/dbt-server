@@ -269,7 +269,7 @@ class TestSimple(TestJaffleShopBase):
             self.smoke_test.run_async_testcase(command_list, TaskState.ERROR)
 
 
-class TestSimplePostgres(TestJaffleShopPostgresBase, TestSimple):
+class TestSimplePostgres(TestSimple, TestJaffleShopPostgresBase):
     def test_success(self) -> None:
         self._test_success()
 
@@ -277,7 +277,7 @@ class TestSimplePostgres(TestJaffleShopPostgresBase, TestSimple):
         self._test_error()
 
 
-class TestSimpleSnowflake(TestJaffleShopSnowflakeBase, TestSimple):
+class TestSimpleSnowflake(TestSimple, TestJaffleShopSnowflakeBase):
     def test_success(self) -> None:
         self._test_success()
 
