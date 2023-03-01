@@ -166,8 +166,9 @@ def read_serialized_manifest(path: str):
 
 
 @tracer.wrap
-def write_unparsed_manifest_to_disk(state_id: str, previous_state_id: str,
-                                    filedict: dict):
+def write_unparsed_manifest_to_disk(
+    state_id: str, previous_state_id: str, filedict: dict
+):
     """Writes files in `filedict` to root path specified by `state_id`, then
     copies previous partial parsed msgpack to current root path.
 
@@ -191,8 +192,7 @@ def write_unparsed_manifest_to_disk(state_id: str, previous_state_id: str,
         previous_partial_parse_path = get_path(
             get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
         )
-        new_partial_parse_path = get_path(
-            root_path, "target", PARTIAL_PARSE_FILE)
+        new_partial_parse_path = get_path(root_path, "target", PARTIAL_PARSE_FILE)
         if not os.path.exists(previous_partial_parse_path):
             return
         copy_file(previous_partial_parse_path, new_partial_parse_path)
