@@ -56,7 +56,7 @@ jobs:
         with:
           python-version: "3.8"
       - name: set postgres
-          run: sh bash/ubuntu-setup-postgres.sh
+        run: sh bash/ubuntu-setup-postgres.sh
       - name: run tests - releases
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
