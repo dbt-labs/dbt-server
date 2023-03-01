@@ -59,9 +59,9 @@ jobs:
       - name: run tests - head
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
-          pip install "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core"
-          pip install "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres"
-          pip install "https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake"
+          pip install "git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core"
+          pip install "git+https://github.com/dbt-labs/dbt-core#egg=dbt-postgres&subdirectory=plugins/postgres"
+          pip install "git+https://github.com/dbt-labs/dbt-snowflake.git#egg=dbt-snowflake"
           pytest
   build-push:
     name: build and push dbt server images
@@ -85,28 +85,28 @@ jobs:
         include:
           - dbt-core:
               version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
             dbt-database-adapter:
               name: snowflake
-              package: https://github.com/dbt-labs/dbt-snowflake/archive/HEAD.tar.gz#egg=dbt-snowflake
+              package: git+https://github.com/dbt-labs/dbt-snowflake.git#egg=dbt-snowflake
           - dbt-core:
               version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
             dbt-database-adapter:
               name: postgres
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-postgres&subdirectory=plugins/postgres
           - dbt-core:
               version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
             dbt-database-adapter:
               name: redshift
-              package: "https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-postgres&subdirectory=plugins/postgres https://github.com/dbt-labs/dbt-redshift/archive/HEAD.tar.gz#egg=dbt-redshift"
+              package: "git+https://github.com/dbt-labs/dbt-core#egg=dbt-postgres&subdirectory=plugins/postgres git+https://github.com/dbt-labs/dbt-redshift#egg=dbt-redshift"
           - dbt-core:
               version: head
-              package: https://github.com/dbt-labs/dbt-core/archive/HEAD.tar.gz#egg=dbt-core&subdirectory=core
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
             dbt-database-adapter:
               name: bigquery
-              package: https://github.com/dbt-labs/dbt-bigquery/archive/HEAD.tar.gz#egg=dbt-bigquery
+              package: git+https://github.com/dbt-labs/dbt-bigquery#egg=dbt-bigquery
     steps:
       - name: checkout code
         uses: actions/checkout@v2
