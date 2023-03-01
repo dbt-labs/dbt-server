@@ -1,3 +1,5 @@
+import os
+
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 import unittest
@@ -5,6 +7,7 @@ import unittest
 from dbt_server.server import app, startup_cache_initialize
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
+from dbt_server.services.filesystem_service import DEFAULT_WORKING_DIR
 
 
 class FakeManifest:
@@ -47,7 +50,9 @@ class StartupCacheTest(unittest.TestCase):
         startup_cache_initialize()
 
         # Make sure manifest is now cached
-        expected_path = "./working-dir/state-abc123/manifest.msgpack"
+        expected_path = os.path.join(
+            DEFAULT_WORKING_DIR, "state-abc123/manifest.msgpack"
+        )
         mock_fs_get_latest_state_id.assert_called_once_with(None)
         mock_fs_get_size.assert_called_once_with(expected_path)
         mock_dbt.assert_called_once_with(expected_path)
@@ -85,7 +90,9 @@ class StartupCacheTest(unittest.TestCase):
 
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
-        mock_dbt.assert_called_once_with("./working-dir/state-abc123/manifest.msgpack")
+        mock_dbt.assert_called_once_with(
+            os.path.join(DEFAULT_WORKING_DIR, "state-abc123/manifest.msgpack")
+        )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None
 
@@ -105,6 +112,8 @@ class StartupCacheTest(unittest.TestCase):
 
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
-        mock_dbt.assert_called_once_with("./working-dir/state-abc123/manifest.msgpack")
+        mock_dbt.assert_called_once_with(
+            os.path.join(DEFAULT_WORKING_DIR, "state-abc123/manifest.msgpack")
+        )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None
