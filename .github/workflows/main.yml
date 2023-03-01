@@ -55,7 +55,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
-      - name: set postgres
+      - name: setup postgres
         run: sh bash/ubuntu-setup-postgres.sh
       - name: run tests - releases
         run: |
