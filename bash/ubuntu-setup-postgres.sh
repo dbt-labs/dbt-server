@@ -5,7 +5,10 @@
 apt update
 apt install postgresql postgresql-contrib -y
 service postgresql start
-su postgres
-psql -c '\x' -c "CREATE USER root WITH PASSWORD 'testpassword';"
-psql -c '\x' -c "GRANT ALL PRIVILEGES ON DATABASE postgres TO root;"
-exit
+TEMP_SQL_FILE=/tmp/__temp.sql
+cat <<EOF  >${TEMP_SQL_FILE}
+\x
+CREATE USER root WITH PASSWORD 'testpassword';
+GRANT ALL PRIVILEGES ON DATABASE postgres TO root;
+EOF
+su postgres -c "psql -f ${TEMP_SQL_FILE}"
