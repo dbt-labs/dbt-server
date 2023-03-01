@@ -1,4 +1,4 @@
-user:
+jaffle_shop:
   outputs:
     default:
       account: %ACCOUNT
