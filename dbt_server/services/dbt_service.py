@@ -7,6 +7,9 @@ from inspect import getmembers, isfunction
 import dbt.tracking
 import dbt.lib
 import dbt.adapters.factory
+from dbt.config.renderer import DbtProjectYamlRenderer
+from dbt.config.runtime import RuntimeConfig
+from dbt.deps.local import LocalPackage, LocalPinnedPackage
 
 
 # These exceptions were removed in v1.4
@@ -146,9 +149,47 @@ def disable_tracking():
 
 
 @tracer.wrap
+def install_local_deps(config):
+    """
+    Ensure local deps are symlinked properly.
+    """
+    # make sure `config.packages_install_path` is relative to the
+    # project root, not the source code root
+    if not config.packages_install_path.startswith(config.project_root):
+        config.packages_install_path = os.path.join(
+            config.project_root,
+            config.packages_install_path,
+        )
+    # this `RuntimeArgs` is just enough to
+    # get us a minimal profile to call
+    # `LocalPinnnedPackage.install` correctly
+    runtime_args = dbt.lib.RuntimeArgs(
+        project_dir=config.project_root,
+        profiles_dir=None,
+        single_threaded=False,
+        profile=config.profile_name,
+        target=config.target_name,
+    )
+    # create a profile that is used to properly
+    # instantiate `DbtProjectYamlRenderer`
+    profile = RuntimeConfig.collect_profile(
+        args=runtime_args,
+        profile_name=config.profile_name,
+    )
+    if config.packages and config.packages.packages:
+        for pkg in config.packages.packages:
+            if isinstance(pkg, LocalPackage):
+                LocalPinnedPackage(pkg.local).install(
+                    config,
+                    DbtProjectYamlRenderer(profile, None),
+                )
+
+
+@tracer.wrap
 def parse_to_manifest(project_path, args):
     try:
         config = create_dbt_config(project_path, args)
+        install_local_deps(config)
         patch_adapter_config(config)
         return dbt_parse_to_manifest(config)
     except CompilationException as e:

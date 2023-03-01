@@ -1,0 +1,7 @@
+kind: Fixes
+body: Ensure local deps are properly symlinked in dbt_packages
+time: 2023-02-28T18:04:50.78782-07:00
+custom:
+  Author: peter-bertuglia
+  Issue: "1"
+  PR: "186"

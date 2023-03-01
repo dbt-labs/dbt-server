@@ -1,11 +1,13 @@
-from fastapi.testclient import TestClient
+import os
 import unittest
 from unittest.mock import patch, ANY, Mock
 
-from dbt_server.server import app
-from dbt_server.state import StateController, CachedManifest
+from fastapi.testclient import TestClient
 
 from dbt_server.exceptions import dbtCoreCompilationException, StateNotFoundException
+from dbt_server.services.filesystem_service import DEFAULT_WORKING_DIR
+from dbt_server.server import app
+from dbt_server.state import StateController, CachedManifest
 from dbt_server.views import SQLConfig
 
 
@@ -80,7 +82,9 @@ class CompilationInterfaceTests(unittest.TestCase):
 
             expected = {
                 "parsing": state_id,
-                "path": "./working-dir/state-goodid/manifest.msgpack",
+                "path": os.path.join(
+                    DEFAULT_WORKING_DIR, "state-goodid/manifest.msgpack"
+                ),
                 "res": ANY,
                 "compiled_code": compiled_query,
             }
