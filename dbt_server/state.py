@@ -29,8 +29,8 @@ class CachedManifest:
     # Either state_id or project_path must be provided.
     project_path: Optional[str] = None
     # Root path points to dbt project path, it equals to project_path when
-    # project_path is not None, otherwise it points to a temporary directory
-    # that stores pushed dbt project files.
+    # project_path is not None, otherwise it points to the root of the directory
+    # containing the latest project state.
     root_path: Optional[str] = None
     # Dbt core Manifest object. If it's none, it indicates the cache is not set
     # yet.
