@@ -291,7 +291,7 @@ class StateController(object):
             task_id: unique identifier of the task will be executed.
             command: list of string that will be sent to core.
             db: local sqlite session, to store task status locally.
-            callback_url: string, will be called back eventually."""
+            callback_url: url string; if provided, calls will be made with new task status on updated."""
         dbt_service.execute_async_command(
             command,
             task_id,
