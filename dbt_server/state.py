@@ -283,7 +283,7 @@ class StateController(object):
 
     @tracer.wrap
     def execute_async_command(
-        self, task_id: str, command: List[str], db: Any, callback_url: str
+        self, task_id: str, command: List[str], db: Any, callback_url:  Optional[str] = None
     ) -> None:
         """Executes core async command. Raises any exception got by core.
 
