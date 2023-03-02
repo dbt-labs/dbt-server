@@ -55,7 +55,7 @@ def _get_test_cache(state_id: str, project_path: str = TEST_PROJECT_PATH):
 
 
 class TestCachedManifest(TestCase):
-    def setUp(self) -> None:
+    def tearDown(self) -> None:
         LAST_PARSED.reset()
 
     @mock.patch(
