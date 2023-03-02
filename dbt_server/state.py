@@ -93,8 +93,8 @@ LAST_PARSED = CachedManifest()
 
 class StateController(object):
     """StateController stores all dbt core required state including project
-    metadata and manifest, provides core interface to caller. The core will
-    process according to the state."""
+    metadata and manifest, and provides core interface to caller. Any core
+    invocations will process according to the current state."""
 
     def __init__(
         self,
