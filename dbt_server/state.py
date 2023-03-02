@@ -63,10 +63,10 @@ class CachedManifest:
     def lookup(self, state_id):
         """Checks if required manifest hits cached one, returns None if not
         found.
-        - If `state_id` is None, we skip checking cached state_id and returns
-        local cached one.
-        - If `state_id` is None, we will check cached state_id and returns
-        local cached one only if state_id is matched."""
+        - If `state_id` is None, we skip checking cached state_id and return
+        the local cached manifest.
+        - If `state_id` is not None, we will check cached state_id and return the
+        local cached manifest only if state_id is matched."""
         with MANIFEST_LOCK:
             if self.manifest is None:
                 return None
