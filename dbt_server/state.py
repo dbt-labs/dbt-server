@@ -25,7 +25,7 @@ class CachedManifest:
     # it as a manifest version. It's optional and can be None.
     state_id: Optional[str] = None
     # Indicates local dbt project path and is provided on parse. It might be None when
-    # clients push source code to dbt-server and thus provide a state_id instead. 
+    # clients push source code to dbt-server and thus provide a state_id instead.
     # Either state_id or project_path must be provided.
     project_path: Optional[str] = None
     # Root path points to dbt project path, it equals to project_path when
@@ -283,7 +283,11 @@ class StateController(object):
 
     @tracer.wrap
     def execute_async_command(
-        self, task_id: str, command: List[str], db: Any, callback_url:  Optional[str] = None
+        self,
+        task_id: str,
+        command: List[str],
+        db: Any,
+        callback_url: Optional[str] = None,
     ) -> None:
         """Executes core async command. Raises any exception got by core.
 
