@@ -32,9 +32,23 @@ jobs:
         run: flake8 ./tests ./dbt_server
 
   test:
+    env:
+      # Smoke test required envs.
+      # Postgres.
+      SMOKE_TEST_POSTGRES_USER: root
+      SMOKE_TEST_POSTGRES_PASSWORD: testpassword
+      SMOKE_TEST_DBT_SERVER_START_UP_SECONDS: 15
+      # Snowflake.
+      SMOKE_TEST_SNOWFLAKE_ACCOUNT: ${{ secrets.SMOKE_TEST_SNOWFLAKE_ACCOUNT }}
+      SMOKE_TEST_SNOWFLAKE_DATABASE: ${{ secrets.SMOKE_TEST_SNOWFLAKE_DATABASE }}
+      SMOKE_TEST_SNOWFLAKE_PASSWORD: ${{ secrets.SMOKE_TEST_SNOWFLAKE_PASSWORD }}
+      SMOKE_TEST_SNOWFLAKE_ROLE: ${{ secrets.SMOKE_TEST_SNOWFLAKE_ROLE }}
+      SMOKE_TEST_SNOWFLAKE_SCHEMA: ${{ secrets.SMOKE_TEST_SNOWFLAKE_SCHEMA }}
+      SMOKE_TEST_SNOWFLAKE_USER: ${{ secrets.SMOKE_TEST_SNOWFLAKE_USER }}
+      SMOKE_TEST_SNOWFLAKE_WAREHOUSE: ${{ secrets.SMOKE_TEST_SNOWFLAKE_WAREHOUSE }}
     name: test code
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 8
     strategy:
       matrix:
         dbt-core:
@@ -50,6 +64,8 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.8"
+      - name: setup postgres
+        run: sh bash/ubuntu-setup-postgres.sh
       - name: run tests - releases
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
