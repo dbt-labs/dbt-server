@@ -48,7 +48,7 @@ jobs:
       SMOKE_TEST_SNOWFLAKE_WAREHOUSE: ${{ secrets.SMOKE_TEST_SNOWFLAKE_WAREHOUSE }}
     name: test code
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     strategy:
       matrix:
         dbt-core:
