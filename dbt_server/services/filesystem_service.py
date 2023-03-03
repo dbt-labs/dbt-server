@@ -11,18 +11,44 @@ DATABASE_FILE_NAME = "sql_app.db"
 # This is defined in dbt-core-- dir path is configurable but not filename
 DBT_LOG_FILE_NAME = "dbt.log"
 
+#
 # File system tree structure.
-# root_path(dbt project)
+#
 
+# Case 1: with local dbt project.
+# root_path(dbt project)
+#
 # target_path
 # |
 # - partial_parse_path(partial_parse.msgpack)
-
+#
 # working_dir
 # |
 # - task_artifacts_path
 # |        |
 # |        - log_path(dbt.log)
+# |
+# - db_path(sqlite)
+# |
+# - latest_state_file_path
+# |
+# - latest_project_path_file_path
+
+# Case 2: with state_id(i.e. without local dbt project)
+# root_path(dbt project)
+#
+# target_path
+# |
+# - partial_parse_path(partial_parse.msgpack)
+#
+# working_dir
+# |
+# - root_path(per state_id)
+# |        |
+# |        |
+# |        - task_artifacts_path
+# |                 |
+# |                 - log_path(dbt.log)
 # |
 # - db_path(sqlite)
 # |
