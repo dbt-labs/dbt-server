@@ -176,7 +176,7 @@ def write_unparsed_manifest_to_disk(
         state_id: required to get root path.
         previous_state_id: if it's none, we'll skip copy previous partial parsed
             msgpack to current root path.
-        filedict: key is file name and value is file_info."""
+        filedict: key is file name and value is FileInfo."""
     root_path = get_root_path(state_id)
     if os.path.exists(root_path):
         shutil.rmtree(root_path)
