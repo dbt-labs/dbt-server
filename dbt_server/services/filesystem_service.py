@@ -52,8 +52,8 @@ def get_root_path(state_id: str = None, project_path: str = None):
 
     Args:
         state_id: if set, we infer the dbt project is not stored locally,
-            instead it's pushed by client. Hence root path is a temp directory
-            that stores pushed dbt project.
+            instead it's pushed by client. Hence root path is a directory
+            that stores the current state of the pushed dbt project.
         project_path: if set, we infer the dbt project is stored in a local
             fixed directory which is the root path."""
     if project_path is not None:
