@@ -145,8 +145,8 @@ def write_file(path: str, contents: str):
 
 @tracer.wrap
 def copy_file(source_path: str, dest_path: str):
-    """Copies file from `source_path` to `dest_path`. The direcory of
-    `dest_path` will be created recursively if not existed."""
+    """Copies file from `source_path` to `dest_path`. The directory of
+    `dest_path` will be created recursively if it doesn't exist."""
     _ensure_dir_exists(dest_path)
     shutil.copyfile(source_path, dest_path)
 
