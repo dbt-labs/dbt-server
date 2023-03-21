@@ -1,0 +1,7 @@
+kind: Features
+body: Introduce global flag in a single place.
+time: 2023-03-01T09:52:38.189336-08:00
+custom:
+  Author: dichenqiandbt
+  Issue: "187"
+  PR: "187"
