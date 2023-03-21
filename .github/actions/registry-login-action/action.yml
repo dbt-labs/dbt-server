@@ -1,6 +1,15 @@
 name: "Registry Login Action"
-description: "Logins to staging and production registries"
+description: "Logins to development, staging and production registries"
 inputs:
+  development-registry-endpoint:
+    description: "The development registry where the image should be stored"
+    required: true
+  development-registry-username:
+    description: "The username to use when authenticating to the development registry"
+    required: true
+  development-registry-password:
+    description: "The password to use when authenticating to the development registry"
+    required: true
   staging-registry-endpoint:
     description: "The staging registry where the image should be stored"
     required: true
@@ -22,6 +31,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: login to the development container registry
+      uses: docker/login-action@v1
+      with:
+        registry: ${{ inputs.development-registry-endpoint }}
+        username: ${{ inputs.development-registry-username }}
+        password: ${{ inputs.development-registry-password }}
     - name: login to the staging container registry
       uses: docker/login-action@v1
       with:

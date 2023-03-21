@@ -16,6 +16,9 @@ inputs:
   docker-build-args:
     description: "The docker build args to pass to the build step"
     required: false
+  development-registry-endpoint:
+    description: "The development registry where the image should be stored"
+    required: true
   staging-registry-endpoint:
     description: "The staging registry where the image should be stored"
     required: true
@@ -39,6 +42,8 @@ runs:
     - name: build and publish docker image
       uses: docker/build-push-action@v2
       env:
+        DEV_VERSION_TAG: ${{ inputs.development-registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
+        DEV_LATEST_TAG: ${{ inputs.development-registry-endpoint }}/${{ inputs.image-name }}:dev
         STAGING_VERSION_TAG: ${{ inputs.staging-registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
         STAGING_LATEST_TAG: ${{ inputs.staging-registry-endpoint }}/${{ inputs.image-name }}:latest
         PRODUCTION_VERSION_TAG: ${{ inputs.production-registry-endpoint }}/${{ inputs.image-name }}:${{ github.sha }}
@@ -50,5 +55,5 @@ runs:
         target: ${{ inputs.docker-file-target }}
         context: ${{ inputs.docker-context }}
         ssh: ${{ inputs.ssh }}
-        tags: ${{ format('{0}, {1}, {2}, {3}', env.STAGING_VERSION_TAG, env.STAGING_LATEST_TAG, env.PRODUCTION_VERSION_TAG, env.PRODUCTION_LATEST_TAG) }}
+        tags: ${{ format('{0}, {1}, {2}, {3}, {4}, {5}', env.DEV_VERSION_TAG, env.DEV_LATEST_TAG, env.STAGING_VERSION_TAG, env.STAGING_LATEST_TAG, env.PRODUCTION_VERSION_TAG, env.PRODUCTION_LATEST_TAG) }}
         push: ${{ inputs.push }}
