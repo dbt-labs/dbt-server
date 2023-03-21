@@ -11,7 +11,7 @@ app = Celery(
     backend=CELERY_BACKEND_URL.get(),
     # Includes those file for worker process, otherwise worker process can't
     # find task definition.
-    include=["dbt_worker.tasks"]
+    include=["dbt_worker.tasks"],
 )
 
 app.config_from_object(celeryconfig)

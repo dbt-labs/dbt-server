@@ -89,10 +89,10 @@ ALLOW_ORCHESTRATED_SHUTDOWN = InMemoryFlag("ALLOW_ORCHESTRATED_SHUTDOWN", "0")
 
 # Celery task broker url for dbt server to send task.
 CELERY_BROKER_URL = InMemoryFlag(
-    "CELERY_BROKER_URL", "amqp://test:testpassword@127.0.0.1:5672/testhost")
+    "CELERY_BROKER_URL", "amqp://test:testpassword@127.0.0.1:5672/testhost"
+)
 # Celery task backend url for dbt server to get task results.
-CELERY_BACKEND_URL = InMemoryFlag(
-    "CELERY_BACKEND_URL", "redis://localhost:6379/0")
+CELERY_BACKEND_URL = InMemoryFlag("CELERY_BACKEND_URL", "redis://localhost:6379/0")
 
 #
 # EnvironFlag.
