@@ -85,6 +85,13 @@ DBT_WORKING_DIR = InMemoryFlag("__DBT_WORKING_DIR", "./working-dir")
 # `/shutdown` endpoint.
 ALLOW_ORCHESTRATED_SHUTDOWN = InMemoryFlag("ALLOW_ORCHESTRATED_SHUTDOWN", "0")
 
+# Task queue configs.
+
+# Celery task broker url for dbt server to send task.
+CELERY_BROKER_URL = InMemoryFlag("CELERY_BROKER_URL", "redis://localhost:6379/0")
+# Celery task backend url for dbt server to get task results.
+CELERY_BACKEND_URL = InMemoryFlag("CELERY_BACKEND_URL", "redis://localhost:6379/0")
+
 #
 # EnvironFlag.
 #
