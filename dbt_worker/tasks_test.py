@@ -36,11 +36,10 @@ def mock_invoke_failure(command):
 
 
 class TestInvoke(TestCase):
-
     def setUp(self) -> None:
         self.mock_task = MockTask()
         self.mock_dbt_runner = MagicMock()
-    
+
     def tearDown(self) -> None:
         mock_invoke_success.last_command = None
         mock_invoke_failure.last_command = None
@@ -60,7 +59,8 @@ class TestInvoke(TestCase):
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID, state="SUCCESS", meta={})
+            task_id=TEST_TASK_ID, state="SUCCESS", meta={}
+        )
 
     @patch("dbt_worker.tasks.dbtRunner")
     def test_failure(self, patched_dbt_runner):
@@ -76,6 +76,7 @@ class TestInvoke(TestCase):
         self.assertEqual(mock_invoke_failure.last_command, TEST_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID, state="FAILURE", meta={
-                "exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE
-            })
+            task_id=TEST_TASK_ID,
+            state="FAILURE",
+            meta={"exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE},
+        )

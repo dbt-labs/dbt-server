@@ -8,7 +8,7 @@ from celery.states import FAILURE
 from celery.states import SUCCESS
 from dbt.cli.main import dbtRunner
 from threading import Thread
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 # How long the timeout that parent thread should join with child dbt invocation
 # thread. It's used to poll abort status.
@@ -81,10 +81,7 @@ def _invoke(task: Any, command: str, callback_url: Optional[str] = None):
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(
-        target=_invoke_runner,
-        args=[task, task_id, command, callback_url]
-    )
+    t = Thread(target=_invoke_runner, args=[task, task_id, command, callback_url])
     t.start()
     while t.is_alive():
         # TODO: Handle abort signal.
