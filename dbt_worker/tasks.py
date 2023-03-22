@@ -66,12 +66,12 @@ def _get_task_status(task: Any, task_id: str):
     return task.AsyncResult(task_id).state
 
 
-def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
+def _invoke(task: Any, command: str, callback_url: Optional[str] = None):
     """Invokes dbt command.
     Args:
-        command: list of dbt commands that will be executed, e.g. ["run",
-            "--project-dir", "/a/b/jaffle_shop"].
-        callback_url: string, if set any time the task status is updated, worker
+        command: Dbt commands that will be executed, e.g.
+            "run --project-dir /a/b/jaffle_shop".
+        callback_url: String, if set any time the task status is updated, worker
             will make a callback. Notice it's not complete, in some cases task
             status may be updated but we are not able to trigger callback, e.g.
             worker process is killed."""
@@ -83,7 +83,7 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
     # monitor abort signal and join with child thread.
     t = Thread(
         target=_invoke_runner,
-        args=[task, task_id, " ".join(command), callback_url]
+        args=[task, task_id, command, callback_url]
     )
     t.start()
     while t.is_alive():
@@ -107,5 +107,5 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
 
 
 @app.task(bind=True, track_started=True, base=AbortableTask)
-def invoke(self, command: List[str], callback_url: Optional[str] = None):
+def invoke(self, command: str, callback_url: Optional[str] = None):
     _invoke(self, command, callback_url)

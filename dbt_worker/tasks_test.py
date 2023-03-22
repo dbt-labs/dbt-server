@@ -5,8 +5,7 @@ from unittest import TestCase
 from unittest.mock import patch
 from unittest.mock import MagicMock
 
-TEST_COMMAND = ["run", "--flag", "test"]
-TEST_COMMADN_STRING = "run --flag test"
+TEST_COMMAND = "run --flag test"
 TEST_TASK_ID = "test_id"
 TEST_ERROR_MESSAGE = "test error"
 
@@ -24,13 +23,15 @@ class MockTask:
         self.update_state = MagicMock()
 
 
-def mock_invoke_success(_):
+def mock_invoke_success(command):
     sleep(1)
+    mock_invoke_success.last_command = command
     return None, None
 
 
-def mock_invoke_failure(_):
+def mock_invoke_failure(command):
     sleep(1)
+    mock_invoke_failure.last_command = command
     raise Exception(TEST_ERROR_MESSAGE)
 
 
@@ -39,6 +40,10 @@ class TestInvoke(TestCase):
     def setUp(self) -> None:
         self.mock_task = MockTask()
         self.mock_dbt_runner = MagicMock()
+    
+    def tearDown(self) -> None:
+        mock_invoke_success.last_command = None
+        mock_invoke_failure.last_command = None
 
     @patch("dbt_worker.tasks.dbtRunner")
     def test_success(self, patched_dbt_runner):
@@ -51,6 +56,7 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
+        self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
@@ -67,6 +73,7 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
+        self.assertEqual(mock_invoke_failure.last_command, TEST_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID, state="FAILURE", meta={
