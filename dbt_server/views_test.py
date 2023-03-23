@@ -98,9 +98,7 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             f"{TEST_LOG_DIR}/{TEST_TASK_ID}/dbt.log"
         )
         resp = await post_invocation(
-            PostInvocationRequest(
-                command=TEST_COMMAND, callback_url=TEST_URL
-            )
+            PostInvocationRequest(command=TEST_COMMAND, callback_url=TEST_URL)
         )
         mock_invoke.apply_async.assert_called_once_with(
             args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=None
