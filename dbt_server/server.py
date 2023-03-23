@@ -37,8 +37,8 @@ def startup_cache_initialize():
     if latest_state_id is None:
         logger.info("[STARTUP] No latest state found - not loading manifest into cache")
         return
-
-    manifest_path = filesystem_service.get_path(latest_state_id, "manifest.msgpack")
+    root_path = filesystem_service.get_root_path(latest_state_id)
+    manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
     logger.info(
         f"[STARTUP] Loading manifest from file system (state_id={latest_state_id})"
     )

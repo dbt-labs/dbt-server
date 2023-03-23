@@ -20,7 +20,7 @@ def run_task(task_name, task_id, args, db):
     db_task = crud.get_task(db, task_id)
 
     path = filesystem_service.get_root_path(args.state_id)
-    serialize_path = filesystem_service.get_path(args.state_id, "manifest.msgpack")
+    serialize_path = filesystem_service.get_path(path, "manifest.msgpack")
     # log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
 
     # log_manager = LogManager(log_path)
@@ -64,7 +64,8 @@ def run_task(task_name, task_id, args, db):
 
 def run_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id, state=TaskState.PENDING, command="dbt run", log_path=log_path
@@ -80,7 +81,8 @@ def run_async(background_tasks, db, args):
 
 def test_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id, state=TaskState.PENDING, command="dbt test", log_path=log_path
@@ -96,7 +98,8 @@ def test_async(background_tasks, db, args):
 
 def seed_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id, state=TaskState.PENDING, command="dbt seed", log_path=log_path
@@ -112,7 +115,8 @@ def seed_async(background_tasks, db, args):
 
 def build_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id, state=TaskState.PENDING, command="dbt build", log_path=log_path
@@ -128,7 +132,8 @@ def build_async(background_tasks, db, args):
 
 def run_operation_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id,
@@ -147,7 +152,8 @@ def run_operation_async(background_tasks, db, args):
 
 def snapshot_async(background_tasks, db, args):
     task_id = str(uuid.uuid4())
-    log_path = filesystem_service.get_path(args.state_id, task_id, "logs.stdout")
+    path = filesystem_service.get_root_path(args.state_id)
+    log_path = filesystem_service.get_path(path, task_id, "logs.stdout")
 
     task = schemas.Task(
         task_id=task_id,

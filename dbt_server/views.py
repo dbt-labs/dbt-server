@@ -263,6 +263,7 @@ async def ready():
 @app.post("/push")
 def push_unparsed_manifest(args: PushProjectArgs):
     # Parse / validate it
+    previous_state_id = filesystem_service.get_latest_state_id(None)
     state_id = filesystem_service.get_latest_state_id(args.state_id)
 
     size_in_files = len(args.body)
@@ -275,8 +276,9 @@ def push_unparsed_manifest(args: PushProjectArgs):
     # Stupid example of reusing an existing manifest
     if not os.path.exists(path):
         reuse = False
-        filesystem_service.write_unparsed_manifest_to_disk(state_id, args.body)
-
+        filesystem_service.write_unparsed_manifest_to_disk(
+            state_id, previous_state_id, args.body
+        )
     # Write messagepack repr to disk
     # Return a key that the client can use to operate on it?
     return JSONResponse(
@@ -309,7 +311,7 @@ def parse_project(args: ParseArgs):
 async def run_models(args: RunArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    serialize_path = filesystem_service.get_path(path, "manifest.msgpack")
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_run(path, args, manifest)
@@ -328,7 +330,7 @@ async def run_models(args: RunArgs):
 async def list_resources(args: ListArgs):
     state_id = filesystem_service.get_latest_state_id(args.state_id)
     path = filesystem_service.get_root_path(state_id)
-    serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+    serialize_path = filesystem_service.get_path(path, "manifest.msgpack")
 
     manifest = dbt_service.deserialize_manifest(serialize_path)
     results = dbt_service.dbt_list(path, args, manifest)
