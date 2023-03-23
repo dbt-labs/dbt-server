@@ -58,8 +58,7 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
-        self.assertEqual(mock_invoke_success.last_command,
-                         TEST_RESOLVED_COMMAND)
+        self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
@@ -77,8 +76,7 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
-        self.assertEqual(mock_invoke_failure.last_command,
-                         TEST_RESOLVED_COMMAND)
+        self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID,

@@ -46,8 +46,9 @@ def _update_state(
     # TODO: Add callback logic.
 
 
-def _invoke_runner(task: Any, task_id: str, command: List[str],
-                   callback_url: Optional[str]):
+def _invoke_runner(
+    task: Any, task_id: str, command: List[str], callback_url: Optional[str]
+):
     """Invokes dbt runner with `command`, update task state if any exception is
     raised.
 
@@ -87,7 +88,7 @@ def _insert_log_path(command: List[str], task_id: str):
 def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
     """Invokes dbt command.
     Args:
-        command: Dbt commands that will be executed, e.g. ["run", 
+        command: Dbt commands that will be executed, e.g. ["run",
             "--project-dir", "/a/b/jaffle_shop"].
         callback_url: String, if set any time the task status is updated, worker
             will make a callback. Notice it's not complete, in some cases task
@@ -100,8 +101,7 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(target=_invoke_runner, args=[
-               task, task_id, command, callback_url])
+    t = Thread(target=_invoke_runner, args=[task, task_id, command, callback_url])
     t.start()
     while t.is_alive():
         # TODO: Handle abort signal.
