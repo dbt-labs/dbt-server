@@ -101,8 +101,7 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(target=_invoke_runner, args=[
-               task, task_id, command, callback_url])
+    t = Thread(target=_invoke_runner, args=[task, task_id, command, callback_url])
     t.start()
     while t.is_alive():
         # TODO: Handle abort signal.
