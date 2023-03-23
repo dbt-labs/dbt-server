@@ -1,5 +1,6 @@
 from dbt_worker.app import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.services.filesystem_service import get_task_artifacts_path
 from celery.contrib.abortable import AbortableTask
 from celery.contrib.abortable import ABORTED
 from celery.exceptions import Ignore
@@ -13,6 +14,13 @@ from typing import Any, Dict, Optional
 # How long the timeout that parent thread should join with child dbt invocation
 # thread. It's used to poll abort status.
 JOIN_INTERVAL_SECONDS = 0.5
+LOG_PATH_ARGS = "--log-path"
+
+
+def _is_command_has_log_path(command: str):
+    """Returns true if command has --log-path args."""
+    # This approach is not 100% accurate but should be good for most cases.
+    return LOG_PATH_ARGS in command
 
 
 def _update_state(
@@ -66,6 +74,14 @@ def _get_task_status(task: Any, task_id: str):
     return task.AsyncResult(task_id).state
 
 
+def _insert_log_path(command: str, task_id: str):
+    """If command doesn't specify log path, insert default log path at start."""
+    # We respect user input log_path.
+    if _is_command_has_log_path(command):
+        return command
+    return f"{LOG_PATH_ARGS}={get_task_artifacts_path(task_id, None)} " + command
+
+
 def _invoke(task: Any, command: str, callback_url: Optional[str] = None):
     """Invokes dbt command.
     Args:
@@ -76,12 +92,14 @@ def _invoke(task: Any, command: str, callback_url: Optional[str] = None):
             status may be updated but we are not able to trigger callback, e.g.
             worker process is killed."""
     task_id = task.request.id
+    command = _insert_log_path(command, task_id)
     logger.info(f"Running dbt task ({task_id}) with {command}")
     # TODO: Send callback to infer task start.
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(target=_invoke_runner, args=[task, task_id, command, callback_url])
+    t = Thread(target=_invoke_runner, args=[
+               task, task_id, command, callback_url])
     t.start()
     while t.is_alive():
         # TODO: Handle abort signal.
