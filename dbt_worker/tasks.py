@@ -17,7 +17,7 @@ JOIN_INTERVAL_SECONDS = 0.5
 LOG_PATH_ARGS = "--log-path"
 
 
-def _is_command_has_log_path(command: List[str]):
+def is_command_has_log_path(command: List[str]):
     """Returns true if command has --log-path args."""
     # This approach is not 100% accurate but should be good for most cases.
     return any([LOG_PATH_ARGS in item for item in command])
@@ -79,7 +79,7 @@ def _get_task_status(task: Any, task_id: str):
 def _insert_log_path(command: List[str], task_id: str):
     """If command doesn't specify log path, insert default log path at start."""
     # We respect user input log_path.
-    if _is_command_has_log_path(command):
+    if is_command_has_log_path(command):
         return
     command.insert(0, LOG_PATH_ARGS)
     command.insert(1, get_task_artifacts_path(task_id, None))
