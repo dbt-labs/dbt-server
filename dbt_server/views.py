@@ -372,7 +372,8 @@ class PostInvocationRequest(BaseModel):
     # command list. If not set, dbt server will fallback to environment variable
     # and append it. If environment variable is empty, request will be rejected.
     # Notice user can specify --project-dir args in command directly, in that
-    # case, we will respect user request and won't append anything.
+    # case, we will respect user request and won't append anything. It's 
+    # exclusive with request project_dir field as well.
     project_dir: Optional[str]
     # Optional, if set dbt worker will trigger callback with task id and task
     # status when task status is updated.
