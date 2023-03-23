@@ -5,8 +5,9 @@ from unittest import TestCase
 from unittest.mock import patch
 from unittest.mock import MagicMock
 
-TEST_COMMAND = "run --flag test"
-TEST_RESOLVED_COMMAND = "--log-path=/artifacts run --flag test"
+TEST_LOG_PATH = "/test_path"
+TEST_COMMAND = ["run", "--flag", "test"]
+TEST_RESOLVED_COMMAND = ["--log-path", TEST_LOG_PATH, "run", "--flag", "test"]
 TEST_TASK_ID = "test_id"
 TEST_ERROR_MESSAGE = "test error"
 
@@ -36,7 +37,7 @@ def mock_invoke_failure(command):
     raise Exception(TEST_ERROR_MESSAGE)
 
 
-@patch("dbt_worker.tasks.get_task_artifacts_path", return_value="/artifacts")
+@patch("dbt_worker.tasks.get_task_artifacts_path", return_value=TEST_LOG_PATH)
 class TestInvoke(TestCase):
     def setUp(self) -> None:
         self.mock_task = MockTask()
@@ -57,7 +58,8 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
-        self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
+        self.assertEqual(mock_invoke_success.last_command,
+                         TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
@@ -75,7 +77,8 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, None)
 
-        self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
+        self.assertEqual(mock_invoke_failure.last_command,
+                         TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID,

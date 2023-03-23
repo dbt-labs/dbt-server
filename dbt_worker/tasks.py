@@ -9,7 +9,7 @@ from celery.states import FAILURE
 from celery.states import SUCCESS
 from dbt.cli.main import dbtRunner
 from threading import Thread
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 # How long the timeout that parent thread should join with child dbt invocation
 # thread. It's used to poll abort status.
@@ -46,14 +46,15 @@ def _update_state(
     # TODO: Add callback logic.
 
 
-def _invoke_runner(task: Any, task_id: str, command: str, callback_url: Optional[str]):
+def _invoke_runner(task: Any, task_id: str, command: List[str],
+                   callback_url: Optional[str]):
     """Invokes dbt runner with `command`, update task state if any exception is
     raised.
 
     Args:
         task: Celery task.
         task_id: Task id, it's required to update task state.
-        command: Dbt invocation command.
+        command: Dbt invocation command list.
         callback_url: If set, if core raises any error, a callback will be
             triggered."""
     try:
@@ -74,25 +75,26 @@ def _get_task_status(task: Any, task_id: str):
     return task.AsyncResult(task_id).state
 
 
-def _insert_log_path(command: str, task_id: str):
+def _insert_log_path(command: List[str], task_id: str):
     """If command doesn't specify log path, insert default log path at start."""
     # We respect user input log_path.
-    if _is_command_has_log_path(command):
-        return command
-    return f"{LOG_PATH_ARGS}={get_task_artifacts_path(task_id, None)} " + command
+    if any([_is_command_has_log_path(item) for item in command]):
+        return
+    command.insert(0, LOG_PATH_ARGS)
+    command.insert(1, get_task_artifacts_path(task_id, None))
 
 
-def _invoke(task: Any, command: str, callback_url: Optional[str] = None):
+def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
     """Invokes dbt command.
     Args:
-        command: Dbt commands that will be executed, e.g.
-            "run --project-dir /a/b/jaffle_shop".
+        command: Dbt commands that will be executed, e.g. ["run", 
+            "--project-dir", "/a/b/jaffle_shop"].
         callback_url: String, if set any time the task status is updated, worker
             will make a callback. Notice it's not complete, in some cases task
             status may be updated but we are not able to trigger callback, e.g.
             worker process is killed."""
     task_id = task.request.id
-    command = _insert_log_path(command, task_id)
+    _insert_log_path(command, task_id)
     logger.info(f"Running dbt task ({task_id}) with {command}")
     # TODO: Send callback to infer task start.
 
