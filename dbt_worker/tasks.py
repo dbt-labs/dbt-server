@@ -17,10 +17,10 @@ JOIN_INTERVAL_SECONDS = 0.5
 LOG_PATH_ARGS = "--log-path"
 
 
-def _is_command_has_log_path(command: str):
+def _is_command_has_log_path(command: List[str]):
     """Returns true if command has --log-path args."""
     # This approach is not 100% accurate but should be good for most cases.
-    return LOG_PATH_ARGS in command
+    return any([LOG_PATH_ARGS in item for item in command])
 
 
 def _update_state(
@@ -79,7 +79,7 @@ def _get_task_status(task: Any, task_id: str):
 def _insert_log_path(command: List[str], task_id: str):
     """If command doesn't specify log path, insert default log path at start."""
     # We respect user input log_path.
-    if any([_is_command_has_log_path(item) for item in command]):
+    if _is_command_has_log_path(command):
         return
     command.insert(0, LOG_PATH_ARGS)
     command.insert(1, get_task_artifacts_path(task_id, None))
@@ -101,7 +101,8 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(target=_invoke_runner, args=[task, task_id, command, callback_url])
+    t = Thread(target=_invoke_runner, args=[
+               task, task_id, command, callback_url])
     t.start()
     while t.is_alive():
         # TODO: Handle abort signal.
