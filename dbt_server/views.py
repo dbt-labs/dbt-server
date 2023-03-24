@@ -169,7 +169,7 @@ def _list_all_task_ids_redis() -> List[str]:
 def _list_all_task_ids() -> List[str]:
     """Lists list of all Celery task ids."""
     if isinstance(celery_app.backend, RedisBackend):
-        _list_all_task_ids_redis()
+        return _list_all_task_ids_redis()
     else:
         raise Exception(
             f"We haven't support {type(celery_app.backend)} in _list_all_task_ids yet."
