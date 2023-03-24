@@ -1,0 +1,7 @@
+kind: Features
+body: Adds partial parsing
+time: 2023-03-24T10:39:31.526957-05:00
+custom:
+  Author: racheldaniel
+  Issue: "1"
+  PR: "196"
