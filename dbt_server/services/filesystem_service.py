@@ -7,7 +7,6 @@ from dbt_server import tracer
 
 DEFAULT_WORKING_DIR = os.path.join(os.getcwd(), "working-dir")
 PARTIAL_PARSE_FILE = "partial_parse.msgpack"
-DEFAULT_TARGET_DIR = os.path.join(os.getcwd(), "target")
 
 
 def get_working_dir():
@@ -100,6 +99,8 @@ def write_unparsed_manifest_to_disk(
         write_file(path, file_info.contents)
 
     if previous_state_id and state_id != previous_state_id:
+        # There is an env var DBT_TARGET_PATH that can change the target folder
+        # destination in the CLI, but dbt-server 0.1.0 doesn't support this var
         previous_partial_parse_path = get_path(
             get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
         )
@@ -107,20 +108,6 @@ def write_unparsed_manifest_to_disk(
         if not os.path.exists(previous_partial_parse_path):
             return
         copy_file(previous_partial_parse_path, new_partial_parse_path)
-
-
-def get_target_path():
-    """Returns dbt-core compiled target path."""
-    # TODO: The --target-path flag should override this, but doesn't
-    # appear to be working on invoke. When it does, need to revisit
-    # how partial parsing is working
-    return os.environ.get("DBT_TARGET_PATH", DEFAULT_TARGET_DIR)
-
-
-def get_partial_parse_path():
-    """Returns dbt-core compiled partial parse file."""
-    target_path = get_target_path()
-    return os.path.join(target_path, PARTIAL_PARSE_FILE)
 
 
 @tracer.wrap

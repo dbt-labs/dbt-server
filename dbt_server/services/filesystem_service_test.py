@@ -1,7 +1,6 @@
 import os
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.services.filesystem_service import get_working_dir
-from dbt_server.services.filesystem_service import get_partial_parse_path
 from dbt_server.services.filesystem_service import get_latest_state_file_path
 from dbt_server.services.filesystem_service import get_path
 from dbt_server.services.filesystem_service import get_size
@@ -49,10 +48,6 @@ class TestCachedManifest(TestCase):
         # Default
         expected = self.__get_expected_path("working-dir")
         self.assertEqual(get_working_dir(), expected)
-
-    def test_get_partial_parse_path(self):
-        expected = self.__get_expected_path("target/partial_parse.msgpack")
-        self.assertEqual(get_partial_parse_path(), expected)
 
     def test_get_latest_state_file_path(self):
         expected = self.__get_expected_path("working-dir/latest-state-id.txt")
