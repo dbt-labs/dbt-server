@@ -37,10 +37,10 @@ class TestCachedManifest(TestCase):
             del environ["__DBT_WORKING_DIR"]
         if "DBT_TARGET_PATH" in environ:
             del environ["DBT_TARGET_PATH"]
-          
+
     def __get_expected_path(self, relative_path):
         return os.path.join(os.getcwd(), relative_path)
-    
+
     def test_get_working_dir(self):
         # Env
         environ["__DBT_WORKING_DIR"] = TEST_PATH
@@ -50,19 +50,16 @@ class TestCachedManifest(TestCase):
         expected = self.__get_expected_path("working-dir")
         self.assertEqual(get_working_dir(), expected)
 
-
     def test_get_partial_parse_path(self):
         expected = self.__get_expected_path("target/partial_parse.msgpack")
         self.assertEqual(get_partial_parse_path(), expected)
 
     def test_get_latest_state_file_path(self):
         expected = self.__get_expected_path("working-dir/latest-state-id.txt")
-        self.assertEqual(
-            get_latest_state_file_path(),expected
-        )
+        self.assertEqual(get_latest_state_file_path(), expected)
 
     def test_get_path(self):
-        expected = self.__get_expected_path("a/b/c")  
+        expected = self.__get_expected_path("a/b/c")
         self.assertEqual(get_path("a", "b", "c"), expected)
 
     def test_get_size(self):

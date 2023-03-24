@@ -63,7 +63,9 @@ class StateController(object):
         self.is_manifest_cached = is_manifest_cached
 
         self.root_path = filesystem_service.get_root_path(state_id)
-        self.serialize_path = filesystem_service.get_path(self.root_path, "manifest.msgpack")
+        self.serialize_path = filesystem_service.get_path(
+            self.root_path, "manifest.msgpack"
+        )
 
     @classmethod
     @tracer.wrap

@@ -70,6 +70,7 @@ def _ensure_dir_exists(path: str):
     if not os.path.exists(dirname):
         os.makedirs(dirname)
 
+
 @tracer.wrap
 def copy_file(source_path: str, dest_path: str):
     """Copies file from `source_path` to `dest_path`. The directory of
