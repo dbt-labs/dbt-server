@@ -155,7 +155,7 @@ def _lookup_abortable_async_result(task_id: str) -> bool:
 
 
 def _list_all_task_ids_redis() -> List[str]:
-    """Lists list of all Celery task ids from redis backend."""
+    """Lists all Celery task ids from redis backend."""
     backend = celery_app.backend
     key = backend.get_key_for_task("*")
     # Celery will insert a prefix automatically, we need to remove it.
