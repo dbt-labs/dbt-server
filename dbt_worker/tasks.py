@@ -124,5 +124,5 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
 
 
 @app.task(bind=True, track_started=True, base=AbortableTask)
-def invoke(self, command: str, callback_url: Optional[str] = None):
+def invoke(self, command: List[str], callback_url: Optional[str] = None):
     _invoke(self, command, callback_url)
