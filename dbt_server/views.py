@@ -396,7 +396,7 @@ class PostInvocationResponse(BaseModel):
     log_path: Optional[str]
 
 
-@app.post("/invocation")
+@app.post("/invocations")
 async def post_invocation(args: PostInvocationRequest):
     """Accepts user dbt invocation request, creates a task in task queue."""
     command = deepcopy(args.command)
