@@ -146,7 +146,7 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
         )
 
 
-def _lookup_abortable_async_result(task_id: str) -> bool:
+def _lookup_result(task_id: str) -> bool:
     """Looks up Celery abortable async result by `task_id`, returns false if not
     found."""
     backend = celery_app.backend
@@ -392,7 +392,7 @@ async def get_invocation(task_id: str):
         convert_celery_result_to_invocation(
             AbortableAsyncResult(task_id, app=celery_app)
         )
-        if _lookup_abortable_async_result(task_id)
+        if _lookup_result(task_id)
         else get_not_found_invocation(task_id)
     )
 
