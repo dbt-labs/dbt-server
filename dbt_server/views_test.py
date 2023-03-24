@@ -46,6 +46,7 @@ class TestPostInvocationRequest(TestCase):
 
 @patch("dbt_server.views.invoke")
 @patch("dbt_server.views.filesystem_service")
+@patch("dbt_server.views.uuid4", lambda: TEST_TASK_ID)
 class TestPostInvocation(IsolatedAsyncioTestCase):
     async def test_success(self, mock_filesystem_service, mock_invoke):
         DBT_PROJECT_DIRECTORY.set(None)
@@ -59,7 +60,10 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=None
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+        )
+        mock_invoke.backend.store_result.assert_called_once_with(
+            TEST_TASK_ID, None, "PENDING"
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -81,7 +85,10 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=None
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+        )
+        mock_invoke.backend.store_result.assert_called_once_with(
+            TEST_TASK_ID, None, "PENDING"
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
@@ -101,10 +108,36 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             PostInvocationRequest(command=TEST_COMMAND, callback_url=TEST_URL)
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=None
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+        )
+        mock_invoke.backend.store_result.assert_called_once_with(
+            TEST_TASK_ID, None, "PENDING"
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(
             loads(resp.body),
             {"log_path": "/log/task_id/dbt.log", "task_id": TEST_TASK_ID},
+        )
+
+    async def test_success_input_task_id(self, mock_filesystem_service, mock_invoke):
+        DBT_PROJECT_DIRECTORY.set(TEST_DIR)
+        mock_invoke.apply_async.return_value = mock_task_obj
+        mock_filesystem_service.get_log_path.return_value = (
+            f"{TEST_LOG_DIR}/USER_TASK_ID/dbt.log"
+        )
+        resp = await post_invocation(
+            PostInvocationRequest(
+                command=TEST_COMMAND, callback_url=TEST_URL, task_id="USER_TASK_ID"
+            )
+        )
+        mock_invoke.apply_async.assert_called_once_with(
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id="USER_TASK_ID"
+        )
+        mock_invoke.backend.store_result.assert_called_once_with(
+            "USER_TASK_ID", None, "PENDING"
+        )
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(
+            loads(resp.body),
+            {"log_path": "/log/USER_TASK_ID/dbt.log", "task_id": "USER_TASK_ID"},
         )

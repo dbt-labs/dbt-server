@@ -3,7 +3,10 @@ import dbt.events.functions
 import os
 import signal
 import uuid
+from uuid import uuid4
 
+from celery.states import PENDING
+from celery.states import FAILURE
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -401,17 +404,31 @@ async def post_invocation(args: PostInvocationRequest):
     """Accepts user dbt invocation request, creates a task in task queue."""
     command = deepcopy(args.command)
     _append_project_dir(command, args.project_dir)
+    task_id = str(uuid4()) if args.task_id is None else args.task_id
 
-    task = invoke.apply_async(args=[command, args.callback_url], task_id=args.task_id)
-    task_id = task.id
-    logger.info(f"Invoke: {command}, task_id: {task_id}")
+    # Manually store PENDING status in backend otherwise we can't tell apart
+    # if task_id is missed or haven't been picked up by worker.
+    invoke.backend.store_result(task_id, None, PENDING)
+    try:
+        logger.info(f"Invoke: {command}, task_id: {task_id}")
+        invoke.apply_async(args=[command, args.callback_url], task_id=task_id)
+    except Exception as e:
+        # If invocation is failed, change state to FAILURE. In strange case
+        # that below store_result is failed, the request will always be PENDING.
+        invoke.backend.store_result(
+            task_id,
+            {
+                {"exc_type": type(e).__name__, "exc_message": str(e)},
+            },
+            FAILURE,
+        )
+
     response = PostInvocationResponse(
         task_id=task_id,
         log_path=None
         if is_command_has_log_path(command)
         else filesystem_service.get_log_path(task_id, None),
     )
-
     return JSONResponse(
         status_code=200,
         content=response.dict(exclude_unset=True),
