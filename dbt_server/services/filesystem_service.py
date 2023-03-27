@@ -6,6 +6,7 @@ from dbt_server import tracer
 
 
 DEFAULT_WORKING_DIR = os.path.join(os.getcwd(), "working-dir")
+PARTIAL_PARSE_FILE = "partial_parse.msgpack"
 
 
 def get_working_dir():
@@ -25,8 +26,8 @@ def get_latest_state_file_path():
     return os.path.join(working_dir, "latest-state-id.txt")
 
 
-def get_path(state_id, *path_parts):
-    return os.path.join(get_root_path(state_id), *path_parts)
+def get_path(*path_parts):
+    return os.path.abspath(os.path.join(*path_parts))
 
 
 @tracer.wrap
@@ -61,14 +62,52 @@ def read_serialized_manifest(path):
 
 
 @tracer.wrap
-def write_unparsed_manifest_to_disk(state_id, filedict):
+def _ensure_dir_exists(path: str):
+    """Check directory of `path` exists, if not make new directory
+    recursively."""
+    dirname = os.path.dirname(path)
+    if not os.path.exists(dirname):
+        os.makedirs(dirname)
+
+
+@tracer.wrap
+def copy_file(source_path: str, dest_path: str):
+    """Copies file from `source_path` to `dest_path`. The directory of
+    `dest_path` will be created recursively if it doesn't exist."""
+    _ensure_dir_exists(dest_path)
+    shutil.copyfile(source_path, dest_path)
+
+
+@tracer.wrap
+def write_unparsed_manifest_to_disk(
+    state_id: str, previous_state_id: str, filedict: dict
+):
+    """Writes files in `filedict` to root path specified by `state_id`, then
+    copies previous partial parsed msgpack to current root path.
+
+    Args:
+        state_id: required to get root path.
+        previous_state_id: if it's none, we'll skip copy previous partial parsed
+            msgpack to current root path.
+        filedict: key is file name and value is FileInfo."""
     root_path = get_root_path(state_id)
     if os.path.exists(root_path):
         shutil.rmtree(root_path)
 
     for filename, file_info in filedict.items():
-        path = get_path(state_id, filename)
+        path = get_path(root_path, filename)
         write_file(path, file_info.contents)
+
+    if previous_state_id and state_id != previous_state_id:
+        # There is an env var DBT_TARGET_PATH that can change the target folder
+        # destination in the CLI, but dbt-server 0.1.0 doesn't support this var
+        previous_partial_parse_path = get_path(
+            get_root_path(previous_state_id), "target", PARTIAL_PARSE_FILE
+        )
+        new_partial_parse_path = get_path(root_path, "target", PARTIAL_PARSE_FILE)
+        if not os.path.exists(previous_partial_parse_path):
+            return
+        copy_file(previous_partial_parse_path, new_partial_parse_path)
 
 
 @tracer.wrap

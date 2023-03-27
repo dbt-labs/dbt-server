@@ -63,7 +63,9 @@ class StateController(object):
         self.is_manifest_cached = is_manifest_cached
 
         self.root_path = filesystem_service.get_root_path(state_id)
-        self.serialize_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+        self.serialize_path = filesystem_service.get_path(
+            self.root_path, "manifest.msgpack"
+        )
 
     @classmethod
     @tracer.wrap
@@ -133,7 +135,8 @@ class StateController(object):
             )
 
         # Don't cache on deserialize - that's only for /parse
-        manifest_path = filesystem_service.get_path(state_id, "manifest.msgpack")
+        root_path = filesystem_service.get_root_path(state_id)
+        manifest_path = filesystem_service.get_path(root_path, "manifest.msgpack")
         logger.info(f"Loading manifest from file system ({manifest_path})")
         manifest = dbt_service.deserialize_manifest(manifest_path)
         manifest_size = filesystem_service.get_size(manifest_path)
@@ -143,6 +146,8 @@ class StateController(object):
 
     @tracer.wrap
     def serialize_manifest(self):
+        """Serialize manifest object to local serialized_path and partial parse
+        path, updates manifest_size to the file size."""
         logger.info(f"Serializing manifest to file system ({self.serialize_path})")
         dbt_service.serialize_manifest(self.manifest, self.serialize_path)
         self.manifest_size = filesystem_service.get_size(self.serialize_path)
