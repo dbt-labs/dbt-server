@@ -422,11 +422,6 @@ async def list_invocation():
     )
 
 
-class AbortInvocationRequest(BaseModel):
-    # Unique task id of invocation to be aborted.
-    task_id: str
-
-
 @app.post("/invocation/{task_id}/abort")
 async def abort_invocation(task_id: str):
     """Aborts tasks. Notice it's best effort, task may still finish or fail.
