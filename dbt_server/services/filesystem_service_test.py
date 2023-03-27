@@ -51,7 +51,7 @@ class TestCachedManifest(TestCase):
         self.assertEqual(get_working_dir(), TEST_PATH)
         del environ["__DBT_WORKING_DIR"]
         # Default
-        self.assertEqual(get_working_dir(), "./working-dir")
+        self.assertEqual(get_working_dir(), path.abspath("./working-dir"))
 
     def test_get_target_path(self):
         # Env
@@ -59,66 +59,75 @@ class TestCachedManifest(TestCase):
         self.assertEqual(get_target_path(), TEST_PATH)
         del environ["DBT_TARGET_PATH"]
         # Default
-        self.assertEqual(get_target_path(), "./target")
+        self.assertEqual(get_target_path(), path.abspath("./target"))
 
     def test_get_root_path(self):
         # None
         self.assertIsNone(get_root_path(None, None))
         # State id
         self.assertEqual(
-            get_root_path(TEST_STATE_ID, None), "./working-dir/state-test_state"
+            get_root_path(TEST_STATE_ID, None),
+            path.abspath("./working-dir/state-test_state"),
         )
         # Project path
-        self.assertEqual(get_root_path(None, TEST_PROJECT_PATH), "/tmp")
+        self.assertEqual(get_root_path(None, TEST_PROJECT_PATH), path.abspath("/tmp"))
 
     def test_get_task_artifacts_path(self):
         # Non-state
         self.assertEqual(
-            get_task_artifacts_path(TEST_TASK_ID, None), "./working-dir/task_id"
+            get_task_artifacts_path(TEST_TASK_ID, None),
+            path.abspath("./working-dir/task_id"),
         )
         # State id
         self.assertEqual(
             get_task_artifacts_path(TEST_TASK_ID, TEST_STATE_ID),
-            "./working-dir/state-test_state/task_id",
+            path.abspath("./working-dir/state-test_state/task_id"),
         )
 
     def test_get_log_path(self):
         # Non-state
         self.assertEqual(
-            get_log_path(TEST_TASK_ID, None), "./working-dir/task_id/dbt.log"
+            get_log_path(TEST_TASK_ID, None),
+            path.abspath("./working-dir/task_id/dbt.log"),
         )
         # State id
         self.assertEqual(
             get_log_path(TEST_TASK_ID, TEST_STATE_ID),
-            "./working-dir/state-test_state/task_id/dbt.log",
+            path.abspath("./working-dir/state-test_state/task_id/dbt.log"),
         )
 
     def test_get_partial_parse_path(self):
-        self.assertEqual(get_partial_parse_path(), "./target/partial_parse.msgpack")
+        self.assertEqual(
+            get_partial_parse_path(), path.abspath("./target/partial_parse.msgpack")
+        )
 
     def test_get_db_path(self):
         # New directory.
         with TemporaryDirectory() as temp_dir:
             test_working_dir = path.join(temp_dir, "test_path")
             environ["__DBT_WORKING_DIR"] = test_working_dir
-            self.assertEqual(get_db_path(), f"{test_working_dir}/sql_app.db")
+            self.assertEqual(
+                get_db_path(), path.abspath(f"{test_working_dir}/sql_app.db")
+            )
             self.assertTrue(path.isdir(test_working_dir))
             del environ["__DBT_WORKING_DIR"]
 
         # Existing directory.
         with TemporaryDirectory() as temp_dir:
             environ["__DBT_WORKING_DIR"] = temp_dir
-            self.assertEqual(get_db_path(), f"{temp_dir}/sql_app.db")
+            self.assertEqual(get_db_path(), path.abspath(f"{temp_dir}/sql_app.db"))
             del environ["__DBT_WORKING_DIR"]
 
     def test_get_latest_state_file_path(self):
         self.assertEqual(
-            get_latest_state_file_path(), "./working-dir/latest-state-id.txt"
+            get_latest_state_file_path(),
+            path.abspath("./working-dir/latest-state-id.txt"),
         )
 
     def test_get_latest_project_path_file_path(self):
         self.assertEqual(
-            get_latest_project_path_file_path(), "./working-dir/latest-project-path.txt"
+            get_latest_project_path_file_path(),
+            path.abspath("./working-dir/latest-project-path.txt"),
         )
 
     def test_get_path(self):
