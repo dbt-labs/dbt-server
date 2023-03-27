@@ -1,0 +1,7 @@
+kind: Features
+body: Get/List endpoints for invocation.
+time: 2023-03-24T14:47:11.031574-07:00
+custom:
+  Author: dichenqiandbt
+  Issue: "781"
+  PR: "197"
