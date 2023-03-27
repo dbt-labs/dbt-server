@@ -6,7 +6,6 @@ import uuid
 
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
-from celery.contrib.abortable import ABORTED
 from celery.states import UNREADY_STATES
 from dbt_worker.app import app as celery_app
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException

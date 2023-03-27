@@ -1,4 +1,3 @@
-from celery.states import READY_STATES
 from dbt_server.views import get_invocation
 from dbt_server.views import list_invocation
 from dbt_server.views import abort_invocation
