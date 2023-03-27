@@ -158,7 +158,9 @@ def _is_command_has_project_dir(command: List[str]) -> bool:
     return any([PROJECT_DIR_ARGS in item for item in command])
 
 
-def _resolve_project_dir(command: List[str], project_dir: Optional[str]) -> Optional[str]:
+def _resolve_project_dir(
+    command: List[str], project_dir: Optional[str]
+) -> Optional[str]:
     """Resolves request `project_path` and append --project-dir to `command` if
     needed. Returns resolved project directory or None if can't resolve. Raises
     AssertionError if --project-dir is found in command and project_dir is
@@ -177,7 +179,7 @@ def _resolve_project_dir(command: List[str], project_dir: Optional[str]) -> Opti
 
 
 def _append_project_dir(command: List[str], project_dir: Optional[str]) -> None:
-    """Resolves project directory and appends to command if needed. See 
+    """Resolves project directory and appends to command if needed. See
     PostInvocationRequest.project_dir for more details.
     """
     if _is_command_has_project_dir(command):
