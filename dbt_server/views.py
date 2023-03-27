@@ -6,6 +6,7 @@ import uuid
 
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
+from celery.contrib.abortable import ABORTED
 from dbt_worker.app import app as celery_app
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -425,8 +426,24 @@ class AbortInvocationRequest(BaseModel):
     task_id: str
 
 
-@app.post("/invocation/abort")
-async def abort_invocation(args: AbortInvocationRequest):
-    """Aborts tasks. Notice it's best effort, task may still finish or fail."""
-    # TODO: Implement.
-    return JSONResponse(status_code=200, content={})
+@app.post("/invocation/{task_id}/abort")
+async def abort_invocation(task_id: str):
+    """Aborts tasks. Notice it's best effort, task may still finish or fail.
+    Returns invocation model."""
+    if not _lookup_abortable_async_result(task_id):
+        return JSONResponse(
+            status_code=200,
+            content=get_not_found_invocation(task_id).dict(exclude_unset=True),
+        )
+
+    task = AbortableAsyncResult(task_id, app=celery_app)
+    if task.state != ABORTED:
+        task.abort()
+
+    # Re-pull task result from backend.
+    return JSONResponse(
+        status_code=200,
+        content=convert_celery_result_to_invocation(
+            AbortableAsyncResult(task_id, app=celery_app)
+        ).dict(exclude_unset=True),
+    )
