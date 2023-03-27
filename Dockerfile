@@ -17,6 +17,9 @@ RUN apt-get -y update && apt-get -y upgrade && \
 
 WORKDIR /usr/src/app
 
+COPY ./bash /usr/src/app/bash
+RUN /usr/src/app/bash/ubuntu-setup-redis.sh
+
 COPY requirements.txt /usr/src/app
 
 RUN pip install                     \
@@ -31,3 +34,4 @@ RUN pip install                     \
 RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for this
 
 COPY ./dbt_server /usr/src/app/dbt_server
+COPY ./dbt_worker /usr/src/app/dbt_worker
