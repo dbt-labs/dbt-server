@@ -1,3 +1,5 @@
+import os
+
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 
@@ -57,7 +59,9 @@ class StartupCacheTest(DbtCoreTestBase):
         startup_cache_initialize()
 
         # Make sure manifest is now cached
-        expected_path = f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+        expected_path = os.path.abspath(
+            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+        )
         mock_fs_get_latest_state_id.assert_called_once_with(None)
         mock_fs_get_size.assert_called_once_with(expected_path)
         mock_dbt.assert_called_once_with(expected_path)
@@ -102,7 +106,9 @@ class StartupCacheTest(DbtCoreTestBase):
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
         mock_dbt.assert_called_once_with(
-            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+            os.path.abspath(
+                f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+            )
         )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None
@@ -130,7 +136,9 @@ class StartupCacheTest(DbtCoreTestBase):
         # Make sure manifest is still not cached
         mock_fs.assert_called_once_with(None)
         mock_dbt.assert_called_once_with(
-            f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+            os.path.abspath(
+                f"./working-dir/state-{TEST_LATEST_STATE_ID}/manifest.msgpack"
+            )
         )
         assert LAST_PARSED.manifest is None
         assert LAST_PARSED.state_id is None
