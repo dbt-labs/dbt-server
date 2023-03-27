@@ -35,8 +35,8 @@ class Invocation(BaseModel):
     # - ABORTED: The task is aborted by user.
     # - INTERNAL_ERROR: Internal error occurs(rare case).
     state: str
-    # Only exists if state = FAILURE, python exception type name that causes
-    # task is killed, e.g. dbtUsageException, WorkerLostError.
+    # Only exists if state = FAILURE, python exception type name that caused
+    # task to be killed, e.g. dbtUsageException, WorkerLostError.
     exc_type: Optional[str]
     # Only exists if state = FAILURE, similar to exc_type, it includes error
     # message of exception.
