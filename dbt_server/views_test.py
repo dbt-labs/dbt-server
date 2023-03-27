@@ -33,11 +33,6 @@ class TestPostInvocationRequest(TestCase):
         DBT_PROJECT_DIRECTORY.set(None)
         PostInvocationRequest(command=["--project-dir"])
 
-    def test_validate_error_no_project_dir(self):
-        DBT_PROJECT_DIRECTORY.set(None)
-        with self.assertRaisesRegex(Exception, "try to set project_dir") as _:
-            PostInvocationRequest(command=["abc"])
-
     def test_validate_error_duplicated_project_dir(self):
         DBT_PROJECT_DIRECTORY.set(None)
         with self.assertRaisesRegex(Exception, "Confliction") as _:
@@ -120,7 +115,7 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
         )
 
     async def test_success_input_task_id(self, mock_filesystem_service, mock_invoke):
-        DBT_PROJECT_DIRECTORY.set(TEST_DIR)
+        DBT_PROJECT_DIRECTORY.set(None)
         mock_invoke.apply_async.return_value = mock_task_obj
         mock_filesystem_service.get_log_path.return_value = (
             f"{TEST_LOG_DIR}/USER_TASK_ID/dbt.log"
@@ -131,7 +126,7 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id="USER_TASK_ID"
+            args=[TEST_COMMAND, TEST_URL], task_id="USER_TASK_ID"
         )
         mock_invoke.backend.store_result.assert_called_once_with(
             "USER_TASK_ID", None, "PENDING"

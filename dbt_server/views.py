@@ -11,7 +11,6 @@ from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel
-from pydantic import StrictStr
 from pydantic import validator
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
@@ -152,17 +151,17 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
         )
 
 
-def _is_command_has_project_dir(command: List[str]):
+def _is_command_has_project_dir(command: List[str]) -> bool:
     """Returns true if command has --project-dir args."""
     # This approach is not 100% accurate but should be good for most cases.
     return any([PROJECT_DIR_ARGS in item for item in command])
 
 
-def _resolve_project_dir(command: List[str], project_dir: Optional[str]):
+def _resolve_project_dir(command: List[str], project_dir: Optional[str]) -> Optional[str]:
     """Resolves request `project_path` and append --project-dir to `command` if
-    needed. Returns resolved project directory. Raises AssertionError if
-    --project-dir is found in command and project_dir is provided, or both are
-    not set."""
+    needed. Returns resolved project directory or None if can't resolve. Raises
+    AssertionError if --project-dir is found in command and project_dir is
+    provided."""
 
     is_command_has_project_dir = _is_command_has_project_dir(command)
     if project_dir and is_command_has_project_dir:
@@ -173,16 +172,18 @@ def _resolve_project_dir(command: List[str], project_dir: Optional[str]):
         return project_dir
     # Fallback to environment variable.
     default_project_dir = DBT_PROJECT_DIRECTORY.get()
-    if default_project_dir is None:
-        raise AssertionError("Can't resolve project directory, try to set project_dir.")
     return default_project_dir
 
 
-def _append_project_dir(command: List[str], project_dir: Optional[str]):
-    """Resolves project directory and appends to command if needed."""
+def _append_project_dir(command: List[str], project_dir: Optional[str]) -> None:
+    """Resolves project directory and appends to command if needed. See 
+    PostInvocationRequest.project_dir for more details.
+    """
     if _is_command_has_project_dir(command):
         return
-    command.extend([PROJECT_DIR_ARGS, _resolve_project_dir(command, project_dir)])
+    resolved_project_dir = _resolve_project_dir(command, project_dir)
+    if resolved_project_dir is not None:
+        command.extend([PROJECT_DIR_ARGS, resolved_project_dir])
 
 
 @app.post("/ready")
@@ -365,18 +366,21 @@ def get_task_status(
 class PostInvocationRequest(BaseModel):
     # Dbt command that will be sent to dbt worker for execution, e.g. [
     #   "--log-format", "json", "run", "--profiles_dir", "testdir"].
-    command: List[StrictStr]
+    command: List[str]
     # If set, dbt worker will use it as task_id, otherwise dbt server will
     # generate a random one and returned. Notice client needs to ensure task_id
     # uniqueness, post multiple invocations with the same task_id will cause
     # undetermined behavior.
     task_id: Optional[str]
     # Dbt project directory, if set --project-dir args will be appended into
-    # command list. If not set, dbt server will fallback to environment variable
-    # and append it. If environment variable is empty, request will be rejected.
-    # Notice user can specify --project-dir args in command directly, in that
-    # case, we will respect user request and won't append anything. It's
-    # exclusive with request project_dir field as well.
+    # command list. If not set, dbt server will fallback to environment
+    # variable. The process logic is: (top one will override bottom)
+    # - User command --project-dir args. We always respect user input at highest
+    #   priority.
+    # - Request project_dir field. Will append args to input command.
+    # - Dbt server flags from env var(check details in dbt_server/flags.py).
+    #   Will append args to input command.
+    # - Implicit: task worker flag from env var."""
     project_dir: Optional[str]
     # Optional, if set dbt worker will trigger callback with task id and task
     # status when task status is updated.
