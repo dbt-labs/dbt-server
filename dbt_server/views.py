@@ -72,6 +72,7 @@ class SQLConfig(BaseModel):
 class DbtCommandArgs(BaseModel):
     command: List[Any]
     state_id: Optional[str]
+    project_path: Optional[str] = None
     # TODO: Need to handle this differently
     profile: Optional[str]
     callback_url: Optional[str]
@@ -210,7 +211,6 @@ async def dbt_entry_async(
         task_id = str(uuid.uuid4())
 
     log_path = filesystem_service.get_log_path(task_id, state.state_id)
-
     task = schemas.Task(
         task_id=task_id,
         state=TaskState.PENDING,

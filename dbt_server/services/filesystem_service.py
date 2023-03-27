@@ -60,7 +60,7 @@ DBT_LOG_FILE_NAME = "dbt.log"
 def get_working_dir():
     """Returns dbt-server working directory which has dbt-server generated
     files."""
-    return os.environ.get("__DBT_WORKING_DIR", DEFAULT_WORKING_DIR)
+    return os.path.abspath(os.environ.get("__DBT_WORKING_DIR", DEFAULT_WORKING_DIR))
 
 
 def get_target_path():
@@ -68,7 +68,7 @@ def get_target_path():
     # TODO: The --target-path flag should override this, but doesn't
     # appear to be working on invoke. When it does, need to revisit
     # how partial parsing is working
-    return os.environ.get("DBT_TARGET_PATH", DEFAULT_TARGET_DIR)
+    return os.path.abspath(os.environ.get("DBT_TARGET_PATH", DEFAULT_TARGET_DIR))
 
 
 def get_root_path(state_id: str = None, project_path: str = None):
@@ -87,7 +87,7 @@ def get_root_path(state_id: str = None, project_path: str = None):
     if state_id is None:
         return None
     working_dir = get_working_dir()
-    return os.path.join(working_dir, f"state-{state_id}")
+    return os.path.abspath(os.path.join(working_dir, f"state-{state_id}"))
 
 
 def get_task_artifacts_path(task_id, state_id=None):
@@ -97,8 +97,10 @@ def get_task_artifacts_path(task_id, state_id=None):
         state_id: optional, only used for pushed style dbt project."""
     working_dir = get_working_dir()
     if state_id is None:
-        return os.path.join(working_dir, task_id)
-    return os.path.join(working_dir, f"state-{state_id}", task_id)
+        path = os.path.join(working_dir, task_id)
+    else:
+        path = os.path.join(working_dir, f"state-{state_id}", task_id)
+    return os.path.abspath(path)
 
 
 def get_log_path(task_id, state_id=None):
@@ -121,7 +123,7 @@ def get_db_path():
     """Returns local metadata database data file path. Creates directory if
     not existed."""
     working_dir = get_working_dir()
-    path = os.path.join(working_dir, DATABASE_FILE_NAME)
+    path = os.path.abspath(os.path.join(working_dir, DATABASE_FILE_NAME))
     _ensure_dir_exists(path)
     return path
 
