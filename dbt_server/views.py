@@ -7,6 +7,7 @@ import uuid
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.contrib.abortable import ABORTED
+from celery.states import UNREADY_STATES
 from dbt_worker.app import app as celery_app
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -437,7 +438,7 @@ async def abort_invocation(task_id: str):
         )
 
     task = AbortableAsyncResult(task_id, app=celery_app)
-    if task.state != ABORTED:
+    if task.state in UNREADY_STATES:
         task.abort()
 
     # Re-pull task result from backend.
