@@ -5,7 +5,6 @@ import signal
 import uuid
 from uuid import uuid4
 
-
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import UNREADY_STATES
@@ -122,7 +121,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def unhandled_internal_error(request: Request, exc: InternalException):
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
     exc_str = f"{exc}".replace("\n", " ").replace("   ", " ")
-    logger.error(f"Request to {request.url} failed with an internal error: {exc_str}")
+    logger.error(
+        f"Request to {request.url} failed with an internal error: {exc_str}")
 
     content = {"status_code": status_code, "message": exc_str, "data": None}
     return JSONResponse(content=content, status_code=status_code)
@@ -175,7 +175,7 @@ def _list_all_task_ids_redis() -> List[str]:
     # Celery will insert a prefix automatically, we need to remove it.
     celery_prefix = backend.get_key_for_task("")
     return [
-        key_bytes.decode()[len(celery_prefix) :]
+        key_bytes.decode()[len(celery_prefix):]
         for key_bytes in backend.client.keys(key)
     ]
 
@@ -240,7 +240,8 @@ def push_unparsed_manifest(args: PushProjectArgs):
 
     size_in_files = len(args.body)
     size_in_bytes = sum(len(file.contents) for file in args.body.values())
-    logger.info(f"Recieved manifest {size_in_files} files, {size_in_bytes} bytes")
+    logger.info(
+        f"Recieved manifest {size_in_files} files, {size_in_bytes} bytes")
 
     path = filesystem_service.get_root_path(state_id)
     reuse = True
