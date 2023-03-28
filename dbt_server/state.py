@@ -57,8 +57,9 @@ class CachedManifest:
             self.manifest_size = manifest_size
             self.config = config
 
-            # Get parser from config and manifest.
-            self.parser = dbt_service.get_sql_parser(self.config, self.manifest)
+            if self.manifest is not None:
+                # Get parser from config and manifest.
+                self.parser = dbt_service.get_sql_parser(self.config, self.manifest)
 
     def lookup(self, state_id):
         """Checks if required manifest hits cached one, returns None if not
@@ -127,8 +128,10 @@ class StateController(object):
     ):
         """Returns StateController object that stores current dbt core state."""
         config = dbt_service.create_dbt_config(root_path, args)
-        parser = dbt_service.get_sql_parser(config, manifest)
-
+        if manifest is not None:
+            parser = dbt_service.get_sql_parser(config, manifest)
+        else:
+            parser = None
         return cls(
             state_id=state_id,
             project_path=project_path,
@@ -223,6 +226,23 @@ class StateController(object):
         return cls._from_parts(
             state_id, project_path, manifest, root_path, manifest_size, args
         )
+
+    @classmethod
+    @tracer.wrap
+    def load_state_async(cls, args=None):
+        """Temporary slimmed down load state to be used in testing /async/dbt endpoint with only a project_path"""
+        project_path = args.project_path if hasattr(args, "project_path") else None
+        if not project_path:
+            project_path = filesystem_service.get_latest_project_path()
+
+        if project_path is None:
+            raise StateNotFoundException(
+                f"No project_path found {_generate_log_details(None, project_path)}"
+            )
+
+        root_path = filesystem_service.get_root_path(None, project_path)
+
+        return cls._from_parts(None, project_path, None, root_path, 0, args)
 
     @tracer.wrap
     def serialize_manifest(self):

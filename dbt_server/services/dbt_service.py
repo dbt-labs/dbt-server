@@ -263,9 +263,7 @@ def execute_async_command(
     new_command.append(log_dir_path)
     new_command += command
 
-    logger.info(
-        f"Running dbt ({task_id}) - deserializing manifest found at {root_path}"
-    )
+    logger.info(f"Running dbt ({task_id})")
 
     # TODO: this is a tmp solution to set profile_dir to global flags
     # we should provide a better programatical interface of core to sort out
