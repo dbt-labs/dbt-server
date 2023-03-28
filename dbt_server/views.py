@@ -251,7 +251,7 @@ async def dbt_entry_async(
     db: Session = Depends(crud.get_db),
 ):
     # example body: {"state_id": "123", "command":["run", "--threads", 1]}
-    state = StateController.load_state(args)
+    state = StateController.load_state_async(args)
 
     if args.task_id:
         task_id = args.task_id
