@@ -7,6 +7,7 @@ from dbt_server.views import abort_invocation
 from dbt_server.views import _list_all_task_ids_redis
 from json import loads
 from unittest.mock import patch
+from unittest.mock import MagicMock
 from unittest import IsolatedAsyncioTestCase
 from unittest import TestCase
 
