@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
+from celery.states import UNREADY_STATES
 from celery.states import PENDING
 from celery.states import FAILURE
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
@@ -24,7 +25,6 @@ from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.models import TaskState
 from dbt_server.state import StateController
-from dbt_worker.app import app as celery_app
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -36,6 +36,7 @@ from dbt_server.schemas import Invocation
 from dbt_server.schemas import convert_celery_result_to_invocation
 from dbt_server.schemas import get_not_found_invocation
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
+from dbt_worker.app import app as celery_app
 from dbt_worker.tasks import invoke
 from dbt_worker.tasks import is_command_has_log_path
 
@@ -158,7 +159,7 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
         )
 
 
-def _lookup_result(task_id: str) -> bool:
+def _lookup_abortable_async_result(task_id: str) -> bool:
     """Looks up Celery abortable async result by `task_id`, returns false if not
     found."""
     backend = celery_app.backend
@@ -484,7 +485,7 @@ async def get_invocation(task_id: str):
         convert_celery_result_to_invocation(
             AbortableAsyncResult(task_id, app=celery_app)
         )
-        if _lookup_result(task_id)
+        if _lookup_abortable_async_result(task_id)
         else get_not_found_invocation(task_id)
     )
 
@@ -512,13 +513,28 @@ async def list_invocation():
     )
 
 
-class AbortInvocationRequest(BaseModel):
-    # Unique task id of invocation to be aborted.
-    task_id: str
+@app.post("/invocation/{task_id}/abort")
+async def abort_invocation(task_id: str):
+    """Aborts tasks. Notice it's best effort, task may still finish or fail.
+    Returns invocation model."""
+    if not _lookup_abortable_async_result(task_id):
+        return JSONResponse(
+            status_code=200,
+            content=get_not_found_invocation(task_id).dict(exclude_unset=True),
+        )
 
+    task = AbortableAsyncResult(task_id, app=celery_app)
+    # UNREADY_STATES includes all Celery states that are not finalized yet(i.e.
+    # it may be updated later).
+    # If task is not finalized, we are able to abort it, otherwise we should not
+    # abort it.
+    if task.state in UNREADY_STATES:
+        task.abort()
 
-@app.post("/invocation/abort")
-async def abort_invocation(args: AbortInvocationRequest):
-    """Aborts tasks. Notice it's best effort, task may still finish or fail."""
-    # TODO: Implement.
-    return JSONResponse(status_code=200, content={})
+    # Re-pull task result from backend.
+    return JSONResponse(
+        status_code=200,
+        content=convert_celery_result_to_invocation(
+            AbortableAsyncResult(task_id, app=celery_app)
+        ).dict(exclude_unset=True),
+    )
