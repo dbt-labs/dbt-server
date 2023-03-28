@@ -18,6 +18,12 @@ RUN apt-get -y update && apt-get -y upgrade && \
 WORKDIR /usr/src/app
 
 COPY ./bash /usr/src/app/bash
+# Copy celery config and serviced.
+COPY ./configs/celeryd /etc/default/celeryd
+COPY ./bash/celeryd.sh /etc/init.d/celeryd
+# Create celery worker user.
+RUN groupadd celery && useradd celery -g celery
+# Install redis server.
 RUN /usr/src/app/bash/ubuntu-setup-redis.sh
 
 COPY requirements.txt /usr/src/app

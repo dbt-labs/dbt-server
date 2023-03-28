@@ -13,8 +13,8 @@ if [ "${dbt_server_enable_ddtrace}" = "true" ]; then
     dd_trace="ddtrace-run gunicorn"
 fi
 
-sh bash/start-celery.sh
-sh bash/ubuntu-start-redis.sh
+service redis-server start
+service celeryd start
 
 ${gunicorn} dbt_server.server:app --workers ${dbt_server_worker} \
 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${dbt_server_port} \
