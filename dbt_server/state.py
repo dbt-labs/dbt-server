@@ -242,9 +242,7 @@ class StateController(object):
 
         root_path = filesystem_service.get_root_path(None, project_path)
 
-        return cls._from_parts(
-            None, project_path, None, root_path, 0, args
-        )
+        return cls._from_parts(None, project_path, None, root_path, 0, args)
 
     @tracer.wrap
     def serialize_manifest(self):
