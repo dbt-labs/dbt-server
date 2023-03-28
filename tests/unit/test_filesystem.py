@@ -7,12 +7,13 @@ from dbt_server.services import filesystem_service
 class FilesystemServiceTest(TestCase):
     def test_dbt_working_dir_default(self):
         self.assertEqual(
-            filesystem_service.get_root_path("abc123"), "./working-dir/state-abc123"
+            filesystem_service.get_root_path("abc123"),
+            os.path.abspath("./working-dir/state-abc123"),
         )
 
         self.assertEqual(
             filesystem_service.get_latest_state_file_path(),
-            "./working-dir/latest-state-id.txt",
+            os.path.abspath("./working-dir/latest-state-id.txt"),
         )
 
     @mock.patch.dict(os.environ, {"__DBT_WORKING_DIR": "/opt/code/working-dir"})

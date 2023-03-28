@@ -197,7 +197,10 @@ class StateController(object):
             return cls.from_cached(cached)
         # Not in cache - need to go to filesystem to deserialize it
         state_id = filesystem_service.get_latest_state_id(args.state_id)
-        project_path = filesystem_service.get_latest_project_path()
+
+        project_path = args.project_path if hasattr(args, "project_path") else None
+        if not project_path:
+            project_path = filesystem_service.get_latest_project_path()
 
         logger.info(
             f"Manifest cache miss ({_generate_log_details(state_id, project_path)})"
