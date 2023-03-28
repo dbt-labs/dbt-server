@@ -113,12 +113,6 @@ def get_log_path(task_id, state_id=None):
     return os.path.join(artifacts_path, DBT_LOG_FILE_NAME)
 
 
-def get_partial_parse_path():
-    """Returns dbt-core compiled partial parse file."""
-    target_path = get_target_path()
-    return os.path.join(target_path, PARTIAL_PARSE_FILE)
-
-
 def get_db_path():
     """Returns local metadata database data file path. Creates directory if
     not existed."""

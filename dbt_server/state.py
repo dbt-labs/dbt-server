@@ -249,10 +249,7 @@ class StateController(object):
         """Serialize manifest object to local serialized_path and partial parse
         path, updates manifest_size to the file size."""
         logger.info(f"Serializing manifest to file system ({self.serialize_path})")
-        partial_parse_path = filesystem_service.get_partial_parse_path()
-        dbt_service.serialize_manifest(
-            self.manifest, self.serialize_path, partial_parse_path
-        )
+        dbt_service.serialize_manifest(self.manifest, self.serialize_path)
         self.manifest_size = filesystem_service.get_size(self.serialize_path)
 
     @tracer.wrap

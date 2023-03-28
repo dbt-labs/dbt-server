@@ -4,7 +4,6 @@ from dbt_server.services.filesystem_service import get_target_path
 from dbt_server.services.filesystem_service import get_root_path
 from dbt_server.services.filesystem_service import get_task_artifacts_path
 from dbt_server.services.filesystem_service import get_log_path
-from dbt_server.services.filesystem_service import get_partial_parse_path
 from dbt_server.services.filesystem_service import get_db_path
 from dbt_server.services.filesystem_service import get_latest_state_file_path
 from dbt_server.services.filesystem_service import get_latest_project_path_file_path
@@ -94,11 +93,6 @@ class TestCachedManifest(TestCase):
         self.assertEqual(
             get_log_path(TEST_TASK_ID, TEST_STATE_ID),
             path.abspath("./working-dir/state-test_state/task_id/dbt.log"),
-        )
-
-    def test_get_partial_parse_path(self):
-        self.assertEqual(
-            get_partial_parse_path(), path.abspath("./target/partial_parse.msgpack")
         )
 
     def test_get_db_path(self):
