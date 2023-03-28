@@ -6,10 +6,14 @@ from celery.contrib.abortable import ABORTED
 from celery.exceptions import Ignore
 from celery.states import PROPAGATE_STATES
 from celery.states import FAILURE
+from celery.states import STARTED
 from celery.states import SUCCESS
 from dbt.cli.main import dbtRunner
+from requests.adapters import HTTPAdapter
+from requests import Session
 from threading import Thread
 from typing import Any, Dict, Optional, List
+from urllib3 import Retry
 
 # How long the timeout that parent thread should join with child dbt invocation
 # thread. It's used to poll abort status.
@@ -21,6 +25,21 @@ def is_command_has_log_path(command: List[str]):
     """Returns true if command has --log-path args."""
     # This approach is not 100% accurate but should be good for most cases.
     return any([LOG_PATH_ARGS in item for item in command])
+
+
+def _send_state_callback(callback_url: str, task_id: str, status: str) -> None:
+    """Sends task `status` update callback for `task_id` to `callback_url`."""
+    try:
+        retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
+        session = Session()
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        # Existing contract uses status as field name rather than state.
+        session.post(callback_url, json={"task_id": task_id, "status": status})
+    except Exception as e:
+        logger.error(
+            f"Send state callback failed, {callback_url}, task_id = {task_id}, status = {status}"
+        )
+        logger.error(str(e))
 
 
 def _update_state(
@@ -43,7 +62,8 @@ def _update_state(
             triggered."""
 
     task.update_state(task_id=task_id, state=state, meta=meta)
-    # TODO: Add callback logic.
+    if callback_url:
+        _send_state_callback(callback_url, task_id, state)
 
 
 def _invoke_runner(
@@ -97,7 +117,8 @@ def _invoke(task: Any, command: List[str], callback_url: Optional[str] = None):
     task_id = task.request.id
     _insert_log_path(command, task_id)
     logger.info(f"Running dbt task ({task_id}) with {command}")
-    # TODO: Send callback to infer task start.
+    if callback_url:
+        _send_state_callback(callback_url, task_id, STARTED)
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.

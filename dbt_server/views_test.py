@@ -3,9 +3,11 @@ from dbt_server.views import PostInvocationRequest
 from dbt_server.views import post_invocation
 from dbt_server.views import get_invocation
 from dbt_server.views import list_invocation
+from dbt_server.views import abort_invocation
 from dbt_server.views import _list_all_task_ids_redis
 from json import loads
 from unittest.mock import patch
+from unittest.mock import MagicMock
 from unittest import IsolatedAsyncioTestCase
 from unittest import TestCase
 
@@ -228,3 +230,76 @@ class TestListInvocation(IsolatedAsyncioTestCase):
         mock_celery_app.backend.client.keys.assert_called_once_with(
             f"{TEST_TASK_KEY_PREFIX}*"
         )
+
+
+@patch("dbt_server.views.AbortableAsyncResult")
+@patch("dbt_server.views.celery_app")
+class TestAbortInvocation(IsolatedAsyncioTestCase):
+    async def test_success(self, mock_celery_app, mock_abortable_async_result):
+        mock_celery_app.backend.get_key_for_task.return_value = TEST_TASK_KEY
+        mock_celery_app.backend.get.return_value = 1
+        mock_result_started = EmptyClass()
+        mock_result_started.state = "STARTED"
+        mock_result_started.task_id = TEST_TASK_ID
+        mock_result_started.abort = MagicMock()
+        mock_result_aborted = EmptyClass()
+        mock_result_aborted.state = "ABORTED"
+        mock_result_aborted.task_id = TEST_TASK_ID
+        mock_abortable_async_result.side_effect = [
+            mock_result_started,
+            mock_result_aborted,
+        ]
+        self.assertEqual(
+            loads((await abort_invocation(TEST_TASK_ID)).body),
+            {"task_id": TEST_TASK_ID, "state": "ABORTED"},
+        )
+        mock_result_started.abort.assert_called_once_with()
+        mock_celery_app.backend.get_key_for_task.assert_called_once_with(TEST_TASK_ID)
+        mock_celery_app.backend.get.assert_called_once_with(TEST_TASK_KEY)
+        mock_abortable_async_result.assert_any_call(TEST_TASK_ID, app=mock_celery_app)
+
+    async def test_task_success(self, mock_celery_app, mock_abortable_async_result):
+        mock_celery_app.backend.get_key_for_task.return_value = TEST_TASK_KEY
+        mock_celery_app.backend.get.return_value = 1
+        mock_result_started = EmptyClass()
+        mock_result_started.state = "SUCCESS"
+        mock_result_started.task_id = TEST_TASK_ID
+        mock_abortable_async_result.return_value = mock_result_started
+        self.assertEqual(
+            loads((await abort_invocation(TEST_TASK_ID)).body),
+            {"task_id": TEST_TASK_ID, "state": "SUCCESS"},
+        )
+        mock_celery_app.backend.get_key_for_task.assert_called_once_with(TEST_TASK_ID)
+        mock_celery_app.backend.get.assert_called_once_with(TEST_TASK_KEY)
+        mock_abortable_async_result.assert_any_call(TEST_TASK_ID, app=mock_celery_app)
+
+    async def test_task_failure(self, mock_celery_app, mock_abortable_async_result):
+        mock_celery_app.backend.get_key_for_task.return_value = TEST_TASK_KEY
+        mock_celery_app.backend.get.return_value = 1
+        mock_result_started = EmptyClass()
+        mock_result_started.state = "FAILURE"
+        mock_result_started.task_id = TEST_TASK_ID
+        mock_result_started.result = Exception("test error.")
+        mock_abortable_async_result.return_value = mock_result_started
+        self.assertEqual(
+            loads((await abort_invocation(TEST_TASK_ID)).body),
+            {
+                "task_id": TEST_TASK_ID,
+                "state": "FAILURE",
+                "exc_type": "Exception",
+                "exc_message": "test error.",
+            },
+        )
+        mock_celery_app.backend.get_key_for_task.assert_called_once_with(TEST_TASK_ID)
+        mock_celery_app.backend.get.assert_called_once_with(TEST_TASK_KEY)
+        mock_abortable_async_result.assert_any_call(TEST_TASK_ID, app=mock_celery_app)
+
+    async def test_task_not_found(self, mock_celery_app, mock_abortable_async_result):
+        mock_celery_app.backend.get_key_for_task.return_value = TEST_TASK_KEY
+        mock_celery_app.backend.get.return_value = None
+        self.assertEqual(
+            loads((await abort_invocation(TEST_TASK_ID)).body),
+            {"task_id": TEST_TASK_ID, "state": "NOT_FOUND"},
+        )
+        mock_celery_app.backend.get_key_for_task.assert_called_once_with(TEST_TASK_ID)
+        mock_celery_app.backend.get.assert_called_once_with(TEST_TASK_KEY)
