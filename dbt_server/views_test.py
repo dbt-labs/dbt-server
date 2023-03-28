@@ -20,6 +20,7 @@ TEST_TASK_KEY = f"{TEST_TASK_KEY_PREFIX}{TEST_TASK_ID}"
 
 
 class EmptyClass:
+    # Empty class to hold some data class member.
     pass
 
 
