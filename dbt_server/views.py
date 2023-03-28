@@ -10,7 +10,6 @@ from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import UNREADY_STATES
 from celery.states import PENDING
 from celery.states import FAILURE
-from dbt_worker.app import app as celery_app
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -37,6 +36,7 @@ from dbt_server.schemas import Invocation
 from dbt_server.schemas import convert_celery_result_to_invocation
 from dbt_server.schemas import get_not_found_invocation
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
+from dbt_worker.app import app as celery_app
 from dbt_worker.tasks import invoke
 from dbt_worker.tasks import is_command_has_log_path
 
