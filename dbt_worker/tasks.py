@@ -29,11 +29,17 @@ def is_command_has_log_path(command: List[str]):
 
 def _send_state_callback(callback_url: str, task_id: str, status: str) -> None:
     """Sends task `status` update callback for `task_id` to `callback_url`."""
-    retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
-    session = Session()
-    session.mount("http://", HTTPAdapter(max_retries=retries))
-    # Existing contract uses status as field name rather than state.
-    session.post(callback_url, json={"task_id": task_id, "status": status})
+    try:
+        retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
+        session = Session()
+        session.mount("http://", HTTPAdapter(max_retries=retries))
+        # Existing contract uses status as field name rather than state.
+        session.post(callback_url, json={"task_id": task_id, "status": status})
+    except Exception as e:
+        logger.error(
+            f"Send state callback failed, {callback_url}, task_id = {task_id}, status = {status}"
+        )
+        logger.error(str(e))
 
 
 def _update_state(
