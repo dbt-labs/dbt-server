@@ -344,8 +344,7 @@ class TestStateController(TestCase):
         )
         state_controller.serialize_manifest()
         self.assertEqual(state_controller.manifest_size, TEST_MANIFEST_SIZE)
-        mock_serialize_manifest.assert_called_once_with(
-            TEST_MANIFEST, serialized_path)
+        mock_serialize_manifest.assert_called_once_with(TEST_MANIFEST, serialized_path)
         mock_get_size.assert_called_once_with(serialized_path)
 
     @mock.patch("dbt_server.services.filesystem_service.update_state_id")
