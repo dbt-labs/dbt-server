@@ -84,6 +84,8 @@ DBT_WORKING_DIR = InMemoryFlag("__DBT_WORKING_DIR", "./working-dir")
 # Instructs if dbt server should ignore a first SIGINT or SIGTERM and enable a
 # `/shutdown` endpoint.
 ALLOW_ORCHESTRATED_SHUTDOWN = InMemoryFlag("ALLOW_ORCHESTRATED_SHUTDOWN", "0")
+# Default dbt project directory. It's used to determine source code location.
+DBT_PROJECT_DIRECTORY = InMemoryFlag("DBT_PROJECT_DIRECTORY", None)
 
 # Task queue configs.
 
