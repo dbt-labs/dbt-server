@@ -5,6 +5,8 @@ import signal
 import uuid
 from uuid import uuid4
 
+from celery.backends.redis import RedisBackend
+from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import PENDING
 from celery.states import FAILURE
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
@@ -22,6 +24,7 @@ from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.models import TaskState
 from dbt_server.state import StateController
+from dbt_worker.app import app as celery_app
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -29,6 +32,9 @@ from dbt_server.exceptions import (
     InternalException,
     StateNotFoundException,
 )
+from dbt_server.schemas import Invocation
+from dbt_server.schemas import convert_celery_result_to_invocation
+from dbt_server.schemas import get_not_found_invocation
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.tasks import invoke
 from dbt_worker.tasks import is_command_has_log_path
@@ -149,6 +155,36 @@ if ALLOW_ORCHESTRATED_SHUTDOWN:
         return JSONResponse(
             status_code=200,
             content={},
+        )
+
+
+def _lookup_result(task_id: str) -> bool:
+    """Looks up Celery abortable async result by `task_id`, returns false if not
+    found."""
+    backend = celery_app.backend
+    key = backend.get_key_for_task(task_id)
+    return backend.get(key) is not None
+
+
+def _list_all_task_ids_redis() -> List[str]:
+    """Lists all Celery task ids from redis backend."""
+    backend = celery_app.backend
+    key = backend.get_key_for_task("*")
+    # Celery will insert a prefix automatically, we need to remove it.
+    celery_prefix = backend.get_key_for_task("")
+    return [
+        key_bytes.decode()[len(celery_prefix) :]
+        for key_bytes in backend.client.keys(key)
+    ]
+
+
+def _list_all_task_ids() -> List[str]:
+    """Lists list of all Celery task ids."""
+    if isinstance(celery_app.backend, RedisBackend):
+        return _list_all_task_ids_redis()
+    else:
+        raise Exception(
+            f"We haven't support {type(celery_app.backend)} in _list_all_task_ids yet."
         )
 
 
@@ -441,37 +477,39 @@ async def post_invocation(args: PostInvocationRequest):
     )
 
 
-class GetInvocationRequest(BaseModel):
-    # Unique task id of invocation.
-    task_id: str
+@app.get("/invocations/{task_id}")
+async def get_invocation(task_id: str):
+    """Gets invocation entity by `task_id`."""
+    invocation = (
+        convert_celery_result_to_invocation(
+            AbortableAsyncResult(task_id, app=celery_app)
+        )
+        if _lookup_result(task_id)
+        else get_not_found_invocation(task_id)
+    )
+
+    return JSONResponse(status_code=200, content=invocation.dict(exclude_unset=True))
 
 
-class GetInvocationResponse(BaseModel):
-    # Unique task id of invocation, same as request.
-    task_id: str
-    # Task state, it's one of celery worker state:
-    # - PENDING: The task is pending to be executed or never been created yet.
-    #   Due to celery backend design, we can't tell if task is pending or never
-    #   been created yet. Definitely there is a workaround, but we don't support
-    #   right now.
-    # - STARTED: The task is started by worker.
-    # - SUCCESS: The task is finished by worker.
-    # - FAILURE: The task is failed.
-    # - ABORTED: The task is aborted by user.
-    state: str
-    # Only exists if state = FAILURE, python exception type name that causes
-    # task is killed, e.g. dbtUsageException, WorkerLostError.
-    exc_type: Optional[str]
-    # Only exists if state = FAILURE, similar to exc_type, it includes error
-    # message of exception.
-    exc_message: Optional[str]
+class ListInvocationResponse(BaseModel):
+    # List of all invocations.
+    invocations: List[Invocation]
 
 
-@app.get("/invocation")
-async def get_invocation(args: GetInvocationRequest):
-    """Gets task state and other metadata."""
-    # TODO: Implement.
-    return JSONResponse(status_code=200, content={})
+@app.get("/invocations")
+async def list_invocation():
+    """Gets invocation entity by `task_id`."""
+    return JSONResponse(
+        status_code=200,
+        content=ListInvocationResponse(
+            invocations=[
+                convert_celery_result_to_invocation(
+                    AbortableAsyncResult(task_id, app=celery_app)
+                )
+                for task_id in _list_all_task_ids()
+            ]
+        ).dict(exclude_unset=True),
+    )
 
 
 class AbortInvocationRequest(BaseModel):
