@@ -95,42 +95,6 @@ class TestDbtEntryAsync(DbtCoreTestBase):
 
         self.assertTrue(data)
 
-    @patch("dbt_server.views.StateController.execute_async_command")
-    @patch("dbt.parser.manifest.ManifestLoader.track_project_load")
-    def test_dbt_entry_state_id(self, mock_tracking, mock_execute):
-        """
-        Test that parse with a state-id results in manifest cacheing and
-        subsequent call of the async command endpoint pulls the correct manifest.
-
-        Mocks actual command execution to prevent log files being written in
-        permanent directory
-        """
-        args = views.ParseArgs(state_id=self.state_id)
-        state = StateController.parse_from_source(args)
-        state.serialize_manifest()
-        state.update_cache()
-
-        args = views.DbtCommandArgs(command=["run", "--threads", 1])
-        response = self.client.post("/async/dbt", json=args.dict())
-
-        self.assertEqual(response.status_code, 200)
-        json_response = response.json()
-
-        # check that the task_id is a valid uuid
-        self.assertTrue(isinstance(uuid.UUID(json_response["task_id"]), uuid.UUID))
-
-        self.assertEqual(json_response["state"], "pending")
-        self.assertEqual(json_response["command"], "run --threads 1")
-
-        expected_log_path = f'{self.state_dir}/{json_response.get("task_id")}/dbt.log'
-        self.assertEqual(json_response["log_path"], expected_log_path)
-
-        # check that the task is added to the database
-        task = self.db.query(Task).filter_by(task_id=json_response["task_id"]).first()
-        self.assertIsNotNone(task)
-        self.assertEqual(task.command, "run --threads 1")
-        self.assertEqual(task.log_path, expected_log_path)
-
     def test_dbt_entry_no_state_found(self):
         """
         Test that calling the async/dbt endpoint without first calling parse

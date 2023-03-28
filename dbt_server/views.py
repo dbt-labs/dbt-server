@@ -3,24 +3,32 @@ import dbt.events.functions
 import os
 import signal
 import uuid
+from uuid import uuid4
 
 from celery.backends.redis import RedisBackend
 from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import UNREADY_STATES
 from dbt_worker.app import app as celery_app
+from celery.backends.redis import RedisBackend
+from celery.contrib.abortable import AbortableAsyncResult
+from celery.states import PENDING
+from celery.states import FAILURE
 from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel
+from pydantic import validator
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict, Any
+from copy import deepcopy
 
 from dbt_server import crud, schemas, tracer, helpers
 from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
 from dbt_server.models import TaskState
 from dbt_server.state import StateController
+from dbt_worker.app import app as celery_app
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -31,9 +39,18 @@ from dbt_server.exceptions import (
 from dbt_server.schemas import Invocation
 from dbt_server.schemas import convert_celery_result_to_invocation
 from dbt_server.schemas import get_not_found_invocation
+from dbt_server.schemas import Invocation
+from dbt_server.schemas import convert_celery_result_to_invocation
+from dbt_server.schemas import get_not_found_invocation
+from dbt_server.flags import DBT_PROJECT_DIRECTORY
+from dbt_worker.tasks import invoke
+from dbt_worker.tasks import is_command_has_log_path
 
 # ORM stuff
 from sqlalchemy.orm import Session
+
+PROJECT_DIR_ARGS = "--project-dir"
+LOG_PATH_ARGS = "--log-path"
 
 # We need to override the EVENT_HISTORY queue to store
 # only a small amount of events to prevent too much memory
@@ -240,7 +257,7 @@ async def dbt_entry_async(
     db: Session = Depends(crud.get_db),
 ):
     # example body: {"state_id": "123", "command":["run", "--threads", 1]}
-    state = StateController.load_state(args)
+    state = StateController.load_state_async(args)
 
     if args.task_id:
         task_id = args.task_id
@@ -355,18 +372,33 @@ def get_task_status(
 
 
 class PostInvocationRequest(BaseModel):
-    # List of dbt command that will be sent to dbt worker for execution.
-    # E.g. ["--log-format", "json", "run", "--profiles_dir", "testdir"]
+    # Dbt command that will be sent to dbt worker for execution, e.g. [
+    #   "--log-format", "json", "run", "--profiles_dir", "testdir"].
     command: List[str]
-    # Dbt project path, if set --project-dir args will be appended into command
-    # list. If not set, dbt server will fallback to environment variable and
-    # append it. If environment variable is empty, request will be rejected.
-    # Notice user can specify --project-dir args in command directly, in that
-    # case, we will respect user request and won't append anything.
-    project_path: Optional[str]
+    # If set, dbt worker will use it as task_id, otherwise dbt server will
+    # generate a random one and returned. Notice client needs to ensure task_id
+    # uniqueness, post multiple invocations with the same task_id will cause
+    # undetermined behavior.
+    task_id: Optional[str]
+    # Dbt project directory, if set --project-dir args will be appended into
+    # command list. If not set, dbt server will fallback to environment
+    # variable. The process logic is: (top one will override bottom)
+    # - User command --project-dir args. We always respect user input at highest
+    #   priority.
+    # - Request project_dir field. Will append args to input command.
+    # - Dbt server flags from env var(check details in dbt_server/flags.py).
+    #   Will append args to input command.
+    # - Implicit: task worker flag from env var."""
+    project_dir: Optional[str]
     # Optional, if set dbt worker will trigger callback with task id and task
     # status when task status is updated.
     callback_url: Optional[str]
+
+    @validator("project_dir", always=True)
+    def check_project_dir(cls, project_dir, values):
+        _resolve_project_dir(values["command"], project_dir)
+        # We don't change incoming request, only validate it.
+        return project_dir
 
 
 class PostInvocationResponse(BaseModel):
@@ -379,11 +411,40 @@ class PostInvocationResponse(BaseModel):
     log_path: Optional[str]
 
 
-@app.post("/invocation")
+@app.post("/invocations")
 async def post_invocation(args: PostInvocationRequest):
     """Accepts user dbt invocation request, creates a task in task queue."""
-    # TODO: Implement.
-    return JSONResponse(status_code=200, content={})
+    command = deepcopy(args.command)
+    _append_project_dir(command, args.project_dir)
+    task_id = str(uuid4()) if args.task_id is None else args.task_id
+
+    # Manually store PENDING status in backend otherwise we can't tell apart
+    # if task_id is missed or haven't been picked up by worker.
+    invoke.backend.store_result(task_id, None, PENDING)
+    try:
+        logger.info(f"Invoke: {command}, task_id: {task_id}")
+        invoke.apply_async(args=[command, args.callback_url], task_id=task_id)
+    except Exception as e:
+        # If invocation is failed, change state to FAILURE. In strange case
+        # that below store_result is failed, the request will always be PENDING.
+        invoke.backend.store_result(
+            task_id,
+            {
+                {"exc_type": type(e).__name__, "exc_message": str(e)},
+            },
+            FAILURE,
+        )
+
+    response = PostInvocationResponse(
+        task_id=task_id,
+        log_path=None
+        if is_command_has_log_path(command)
+        else filesystem_service.get_log_path(task_id, None),
+    )
+    return JSONResponse(
+        status_code=200,
+        content=response.dict(exclude_unset=True),
+    )
 
 
 @app.get("/invocations/{task_id}")
