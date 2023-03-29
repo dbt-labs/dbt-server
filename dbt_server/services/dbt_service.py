@@ -174,10 +174,9 @@ def parse_to_manifest(project_path, args):
 
 
 @tracer.wrap
-def serialize_manifest(manifest, serialize_path, partial_parse_path):
+def serialize_manifest(manifest, serialize_path):
     manifest_msgpack = dbt_serialize_manifest(manifest)
     filesystem_service.write_file(serialize_path, manifest_msgpack)
-    filesystem_service.write_file(partial_parse_path, manifest_msgpack)
 
 
 @tracer.wrap

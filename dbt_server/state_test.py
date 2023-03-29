@@ -330,19 +330,13 @@ class TestStateController(TestCase):
         mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, args)
 
     @mock.patch(
-        "dbt_server.services.filesystem_service.get_partial_parse_path",
-        return_value=TEST_PARTIAL_PARSE_FILE,
-    )
-    @mock.patch(
         "dbt_server.services.dbt_service.serialize_manifest", return_value=TEST_MANIFEST
     )
     @mock.patch(
         "dbt_server.services.filesystem_service.get_size",
         return_value=TEST_MANIFEST_SIZE,
     )
-    def test_serialize_manifest(
-        self, mock_get_size, mock_serialize_manifest, mock_get_partial_parse_path
-    ):
+    def test_serialize_manifest(self, mock_get_size, mock_serialize_manifest):
 
         serialized_path = f"{TEST_ROOT_PATH}/manifest.msgpack"
         state_controller = StateController(
@@ -350,10 +344,7 @@ class TestStateController(TestCase):
         )
         state_controller.serialize_manifest()
         self.assertEqual(state_controller.manifest_size, TEST_MANIFEST_SIZE)
-        mock_get_partial_parse_path.assert_called_once_with()
-        mock_serialize_manifest.assert_called_once_with(
-            TEST_MANIFEST, serialized_path, TEST_PARTIAL_PARSE_FILE
-        )
+        mock_serialize_manifest.assert_called_once_with(TEST_MANIFEST, serialized_path)
         mock_get_size.assert_called_once_with(serialized_path)
 
     @mock.patch("dbt_server.services.filesystem_service.update_state_id")
