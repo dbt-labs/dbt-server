@@ -58,7 +58,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, None)
+            _invoke(self.mock_task, TEST_COMMAND, None, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -76,7 +76,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, None)
+            _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, None, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH)
         patched_dbt_runner.assert_called_once_with()
@@ -94,7 +94,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, None)
+            _invoke(self.mock_task, TEST_COMMAND, None, None)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -117,7 +117,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, TEST_CALLBACK_URL)
+            _invoke(self.mock_task, TEST_COMMAND, None, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -145,7 +145,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, TEST_CALLBACK_URL)
+            _invoke(self.mock_task, TEST_COMMAND, None, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
