@@ -100,7 +100,6 @@ def _invoke_runner(
     # after a deps is called. Once core completes the following ticket, we can remove
     # this chdir hack: https://github.com/dbt-labs/dbt-core/issues/6985
     original_wd = os.getcwd()
-    project_dir = resolve_project_dir(command, project_dir)
     try:
         os.chdir(get_root_path(None, project_dir))
         dbt = dbtRunner()

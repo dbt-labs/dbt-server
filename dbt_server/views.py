@@ -407,15 +407,17 @@ class PostInvocationResponse(BaseModel):
 async def post_invocation(args: PostInvocationRequest):
     """Accepts user dbt invocation request, creates a task in task queue."""
     command = deepcopy(args.command)
+    project_dir = resolve_project_dir(command, args.project_dir)
     append_project_dir(command, args.project_dir)
     task_id = str(uuid4()) if args.task_id is None else args.task_id
     # Manually store PENDING status in backend otherwise we can't tell apart
     # if task_id is missed or haven't been picked up by worker.
     invoke.backend.store_result(task_id, None, PENDING)
+
     try:
         logger.info(f"Invoke: {command}, task_id: {task_id}")
         invoke.apply_async(
-            args=[command, args.project_dir, args.callback_url], task_id=task_id
+            args=[command, project_dir, args.callback_url], task_id=task_id
         )
     except Exception as e:
         # If invocation is failed, change state to FAILURE. In strange case
