@@ -88,6 +88,7 @@ def _invoke_runner(
         task: Celery task.
         task_id: Task id, it's required to update task state.
         command: Dbt invocation command list.
+        project_dir: directory to dbt project.
         callback_url: If set, if core raises any error, a callback will be
             triggered."""
 
@@ -179,6 +180,7 @@ def _invoke(
     Args:
         command: Dbt commands that will be executed, e.g. ["run",
             "--project-dir", "/a/b/jaffle_shop"].
+        project_dir: directory to dbt project
         callback_url: String, if set any time the task status is updated, worker
             will make a callback. Notice it's not complete, in some cases task
             status may be updated but we are not able to trigger callback, e.g.
