@@ -35,15 +35,13 @@ from dbt_server.exceptions import (
 from dbt_server.schemas import Invocation
 from dbt_server.schemas import convert_celery_result_to_invocation
 from dbt_server.schemas import get_not_found_invocation
-from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app as celery_app
-from dbt_worker.tasks import invoke
+from dbt_worker.tasks import append_project_dir, invoke, resolve_project_dir
 from dbt_worker.tasks import is_command_has_log_path
 
 # ORM stuff
 from sqlalchemy.orm import Session
 
-PROJECT_DIR_ARGS = "--project-dir"
 LOG_PATH_ARGS = "--log-path"
 
 # We need to override the EVENT_HISTORY queue to store
@@ -187,43 +185,6 @@ def _list_all_task_ids() -> List[str]:
         raise Exception(
             f"We haven't support {type(celery_app.backend)} in _list_all_task_ids yet."
         )
-
-
-def _is_command_has_project_dir(command: List[str]) -> bool:
-    """Returns true if command has --project-dir args."""
-    # This approach is not 100% accurate but should be good for most cases.
-    return any([PROJECT_DIR_ARGS in item for item in command])
-
-
-def _resolve_project_dir(
-    command: List[str], project_dir: Optional[str]
-) -> Optional[str]:
-    """Resolves request `project_path` and append --project-dir to `command` if
-    needed. Returns resolved project directory or None if can't resolve. Raises
-    AssertionError if --project-dir is found in command and project_dir is
-    provided."""
-
-    is_command_has_project_dir = _is_command_has_project_dir(command)
-    if project_dir and is_command_has_project_dir:
-        raise AssertionError(
-            "Confliction: --project-dir is found in command while project_dir field is also set."
-        )
-    if is_command_has_project_dir or project_dir:
-        return project_dir
-    # Fallback to environment variable.
-    default_project_dir = DBT_PROJECT_DIRECTORY.get()
-    return default_project_dir
-
-
-def _append_project_dir(command: List[str], project_dir: Optional[str]) -> None:
-    """Resolves project directory and appends to command if needed. See
-    PostInvocationRequest.project_dir for more details.
-    """
-    if _is_command_has_project_dir(command):
-        return
-    resolved_project_dir = _resolve_project_dir(command, project_dir)
-    if resolved_project_dir is not None:
-        command.extend([PROJECT_DIR_ARGS, resolved_project_dir])
 
 
 @app.post("/ready")
@@ -427,7 +388,7 @@ class PostInvocationRequest(BaseModel):
 
     @validator("project_dir", always=True)
     def check_project_dir(cls, project_dir, values):
-        _resolve_project_dir(values["command"], project_dir)
+        resolve_project_dir(values["command"], project_dir)
         # We don't change incoming request, only validate it.
         return project_dir
 
@@ -446,15 +407,18 @@ class PostInvocationResponse(BaseModel):
 async def post_invocation(args: PostInvocationRequest):
     """Accepts user dbt invocation request, creates a task in task queue."""
     command = deepcopy(args.command)
-    _append_project_dir(command, args.project_dir)
+    project_dir = resolve_project_dir(command, args.project_dir)
+    append_project_dir(command, args.project_dir)
     task_id = str(uuid4()) if args.task_id is None else args.task_id
-
     # Manually store PENDING status in backend otherwise we can't tell apart
     # if task_id is missed or haven't been picked up by worker.
     invoke.backend.store_result(task_id, None, PENDING)
+
     try:
         logger.info(f"Invoke: {command}, task_id: {task_id}")
-        invoke.apply_async(args=[command, args.callback_url], task_id=task_id)
+        invoke.apply_async(
+            args=[command, project_dir, args.callback_url], task_id=task_id
+        )
     except Exception as e:
         # If invocation is failed, change state to FAILURE. In strange case
         # that below store_result is failed, the request will always be PENDING.

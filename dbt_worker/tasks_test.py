@@ -8,7 +8,15 @@ from unittest.mock import MagicMock
 TEST_LOG_PATH = "/test_path"
 TEST_COMMAND = ["run", "--flag", "test"]
 TEST_COMMAND_WITH_LOG_PATH = ["--log-path", "test", "run", "--flag", "test"]
-TEST_RESOLVED_COMMAND = ["--log-path", TEST_LOG_PATH, "run", "--flag", "test"]
+TEST_RESOLVED_COMMAND = [
+    "--log-path",
+    TEST_LOG_PATH,
+    "--log-format",
+    "json",
+    "run",
+    "--flag",
+    "test",
+]
 TEST_TASK_ID = "test_id"
 TEST_ERROR_MESSAGE = "test error"
 TEST_CALLBACK_URL = "test_url"
@@ -44,6 +52,7 @@ class TestInvoke(TestCase):
     def setUp(self) -> None:
         self.mock_task = MockTask()
         self.mock_dbt_runner = MagicMock()
+        self.project_path = "."
 
     def tearDown(self) -> None:
         mock_invoke_success.last_command = None
@@ -58,7 +67,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, None)
+            _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -76,7 +85,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, None)
+            _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, self.project_path, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH)
         patched_dbt_runner.assert_called_once_with()
@@ -94,7 +103,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, None)
+            _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -117,7 +126,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, TEST_CALLBACK_URL)
+            _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()
@@ -145,7 +154,7 @@ class TestInvoke(TestCase):
         self.mock_task.AsyncResult.return_value = started_state
 
         with self.assertRaises(Ignore) as _:
-            _invoke(self.mock_task, TEST_COMMAND, TEST_CALLBACK_URL)
+            _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
         patched_dbt_runner.assert_called_once_with()

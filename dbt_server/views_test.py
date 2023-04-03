@@ -63,7 +63,8 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_DIR, TEST_URL],
+            task_id=TEST_TASK_ID,
         )
         mock_invoke.backend.store_result.assert_called_once_with(
             TEST_TASK_ID, None, "PENDING"
@@ -88,7 +89,7 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, None, TEST_URL], task_id=TEST_TASK_ID
         )
         mock_invoke.backend.store_result.assert_called_once_with(
             TEST_TASK_ID, None, "PENDING"
@@ -111,7 +112,8 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             PostInvocationRequest(command=TEST_COMMAND, callback_url=TEST_URL)
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_URL], task_id=TEST_TASK_ID
+            args=[TEST_COMMAND_WITH_PROJECT_DIR, TEST_DIR, TEST_URL],
+            task_id=TEST_TASK_ID,
         )
         mock_invoke.backend.store_result.assert_called_once_with(
             TEST_TASK_ID, None, "PENDING"
@@ -134,7 +136,7 @@ class TestPostInvocation(IsolatedAsyncioTestCase):
             )
         )
         mock_invoke.apply_async.assert_called_once_with(
-            args=[TEST_COMMAND, TEST_URL], task_id="USER_TASK_ID"
+            args=[TEST_COMMAND, None, TEST_URL], task_id="USER_TASK_ID"
         )
         mock_invoke.backend.store_result.assert_called_once_with(
             "USER_TASK_ID", None, "PENDING"
