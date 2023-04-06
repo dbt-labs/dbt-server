@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from dbt.events.eventmgr import EventLevel
-from dbt.events.base_types import BaseEvent
+from dbt.events.base_types import EventMsg
 from pythonjsonlogger import jsonlogger
 
 from dbt_server.models import TaskState
@@ -91,11 +91,11 @@ def configure_uvicorn_access_log():
 
 
 # Push event messages to root python logger for formatting
-def log_event_to_console(event: BaseEvent):
-    logging_method = dbt_event_to_python_root_log[event.log_level()]
-    if logging_method == logging.root.debug:
-        # Only log debug level for dbt-server logs
-        return
+def log_event_to_console(event: EventMsg):
+    logging_method = dbt_event_to_python_root_log[event.info.level]
+    # if logging_method == logging.root.debug:
+    #     # Only log debug level for dbt-server logs
+    #     return
     logging_method(event.info.msg)
 
 
