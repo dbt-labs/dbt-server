@@ -41,11 +41,3 @@ RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for 
 
 COPY ./dbt_server /usr/src/app/dbt_server
 COPY ./dbt_worker /usr/src/app/dbt_worker
-
-# TODO: Currently Celery worker user is "celery" instead of "root", dbt server 
-# has piece of code to create working-dir directory. Bad thing is Celery worker 
-# will try to create working-dir as well without write privilege and crashed 
-# eventually. This is bad behavior, in short we change root directory mod to 
-# 777, Celery worker can create working-dir as well. In long term we shouldn't 
-# let Celery worker do this directory initialization job.
-RUN chmod 777 /usr/src/app
