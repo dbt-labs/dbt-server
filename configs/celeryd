@@ -23,8 +23,9 @@ CELERYD_PID_FILE="/var/run/celery/%n.pid"
 # Workers should run as an unprivileged user.
 #   You need to create this user manually (or you can choose
 #   a user/group combination that already exists (e.g., nobody).
-CELERYD_USER="root"
-CELERYD_GROUP="root"
+CELERYD_USER=`id -un`
+CELERYD_GROUP=`id -gn`
+
 
 # If enabled pid and log directories will be created if missing,
 # and owned by the userid/group configured.
