@@ -99,11 +99,6 @@ def log_event_to_console(event: BaseEvent):
     logging_method(event.info.msg)
 
 
-# TODO: Core is still working on a way to add a callback to the eventlogger using the
-# newer format. We will still need to do this for events emitted by core
-# EVENT_MANAGER.callbacks.append(log_event_to_console)
-
-
 # TODO: This should be some type of event. We may also choose to send events for all task state updates.
 @dataclass
 class ServerLog:
