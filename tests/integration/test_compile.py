@@ -155,7 +155,6 @@ class CompilationInterfaceTests(unittest.TestCase):
         config_mock = Mock()
         with patch.multiple(
             "dbt_server.services.dbt_service",
-            get_sql_parser=Mock(),
         ):
             cached.set_last_parsed_manifest(
                 "abc123",
@@ -188,7 +187,6 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         with patch.multiple(
             "dbt_server.services.dbt_service",
-            get_sql_parser=Mock(),
         ):
             cached.set_last_parsed_manifest(
                 None,

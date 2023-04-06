@@ -24,9 +24,7 @@ TEST_CALLBACK_URL = "test_callback_url"
 TEST_COMMAND = ["testa", "testb"]
 
 
-@mock.patch(
-    "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-)
+
 def _set_test_cache(state_id, _):
     """Helper sets global singleton manifest cache."""
     LAST_PARSED.set_last_parsed_manifest(
@@ -58,10 +56,8 @@ class TestCachedManifest(TestCase):
     def tearDown(self) -> None:
         LAST_PARSED.reset()
 
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
-    def test_set_last_parsed_manifest(self, mock_get_sql_parser):
+
+    def test_set_last_parsed_manifest(self):
         LAST_PARSED.set_last_parsed_manifest(
             TEST_STATE_ID,
             TEST_PROJECT_PATH,
@@ -70,7 +66,6 @@ class TestCachedManifest(TestCase):
             TEST_MANIFEST_SIZE,
             TEST_CONFIG,
         )
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
         self.assertEqual(LAST_PARSED, _get_test_cache(TEST_STATE_ID))
 
     def test_lookup_none_state_empty_cache(self):
@@ -104,7 +99,6 @@ class TestStateController(TestCase):
         self.assertEqual(a.root_path, b.root_path)
         self.assertEqual(a.manifest, b.manifest)
         self.assertEqual(a.config, b.config)
-        self.assertEqual(a.parser, b.parser)
         self.assertEqual(a.manifest_size, b.manifest_size)
         self.assertEqual(a.is_manifest_cached, b.is_manifest_cached)
 
@@ -133,12 +127,8 @@ class TestStateController(TestCase):
     @mock.patch(
         "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
     def test_parse_from_source(
         self,
-        mock_get_sql_parser,
         mock_create_dbt_config,
         mock_parse_to_manifest,
         mock_get_root_path,
@@ -159,7 +149,6 @@ class TestStateController(TestCase):
         )
         mock_get_root_path.assert_called_once_with(TEST_STATE_ID, TEST_PROJECT_PATH)
         mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, parse_args)
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
         mock_parse_to_manifest.assert_called_once_with(TEST_ROOT_PATH, parse_args)
 
     def test_load_state_non_state_cached(self):
@@ -234,12 +223,8 @@ class TestStateController(TestCase):
     @mock.patch(
         "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
     def test_load_state_no_cache_has_project_path(
         self,
-        mock_get_sql_parser,
         mock_create_dbt_config,
         mock_get_size,
         mock_deserialize_manifest,
@@ -267,7 +252,6 @@ class TestStateController(TestCase):
         mock_get_latest_project_path.assert_called_once_with()
         mock_deserialize_manifest.assert_called_once_with(TEST_MANIFEST_FILE)
         mock_get_size.assert_called_once_with(TEST_MANIFEST_FILE)
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
         mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, args)
 
     @mock.patch(
@@ -293,12 +277,8 @@ class TestStateController(TestCase):
     @mock.patch(
         "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
     def test_load_state_no_cache_has_state_id(
         self,
-        mock_get_sql_parser,
         mock_create_dbt_config,
         mock_get_size,
         mock_deserialize_manifest,
@@ -326,7 +306,6 @@ class TestStateController(TestCase):
         mock_get_latest_project_path.assert_called_once_with()
         mock_deserialize_manifest.assert_called_once_with(TEST_MANIFEST_FILE)
         mock_get_size.assert_called_once_with(TEST_MANIFEST_FILE)
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
         mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, args)
 
     @mock.patch(
@@ -349,11 +328,8 @@ class TestStateController(TestCase):
 
     @mock.patch("dbt_server.services.filesystem_service.update_state_id")
     @mock.patch("dbt_server.services.filesystem_service.update_project_path")
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
     def test_update_cache_state_id(
-        self, mock_get_sql_parser, mock_update_project_path, mock_update_state_id
+        self, mock_update_project_path, mock_update_state_id
     ):
         state_controller = StateController(
             TEST_STATE_ID,
@@ -369,15 +345,11 @@ class TestStateController(TestCase):
         mock_update_project_path.assert_not_called()
         mock_update_state_id.assert_called_once_with(TEST_STATE_ID)
         self.assertEqual(LAST_PARSED, _get_test_cache(TEST_STATE_ID, None))
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
 
     @mock.patch("dbt_server.services.filesystem_service.update_state_id")
     @mock.patch("dbt_server.services.filesystem_service.update_project_path")
-    @mock.patch(
-        "dbt_server.services.dbt_service.get_sql_parser", return_value=TEST_SQL_PARSER
-    )
     def test_update_cache_project_path(
-        self, mock_get_sql_parser, mock_update_project_path, mock_update_state_id
+        self, mock_update_project_path, mock_update_state_id
     ):
         state_controller = StateController(
             None,
@@ -393,63 +365,4 @@ class TestStateController(TestCase):
         mock_update_state_id.assert_not_called()
         mock_update_project_path.assert_called_once_with(TEST_PROJECT_PATH)
         self.assertEqual(LAST_PARSED, _get_test_cache(None, TEST_PROJECT_PATH))
-        mock_get_sql_parser.assert_called_once_with(TEST_CONFIG, TEST_MANIFEST)
 
-    @mock.patch("dbt_server.services.dbt_service.compile_sql", return_value=TEST_VALUE)
-    def test_compile_query(self, mock_compile_sql):
-        state_controller = StateController(
-            None,
-            None,
-            TEST_ROOT_PATH,
-            TEST_MANIFEST,
-            TEST_CONFIG,
-            TEST_SQL_PARSER,
-            None,
-            None,
-        )
-        self.assertEqual(state_controller.compile_query(TEST_QUERY), TEST_VALUE)
-        mock_compile_sql.assert_called_once_with(
-            TEST_MANIFEST, TEST_CONFIG, TEST_SQL_PARSER, TEST_QUERY
-        )
-
-    @mock.patch("dbt_server.services.dbt_service.execute_sql", return_value=TEST_VALUE)
-    def test_execute_query(self, mock_execute_sql):
-        state_controller = StateController(
-            None, None, TEST_ROOT_PATH, TEST_MANIFEST, None, None, None, None
-        )
-        self.assertEqual(state_controller.execute_query(TEST_QUERY), TEST_VALUE)
-        mock_execute_sql.assert_called_once_with(
-            TEST_MANIFEST, TEST_ROOT_PATH, TEST_QUERY
-        )
-
-    @mock.patch("dbt_server.services.dbt_service.execute_async_command")
-    def test_execute_async_command(self, mock_execute_async_command):
-        state_controller = StateController(
-            TEST_STATE_ID, None, TEST_ROOT_PATH, TEST_MANIFEST, None, None, None, None
-        )
-        state_controller.execute_async_command(
-            TEST_TASK_ID, TEST_COMMAND, TEST_DB, TEST_CALLBACK_URL
-        )
-        mock_execute_async_command.assert_called_once_with(
-            TEST_COMMAND,
-            TEST_TASK_ID,
-            TEST_ROOT_PATH,
-            TEST_MANIFEST,
-            TEST_DB,
-            TEST_STATE_ID,
-            TEST_CALLBACK_URL,
-        )
-
-    @mock.patch(
-        "dbt_server.services.dbt_service.execute_sync_command", return_value=TEST_VALUE
-    )
-    def test_execute_sync_command(self, mock_execute_sync_command):
-        state_controller = StateController(
-            None, None, TEST_ROOT_PATH, TEST_MANIFEST, None, None, None, None
-        )
-        self.assertEqual(
-            state_controller.execute_sync_command(TEST_COMMAND), TEST_VALUE
-        )
-        mock_execute_sync_command.assert_called_once_with(
-            TEST_COMMAND, TEST_ROOT_PATH, TEST_MANIFEST
-        )

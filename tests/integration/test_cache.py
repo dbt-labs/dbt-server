@@ -43,10 +43,8 @@ class StartupCacheTest(DbtCoreTestBase):
         return_value=fake_manifest,
     )
     @patch("dbt_server.services.dbt_service.create_dbt_config", return_value=None)
-    @patch("dbt_server.services.dbt_service.get_sql_parser", return_value=None)
     def test_startup_cache_succeeds(
         self,
-        get_sql_parser,
         create_dbt_config,
         mock_dbt,
         mock_fs_get_size,
