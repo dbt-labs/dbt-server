@@ -1,7 +1,7 @@
 import os
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app
-from dbt_server.logging import DBT_SERVER_LOGGER as logger
+from dbt_server.logging import DBT_SERVER_LOGGER as logger, log_event_to_console
 from dbt_server.services.filesystem_service import (
     get_task_artifacts_path,
     get_root_path,
@@ -102,8 +102,13 @@ def _invoke_runner(
     # this chdir hack: https://github.com/dbt-labs/dbt-core/issues/6985
     original_wd = os.getcwd()
     try:
-        os.chdir(get_root_path(None, project_dir))
-        dbt = dbtRunner()
+        # If the project_dir was passed as a command flag, this
+        # value will be none. Command will still run properly,
+        # artifacts may write to incorrect locations
+        if project_dir:
+            os.chdir(project_dir)
+        # TODO: Make sure callback works
+        dbt = dbtRunner(callbacks=[log_event_to_console])
         _, _ = dbt.invoke(command)
     except Exception as e:
         _update_state(
@@ -113,6 +118,9 @@ def _invoke_runner(
             {"exc_type": type(e).__name__, "exc_message": str(e)},
             callback_url,
         )
+        # TODO: make this work
+        logger.exception(e)
+
     finally:
         os.chdir(original_wd)
 
@@ -125,6 +133,7 @@ def _get_task_status(task: Any, task_id: str):
 def _insert_log_path(command: List[str], task_id: str):
     """If command doesn't specify log path, insert default log path at start."""
     # We respect user input log_path.
+    # TODO: Make sure that this actually works, flag placement could result in path not being honored
     if is_command_has_log_path(command):
         return
     command.insert(0, LOG_PATH_ARGS)

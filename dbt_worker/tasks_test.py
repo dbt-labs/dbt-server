@@ -58,8 +58,9 @@ class TestInvoke(TestCase):
         mock_invoke_success.last_command = None
         mock_invoke_failure.last_command = None
 
+    @patch("dbt_worker.tasks.log_event_to_console")
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_success(self, patched_dbt_runner, _):
+    def test_success(self, patched_dbt_runner, patched_callback, _):
         patched_dbt_runner.return_value = self.mock_dbt_runner
         self.mock_dbt_runner.invoke = mock_invoke_success
         started_state = EmptyClass()
@@ -70,14 +71,15 @@ class TestInvoke(TestCase):
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once_with()
+        patched_dbt_runner.assert_called_once_with(callbacks=[patched_callback])
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID, state="SUCCESS", meta={}
         )
 
+    @patch("dbt_worker.tasks.log_event_to_console")
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_ignore_log_path(self, patched_dbt_runner, _):
+    def test_ignore_log_path(self, patched_dbt_runner, patched_callback, _):
         patched_dbt_runner.return_value = self.mock_dbt_runner
         self.mock_dbt_runner.invoke = mock_invoke_success
         started_state = EmptyClass()
@@ -88,14 +90,15 @@ class TestInvoke(TestCase):
             _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, self.project_path, None)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH)
-        patched_dbt_runner.assert_called_once_with()
+        patched_dbt_runner.assert_called_once_with(callbacks=[patched_callback])
         self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID, state="SUCCESS", meta={}
         )
 
+    @patch("dbt_worker.tasks.log_event_to_console")
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_failure(self, patched_dbt_runner, _):
+    def test_failure(self, patched_dbt_runner, patched_callback, _):
         patched_dbt_runner.return_value = self.mock_dbt_runner
         self.mock_dbt_runner.invoke = mock_invoke_failure
         started_state = EmptyClass()
@@ -106,7 +109,7 @@ class TestInvoke(TestCase):
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once_with()
+        patched_dbt_runner.assert_called_once_with(callbacks=[patched_callback])
         self.mock_task.update_state.assert_called_once_with(
             task_id=TEST_TASK_ID,
             state="FAILURE",
@@ -115,8 +118,11 @@ class TestInvoke(TestCase):
 
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
+    @patch("dbt_worker.tasks.log_event_to_console")
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_success_callback(self, patched_dbt_runner, patched_session, _, __):
+    def test_success_callback(
+        self, patched_dbt_runner, patched_callback, patched_session, _, __
+    ):
         patched_session.return_value.mount.return_value = None
         patched_session.return_value.post.return_value = None
         patched_dbt_runner.return_value = self.mock_dbt_runner
@@ -129,7 +135,7 @@ class TestInvoke(TestCase):
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once_with()
+        patched_dbt_runner.assert_called_once_with(callbacks=[patched_callback])
         patched_session.return_value.post.assert_any_call(
             TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
         )
@@ -143,8 +149,11 @@ class TestInvoke(TestCase):
 
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
+    @patch("dbt_worker.tasks.log_event_to_console")
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_failure_callback(self, patched_dbt_runner, patched_session, _, __):
+    def test_failure_callback(
+        self, patched_dbt_runner, patched_callback, patched_session, _, __
+    ):
         patched_session.return_value.mount.return_value = None
         patched_session.return_value.post.return_value = None
         patched_dbt_runner.return_value = self.mock_dbt_runner
@@ -157,7 +166,7 @@ class TestInvoke(TestCase):
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
         self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once_with()
+        patched_dbt_runner.assert_called_once_with(callbacks=[patched_callback])
         patched_session.return_value.post.assert_any_call(
             TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
         )

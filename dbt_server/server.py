@@ -6,6 +6,7 @@ from dbt_server import tracer  # noqa
 
 from dbt_server import models
 from dbt_server.database import engine
+from dbt_server.flags import DBT_CLOUD_CONTEXT
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.views import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger, configure_uvicorn_access_log
@@ -83,4 +84,5 @@ async def startup_event():
     # This method is `async` intentionally to block serving until startup is complete
     configure_uvicorn_access_log()
     dbt_service.inject_dd_trace_into_core_lib()
-    startup_cache_initialize()
+    if DBT_CLOUD_CONTEXT.get() != "develop":
+        startup_cache_initialize()

@@ -13,6 +13,12 @@ if [ "${dbt_server_enable_ddtrace}" = "true" ]; then
     dd_trace="ddtrace-run gunicorn"
 fi
 
+# Export env vars to be sourced in celeryd script
+env_vars=$(printenv)
+while IFS= read -r line; do
+    echo "export $line" >> ~/.bashrc
+done <<< "$env_vars"
+
 service redis-server start
 service celeryd start
 

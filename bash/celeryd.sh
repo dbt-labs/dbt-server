@@ -31,7 +31,11 @@
 # You can then configure this by manipulating /etc/default/little-worker.
 #
 VERSION=10.1
+
 echo "celery init v${VERSION}."
+# Source env vars exported in ubuntu-run.sh
+. /root/.bashrc
+
 if [ $(id -u) -ne 0 ]; then
     echo "Error: This program can only be used by the root user."
     echo "       Unprivileged users must use the 'celery multi' utility, "
