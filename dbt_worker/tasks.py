@@ -103,7 +103,7 @@ def _invoke_runner(
     original_wd = os.getcwd()
     try:
         # If the project_dir was passed as a command flag, this
-        # value will be none. Command will still run properly, 
+        # value will be none. Command will still run properly,
         # artifacts may write to incorrect locations
         if project_dir:
             os.chdir(project_dir)
