@@ -101,11 +101,12 @@ def _invoke_runner(
     # after a deps is called. Once core completes the following ticket, we can remove
     # this chdir hack: https://github.com/dbt-labs/dbt-core/issues/6985
     original_wd = os.getcwd()
-    root_path = get_root_path(None, project_dir)
     try:
-        # TODO: enforce provision of project path upstream to avoid null path here
-        if root_path:
-            os.chdir(root_path)
+        # If the project_dir was passed as a command flag, this
+        # value will be none. Command will still run properly, 
+        # artifacts may write to incorrect locations
+        if project_dir:
+            os.chdir(project_dir)
         # TODO: Make sure callback works
         dbt = dbtRunner(callbacks=[log_event_to_console])
         _, _ = dbt.invoke(command)
