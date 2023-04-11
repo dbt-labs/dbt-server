@@ -109,7 +109,7 @@ def _invoke_runner(
             os.chdir(project_dir)
         # TODO: Make sure callback works
         dbt = dbtRunner(callbacks=[log_event_to_console])
-        _, _ = dbt.invoke(command)
+        dbt.invoke(command)
     except Exception as e:
         _update_state(
             task,
