@@ -124,12 +124,8 @@ class TestStateController(TestCase):
     @mock.patch(
         "dbt_server.services.dbt_service.parse_to_manifest", return_value=TEST_MANIFEST
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
-    )
     def test_parse_from_source(
         self,
-        mock_create_dbt_config,
         mock_parse_to_manifest,
         mock_get_root_path,
     ):
@@ -148,7 +144,6 @@ class TestStateController(TestCase):
             ),
         )
         mock_get_root_path.assert_called_once_with(TEST_STATE_ID, TEST_PROJECT_PATH)
-        mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, parse_args)
         mock_parse_to_manifest.assert_called_once_with(TEST_ROOT_PATH, parse_args)
 
     def test_load_state_non_state_cached(self):
@@ -220,12 +215,8 @@ class TestStateController(TestCase):
         "dbt_server.services.filesystem_service.get_size",
         return_value=TEST_MANIFEST_SIZE,
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
-    )
     def test_load_state_no_cache_has_project_path(
         self,
-        mock_create_dbt_config,
         mock_get_size,
         mock_deserialize_manifest,
         mock_get_root_path,
@@ -252,7 +243,6 @@ class TestStateController(TestCase):
         mock_get_latest_project_path.assert_called_once_with()
         mock_deserialize_manifest.assert_called_once_with(TEST_MANIFEST_FILE)
         mock_get_size.assert_called_once_with(TEST_MANIFEST_FILE)
-        mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, args)
 
     @mock.patch(
         "dbt_server.services.filesystem_service.get_latest_state_id",
@@ -274,12 +264,8 @@ class TestStateController(TestCase):
         "dbt_server.services.filesystem_service.get_size",
         return_value=TEST_MANIFEST_SIZE,
     )
-    @mock.patch(
-        "dbt_server.services.dbt_service.create_dbt_config", return_value=TEST_CONFIG
-    )
     def test_load_state_no_cache_has_state_id(
         self,
-        mock_create_dbt_config,
         mock_get_size,
         mock_deserialize_manifest,
         mock_get_root_path,
@@ -306,7 +292,6 @@ class TestStateController(TestCase):
         mock_get_latest_project_path.assert_called_once_with()
         mock_deserialize_manifest.assert_called_once_with(TEST_MANIFEST_FILE)
         mock_get_size.assert_called_once_with(TEST_MANIFEST_FILE)
-        mock_create_dbt_config.assert_called_once_with(TEST_ROOT_PATH, args)
 
     @mock.patch(
         "dbt_server.services.dbt_service.serialize_manifest", return_value=TEST_MANIFEST

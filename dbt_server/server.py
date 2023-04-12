@@ -63,16 +63,10 @@ def startup_cache_initialize():
         )
         return
 
-    target_name = os.environ.get("__DBT_TARGET_NAME", None)
-    if target_name == "":
-        target_name = None
-    config_args = ConfigArgs(target=target_name)
-
     manifest_size = filesystem_service.get_size(manifest_path)
-    config = dbt_service.create_dbt_config(root_path, config_args)
 
     LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, latest_project_path, root_path, manifest, manifest_size, config
+        latest_state_id, latest_project_path, root_path, manifest, manifest_size
     )
 
     logger.info(f"[STARTUP] Cached manifest in memory (path={root_path})")

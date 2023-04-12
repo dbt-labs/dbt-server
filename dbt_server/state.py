@@ -40,7 +40,7 @@ class CachedManifest:
     manifest_size: Optional[int] = None
 
     def set_last_parsed_manifest(
-        self, state_id, project_path, root_path, manifest, manifest_size, config
+        self, state_id, project_path, root_path, manifest, manifest_size
     ):
         """Updates global singleton manifest cache with lock protected. See
         class member comment for args definition."""
@@ -50,7 +50,6 @@ class CachedManifest:
             self.root_path = root_path
             self.manifest = manifest
             self.manifest_size = manifest_size
-            self.config = config
 
     def lookup(self, state_id):
         """Checks if required manifest hits cached one, returns None if not
@@ -75,7 +74,6 @@ class CachedManifest:
             self.root_path = None
             self.manifest = None
             self.manifest_size = None
-            self.config = None
 
 
 # Global singleton manifest cache object.
@@ -93,7 +91,6 @@ class StateController(object):
         project_path,
         root_path,
         manifest,
-        config,
         manifest_size,
         is_manifest_cached,
     ):
@@ -101,7 +98,6 @@ class StateController(object):
         self.project_path = project_path
         self.root_path = root_path
         self.manifest = manifest
-        self.config = config
         self.manifest_size = manifest_size
         # If it's true, the menifest is loaded from cache.
         self.is_manifest_cached = is_manifest_cached
@@ -115,13 +111,11 @@ class StateController(object):
         cls, state_id, project_path, manifest, root_path, manifest_size, args=None
     ):
         """Returns StateController object that stores current dbt core state."""
-        config = dbt_service.create_dbt_config(root_path, args)
         return cls(
             state_id=state_id,
             project_path=project_path,
             root_path=root_path,
             manifest=manifest,
-            config=config,
             manifest_size=manifest_size,
             is_manifest_cached=False,
         )
@@ -135,7 +129,6 @@ class StateController(object):
             project_path=cached.project_path,
             root_path=cached.root_path,
             manifest=cached.manifest,
-            config=cached.config,
             manifest_size=cached.manifest_size,
             is_manifest_cached=True,
         )
@@ -263,7 +256,6 @@ class StateController(object):
             self.root_path,
             self.manifest,
             self.manifest_size,
-            self.config,
         )
 
 

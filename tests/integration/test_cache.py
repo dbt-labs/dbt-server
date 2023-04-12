@@ -42,10 +42,8 @@ class StartupCacheTest(DbtCoreTestBase):
         "dbt_server.services.dbt_service.deserialize_manifest",
         return_value=fake_manifest,
     )
-    @patch("dbt_server.services.dbt_service.create_dbt_config", return_value=None)
     def test_startup_cache_succeeds(
         self,
-        create_dbt_config,
         mock_dbt,
         mock_fs_get_size,
         mock_fs_get_latest_project_path,
