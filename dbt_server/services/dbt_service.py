@@ -23,12 +23,6 @@ except (ModuleNotFoundError, ImportError):
         InvalidConnectionError as InvalidConnectionException,
     )
 
-from dbt.lib import (
-    get_dbt_config as dbt_get_dbt_config,
-    parse_to_manifest as dbt_parse_to_manifest,
-    deserialize_manifest as dbt_deserialize_manifest,
-    serialize_manifest as dbt_serialize_manifest,
-)
 
 from dbt.contracts.sql import RemoteCompileResult
 
@@ -56,18 +50,91 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
+import os
+from dbt.config.project import Project
+from dataclasses import dataclass
+from dbt.cli.resolvers import default_profiles_dir
+from dbt.config.runtime import load_profile, load_project
+from dbt.flags import set_from_args
+
+
+@dataclass
+class RuntimeArgs:
+    project_dir: str
+    profiles_dir: str
+    single_threaded: bool
+    profile: str
+    target: str
+
+@tracer.wrap
+def load_profile_project(project_dir, profile_name_override=None):
+    profile = load_profile(project_dir, {}, profile_name_override)
+    project = load_project(project_dir, False, profile, {})
+    return profile, project
+
+@tracer.wrap
+def dbt_get_dbt_config(project_dir, args=None, single_threaded=False):
+    from dbt.config.runtime import RuntimeConfig
+    import dbt.adapters.factory
+    import dbt.events.functions
+
+    if os.getenv("DBT_PROFILES_DIR"):
+        profiles_dir = os.getenv("DBT_PROFILES_DIR")
+    else:
+        profiles_dir = default_profiles_dir()
+
+    profile_name = getattr(args, "profile", None)
+
+    runtime_args = RuntimeArgs(
+        project_dir=project_dir,
+        profiles_dir=profiles_dir,
+        single_threaded=single_threaded,
+        profile=profile_name,
+        target=getattr(args, "target", None),
+    )
+
+    # set global flags from arguments
+    set_from_args(runtime_args, None)
+    profile, project = load_profile_project(project_dir, profile_name)
+    assert type(project) is Project
+
+    config = RuntimeConfig.from_parts(project, profile, runtime_args)
+
+    # the only thing this set_from_args does differently than
+    # the one above is that it pass runtime config over, I don't think
+    # we need that. but leaving this for now for future reference
+
+    # flags.set_from_args(runtime_args, config)
+
+    # This is idempotent, so we can call it repeatedly
+    dbt.adapters.factory.register_adapter(config)
+
+    # Make sure we have a valid invocation_id
+    dbt.events.functions.set_invocation_id()
+    dbt.events.functions.reset_metadata_vars()
+
+    return config
+
+@tracer.wrap
+def dbt_parse_to_manifest(config):
+    from dbt.parser.manifest import ManifestLoader
+
+    return ManifestLoader.get_full_manifest(config)
+
+@tracer.wrap
+def dbt_deserialize_manifest(manifest_msgpack):
+    from dbt.contracts.graph.manifest import Manifest
+
+    return Manifest.from_msgpack(manifest_msgpack)
+
+@tracer.wrap
+def dbt_serialize_manifest(manifest):
+    return manifest.to_msgpack()
+
 
 class Args(BaseModel):
     profile: str = None
 
-
-def inject_dd_trace_into_core_lib():
-
-    for attr_name, attr in getmembers(dbt.lib):
-        if not isfunction(attr):
-            continue
-
-        setattr(dbt.lib, attr_name, tracer.wrap(attr))
 
 
 def handle_dbt_compilation_error(func):
@@ -164,16 +231,20 @@ def compile_sql(manifest, project_dir, sql):
     try:
         # Invoke dbtRunner to compile SQL code
         # TODO skip relational cache.
-        run_result, _ = dbtRunner(
+        run_result = dbtRunner(
             manifest=manifest
         ).invoke(
             ["compile", "--inline", sql],
             project_dir=project_dir,
             introspect=False,
-            send_anonymous_usage_stats=False
+            send_anonymous_usage_stats=False,
+            populate_cache=False,
         )
+        # core will not raise an exception in runner, it will just return it in the result
+        if not run_result.success:
+            raise run_result.exception
         # convert to RemoteCompileResult to keep original return format
-        node_result = run_result.results[0]
+        node_result = run_result.result.results[0]
         result = RemoteCompileResult(
             raw_code=node_result.node.raw_code,
             compiled_code=node_result.node.compiled_code,
