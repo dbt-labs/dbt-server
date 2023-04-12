@@ -13,13 +13,11 @@ from dbt.contracts.graph.manifest import Manifest
 # These exceptions were removed in v1.4
 try:
     from dbt.exceptions import (
-        ValidationException,
         CompilationException,
         InvalidConnectionException,
     )
 except (ModuleNotFoundError, ImportError):
     from dbt.exceptions import (
-        DbtValidationError as ValidationException,
         CompilationError as CompilationException,
         InvalidConnectionError as InvalidConnectionException,
     )
@@ -35,7 +33,6 @@ from dbt.cli.main import dbtRunner
 
 
 from dbt_server.exceptions import (
-    InvalidConfigurationException,
     InternalException,
     dbtCoreCompilationException,
     UnsupportedQueryException,
@@ -50,18 +47,9 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
 
 CONFIG_GLOBAL_LOCK = threading.Lock()
 
-import os
-from dbt.config.project import Project
-from dataclasses import dataclass
-from dbt.cli.resolvers import default_profiles_dir
-from dbt.config.runtime import load_profile, load_project
-from dbt.flags import set_from_args
-
 
 class Args(BaseModel):
     profile: str = None
-
-
 
 def handle_dbt_compilation_error(func):
     def inner(*args, **kwargs):
@@ -98,12 +86,15 @@ def parse_to_manifest(project_path, args):
             target_name = None
         
         # Parse command return a manifest in result.result
+        # We can also specify target dir to control where manifest.msgpack is saved
         result = dbtRunner().invoke(
             ["parse"],
             project_dir=project_path,
             profile=profile_name,
             send_anonymous_usage_stats=False,
             target=target_name,
+            write_json=False,
+            write_manifest=False,
         )
         return result.result
     except CompilationException as e:
@@ -142,6 +133,8 @@ def compile_sql(manifest, project_dir, sql):
             introspect=False,
             send_anonymous_usage_stats=False,
             populate_cache=False,
+            write_json=False,
+            write_manifest=False,
         )
         # core will not raise an exception in runner, it will just return it in the result
         if not run_result.success:
