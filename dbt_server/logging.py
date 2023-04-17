@@ -8,6 +8,7 @@ from typing import Optional
 from dbt.events.eventmgr import EventLevel
 from dbt.events.base_types import EventMsg
 from pythonjsonlogger import jsonlogger
+from dbt_server.flags import CELERY_LOG_FILE
 
 from dbt_server.models import TaskState
 
@@ -40,6 +41,7 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         if WORKSPACE_ID and "workspaceID" not in log_record:
             log_record["workspaceID"] = WORKSPACE_ID
 
+
 def get_log_formatter():
     if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
         formatter = logging.Formatter(
@@ -55,29 +57,38 @@ def get_log_formatter():
         )
     return formatter
 
-# setup json logging for stdout and datadog
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-stdout = logging.StreamHandler()
-formatter = get_log_formatter()
-stdout.setFormatter(formatter)
-logger.addHandler(stdout)
 
 # Use standard python logger for all dbt-server logs-- these will be sent to
 # stdout but will not be written to task log files
 DBT_SERVER_LOGGER = logging.getLogger("dbt-server")
 DBT_SERVER_LOGGER.setLevel(logging.DEBUG)
+stdout = logging.StreamHandler()
+formatter = get_log_formatter()
+stdout.setFormatter(formatter)
+DBT_SERVER_LOGGER.addHandler(stdout)
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
 logger_instance = logging.root.manager.loggerDict.get("uvicorn")
 if logger_instance:
-    logger.propagate = True
+    logger_instance.propagate = True
     logger_instance.handlers = []
 logger_instance = logging.root.manager.loggerDict.get("uvicorn.error")
 if logger_instance:
-    logger.propagate = True
+    logger_instance.propagate = True
     logger_instance.handlers = []
+
+
+def get_configured_celery_logger():
+    logger = logging.getLogger(__name__)
+    logger.handlers = []
+    formatter = get_log_formatter()
+    file_handler = logging.FileHandler(filename=CELERY_LOG_FILE.get())
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    logger.setLevel(logging.INFO)
+
+    return logger
 
 
 def configure_uvicorn_access_log():
@@ -91,15 +102,6 @@ def configure_uvicorn_access_log():
     ual = logging.getLogger("uvicorn.access")
     ual.propagate = True
     ual.handlers = []
-
-
-# Push event messages to root python logger for formatting
-def log_event_to_console(event: EventMsg):
-    logging_method = dbt_event_to_python_root_log[event.info.level]
-    # if logging_method == logging.root.debug:
-    #     # Only log debug level for dbt-server logs
-    #     return
-    logging_method(event.info.msg)
 
 
 # TODO: This should be some type of event. We may also choose to send events for all task state updates.

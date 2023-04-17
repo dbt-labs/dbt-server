@@ -1,12 +1,9 @@
-import logging
 import os
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app
-from dbt_server.logging import get_log_formatter, log_event_to_console
-from dbt_server.services.filesystem_service import (
-    get_task_artifacts_path,
-    get_root_path,
-)
+from dbt_server.logging import get_configured_celery_logger
+from dbt_server.services.filesystem_service import get_task_artifacts_path
+
 from celery.contrib.abortable import AbortableTask
 from celery.contrib.abortable import ABORTED
 from celery.exceptions import Ignore
@@ -30,12 +27,8 @@ LOG_FORMAT_ARGS = "--log-format"
 LOG_FORMAT_DEFAULT = "json"
 PROJECT_DIR_ARGS = "--project-dir"
 
-# TODO: Make configurable and use env var for log file
-logger = logging.getLogger(__name__)
-formatter = get_log_formatter()
-file_handler = logging.FileHandler(filename="/var/log/celery/celery-all.log")
-file_handler.setFormatter(formatter)
-logger.addHandler(file_handler)
+logger = get_configured_celery_logger()
+
 
 def is_command_has_log_path(command: List[str]):
     """Returns true if command has --log-path args."""
@@ -120,7 +113,6 @@ def _invoke_runner(
         dbt.invoke(command)
         logger.info(f"Task with id: {task_id} has completed successfully")
     except Exception as e:
-        # TODO: make this work
         logger.exception(e)
         _update_state(
             task,
@@ -142,7 +134,8 @@ def _get_task_status(task: Any, task_id: str):
 def _insert_log_path(command: List[str], task_id: str):
     """If command doesn't specify log path, insert default log path at start."""
     # We respect user input log_path.
-    # TODO: Make sure that this actually works, flag placement could result in path not being honored
+    # TODO: Actually need to re-order user input so that log args come before command,
+    # or provide feedback in case of failure so user knows to re-order
     if is_command_has_log_path(command):
         return
     command.insert(0, LOG_PATH_ARGS)
