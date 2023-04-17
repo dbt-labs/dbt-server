@@ -108,8 +108,7 @@ def _invoke_runner(
         # artifacts may write to incorrect locations
         if project_dir:
             os.chdir(project_dir)
-        # TODO: Verify we don't need callback for datadog
-        dbt = dbtRunner(callbacks=[])
+        dbt = dbtRunner()
         dbt.invoke(command)
         logger.info(f"Task with id: {task_id} has completed successfully")
     except Exception as e:
