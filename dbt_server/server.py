@@ -1,5 +1,4 @@
 # Need to run this as early in the server's startup as possible
-import os
 from typing import Optional
 from pydantic import BaseModel
 from dbt_server import tracer  # noqa

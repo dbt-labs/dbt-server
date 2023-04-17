@@ -37,10 +37,6 @@ class StateControllerTestCase(DbtCoreTestBase):
         result = StateController.load_state(args)
 
         assert result.state_id == self.state_id
-        assert result.config.profile_name == "user"
-        assert result.config.target_name == "default"
-        assert result.config.user_config is not None
-        assert result.config.credentials is not None
 
         # Should not cache on load
         assert LAST_PARSED.lookup(self.state_id) is None

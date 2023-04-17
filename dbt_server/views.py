@@ -9,7 +9,7 @@ from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import UNREADY_STATES
 from celery.states import PENDING
 from celery.states import FAILURE
-from fastapi import FastAPI,status
+from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel
@@ -221,6 +221,7 @@ def push_unparsed_manifest(args: PushProjectArgs):
         },
     )
 
+
 @app.post("/parse")
 def parse_project(args: ParseArgs):
     state = StateController.parse_from_source(args)
@@ -237,6 +238,7 @@ def parse_project(args: ParseArgs):
         },
     )
 
+
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController.load_state(sql)
@@ -247,8 +249,8 @@ def compile_sql(sql: SQLConfig):
         content={
             "parsing": state.state_id,
             "path": state.serialize_path,
-            "res": jsonable_encoder(result), # TODO why we need this?
-            "compiled_code": result['compiled_code'],
+            "res": jsonable_encoder(result),  # TODO why we need this?
+            "compiled_code": result["compiled_code"],
         },
     )
 
@@ -263,6 +265,7 @@ def get_manifest_metadata(state):
         "manifest_size": state.manifest_size,
         "is_manifest_cached": state.is_manifest_cached,
     }
+
 
 class PostInvocationRequest(BaseModel):
     # Dbt command that will be sent to dbt worker for execution, e.g. [

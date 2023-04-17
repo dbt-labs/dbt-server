@@ -5,7 +5,7 @@ from dbt_server import tracer
 
 
 from dataclasses import dataclass
-from typing import Optional, Any, Tuple, List
+from typing import Optional, Any
 import threading
 
 

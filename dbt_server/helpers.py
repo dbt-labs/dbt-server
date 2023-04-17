@@ -1,4 +1,3 @@
-import os
 from dbt_server.exceptions import InternalException
 
 

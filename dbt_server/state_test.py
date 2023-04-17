@@ -13,7 +13,6 @@ TEST_MANIFEST_FILE = "test_root_path/manifest.msgpack"
 TEST_PARTIAL_PARSE_FILE = "partial.msgpack"
 TEST_MANIFEST = "test_manifest"
 TEST_MANIFEST_SIZE = 10
-TEST_CONFIG = "test_config"
 TEST_SQL_PARSER = "test_sql_parse"
 TEST_ARGS = 1
 TEST_VALUE = 10
@@ -24,8 +23,7 @@ TEST_CALLBACK_URL = "test_callback_url"
 TEST_COMMAND = ["testa", "testb"]
 
 
-
-def _set_test_cache(state_id, _):
+def _set_test_cache(state_id):
     """Helper sets global singleton manifest cache."""
     LAST_PARSED.set_last_parsed_manifest(
         state_id,
@@ -33,7 +31,6 @@ def _set_test_cache(state_id, _):
         TEST_ROOT_PATH,
         TEST_MANIFEST,
         TEST_MANIFEST_SIZE,
-        TEST_CONFIG,
     )
 
 
@@ -47,15 +44,12 @@ def _get_test_cache(state_id: str, project_path: str = TEST_PROJECT_PATH):
         TEST_ROOT_PATH,
         TEST_MANIFEST,
         TEST_MANIFEST_SIZE,
-        TEST_CONFIG,
-        TEST_SQL_PARSER,
     )
 
 
 class TestCachedManifest(TestCase):
     def tearDown(self) -> None:
         LAST_PARSED.reset()
-
 
     def test_set_last_parsed_manifest(self):
         LAST_PARSED.set_last_parsed_manifest(
@@ -64,7 +58,6 @@ class TestCachedManifest(TestCase):
             TEST_ROOT_PATH,
             TEST_MANIFEST,
             TEST_MANIFEST_SIZE,
-            TEST_CONFIG,
         )
         self.assertEqual(LAST_PARSED, _get_test_cache(TEST_STATE_ID))
 
@@ -98,7 +91,6 @@ class TestStateController(TestCase):
         self.assertEqual(a.project_path, b.project_path)
         self.assertEqual(a.root_path, b.root_path)
         self.assertEqual(a.manifest, b.manifest)
-        self.assertEqual(a.config, b.config)
         self.assertEqual(a.manifest_size, b.manifest_size)
         self.assertEqual(a.is_manifest_cached, b.is_manifest_cached)
 
@@ -110,8 +102,6 @@ class TestStateController(TestCase):
                 TEST_PROJECT_PATH,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 TEST_MANIFEST_SIZE,
                 True,
             ),
@@ -137,8 +127,6 @@ class TestStateController(TestCase):
                 TEST_PROJECT_PATH,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 0,  # manifest_size
                 False,
             ),
@@ -156,8 +144,6 @@ class TestStateController(TestCase):
                 TEST_PROJECT_PATH,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 TEST_MANIFEST_SIZE,
                 True,
             ),
@@ -173,8 +159,6 @@ class TestStateController(TestCase):
                 TEST_PROJECT_PATH,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 TEST_MANIFEST_SIZE,
                 True,
             ),
@@ -232,8 +216,6 @@ class TestStateController(TestCase):
                 TEST_PROJECT_PATH,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 TEST_MANIFEST_SIZE,
                 False,
             ),
@@ -281,8 +263,6 @@ class TestStateController(TestCase):
                 None,
                 TEST_ROOT_PATH,
                 TEST_MANIFEST,
-                TEST_CONFIG,
-                TEST_SQL_PARSER,
                 TEST_MANIFEST_SIZE,
                 False,
             ),
@@ -304,7 +284,7 @@ class TestStateController(TestCase):
 
         serialized_path = f"{TEST_ROOT_PATH}/manifest.msgpack"
         state_controller = StateController(
-            None, None, TEST_ROOT_PATH, TEST_MANIFEST, None, None, None, None
+            None, None, TEST_ROOT_PATH, TEST_MANIFEST, None, None
         )
         state_controller.serialize_manifest()
         self.assertEqual(state_controller.manifest_size, TEST_MANIFEST_SIZE)
@@ -321,8 +301,6 @@ class TestStateController(TestCase):
             None,
             TEST_ROOT_PATH,
             TEST_MANIFEST,
-            TEST_CONFIG,
-            TEST_SQL_PARSER,
             TEST_MANIFEST_SIZE,
             False,
         )
@@ -341,8 +319,6 @@ class TestStateController(TestCase):
             TEST_PROJECT_PATH,
             TEST_ROOT_PATH,
             TEST_MANIFEST,
-            TEST_CONFIG,
-            TEST_SQL_PARSER,
             TEST_MANIFEST_SIZE,
             False,
         )
@@ -350,4 +326,3 @@ class TestStateController(TestCase):
         mock_update_state_id.assert_not_called()
         mock_update_project_path.assert_called_once_with(TEST_PROJECT_PATH)
         self.assertEqual(LAST_PARSED, _get_test_cache(None, TEST_PROJECT_PATH))
-

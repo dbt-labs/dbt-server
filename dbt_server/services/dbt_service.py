@@ -1,7 +1,5 @@
 import os
 import threading
-import uuid
-from inspect import getmembers, isfunction
 
 from datetime import datetime
 
@@ -51,6 +49,7 @@ CONFIG_GLOBAL_LOCK = threading.Lock()
 class Args(BaseModel):
     profile: str = None
 
+
 def handle_dbt_compilation_error(func):
     def inner(*args, **kwargs):
         try:
@@ -61,6 +60,7 @@ def handle_dbt_compilation_error(func):
 
     return inner
 
+
 def disable_tracking():
     # TODO: why does this mess with stuff
     dbt.tracking.disable_tracking()
@@ -69,7 +69,7 @@ def disable_tracking():
 @tracer.wrap
 def parse_to_manifest(project_path, args):
     try:
-        
+
         # If no profile name is passed in args, we will attempt to get it from env vars
         # If profile is None, dbt will default to reading from dbt_project.yml
         env_profile_name = os.getenv("DBT_PROFILE_NAME")
@@ -79,12 +79,13 @@ def parse_to_manifest(project_path, args):
             profile_name = env_profile_name
         else:
             profile_name = None
-
-        # TODO is this actually needed?
+        # Target can be specified at the semantic layer level. If this field comes over as
+        # an empty string instead of null, dbt will not use the default target name and
+        # parsing will fail
         target_name = os.environ.get("__DBT_TARGET_NAME", None)
         if target_name == "":
             target_name = None
-        
+
         # Parse command return a manifest in result.result
         # We can also specify target dir to control where manifest.msgpack is saved
         result = dbtRunner().invoke(
@@ -125,9 +126,7 @@ def compile_sql(manifest, project_dir, sql):
     try:
         # Invoke dbtRunner to compile SQL code
         # TODO skip relational cache.
-        run_result = dbtRunner(
-            manifest=manifest
-        ).invoke(
+        run_result = dbtRunner(manifest=manifest).invoke(
             ["compile", "--inline", sql],
             project_dir=project_dir,
             introspect=False,

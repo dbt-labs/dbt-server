@@ -2,10 +2,8 @@ import os
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger, log_event_to_console
-from dbt_server.services.filesystem_service import (
-    get_task_artifacts_path,
-    get_root_path,
-)
+from dbt_server.services.filesystem_service import get_task_artifacts_path
+
 from celery.contrib.abortable import AbortableTask
 from celery.contrib.abortable import ABORTED
 from celery.exceptions import Ignore
