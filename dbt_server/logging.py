@@ -40,23 +40,26 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         if WORKSPACE_ID and "workspaceID" not in log_record:
             log_record["workspaceID"] = WORKSPACE_ID
 
+def get_log_formatter():
+    if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
+        formatter = logging.Formatter(
+            "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
+        )
+    else:
+        formatter = CustomJsonFormatter(
+            "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
+            "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
+            "%(processName)s %(thread)s %(threadName)s %(name)s "
+            "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
+            "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
+        )
+    return formatter
 
 # setup json logging for stdout and datadog
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
 stdout = logging.StreamHandler()
-if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
-    formatter = logging.Formatter(
-        "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
-    )
-else:
-    formatter = CustomJsonFormatter(
-        "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
-        "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
-        "%(processName)s %(thread)s %(threadName)s %(name)s "
-        "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
-        "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
-    )
+formatter = get_log_formatter()
 stdout.setFormatter(formatter)
 logger.addHandler(stdout)
 

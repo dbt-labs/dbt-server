@@ -1,7 +1,8 @@
+import logging
 import os
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app
-from dbt_server.logging import DBT_SERVER_LOGGER as logger, log_event_to_console
+from dbt_server.logging import get_log_formatter, log_event_to_console
 from dbt_server.services.filesystem_service import (
     get_task_artifacts_path,
     get_root_path,
@@ -13,6 +14,7 @@ from celery.states import PROPAGATE_STATES
 from celery.states import FAILURE
 from celery.states import STARTED
 from celery.states import SUCCESS
+
 from dbt.cli.main import dbtRunner
 from requests.adapters import HTTPAdapter
 from requests import Session
@@ -28,6 +30,12 @@ LOG_FORMAT_ARGS = "--log-format"
 LOG_FORMAT_DEFAULT = "json"
 PROJECT_DIR_ARGS = "--project-dir"
 
+# TODO: Make configurable and use env var for log file
+logger = logging.getLogger(__name__)
+formatter = get_log_formatter()
+file_handler = logging.FileHandler(filename="/var/log/celery/celery-all.log")
+file_handler.setFormatter(formatter)
+logger.addHandler(file_handler)
 
 def is_command_has_log_path(command: List[str]):
     """Returns true if command has --log-path args."""
@@ -107,10 +115,13 @@ def _invoke_runner(
         # artifacts may write to incorrect locations
         if project_dir:
             os.chdir(project_dir)
-        # TODO: Make sure callback works
-        dbt = dbtRunner(callbacks=[log_event_to_console])
+        # TODO: Verify we don't need callback for datadog
+        dbt = dbtRunner(callbacks=[])
         dbt.invoke(command)
+        logger.info(f"Task with id: {task_id} has completed successfully")
     except Exception as e:
+        # TODO: make this work
+        logger.exception(e)
         _update_state(
             task,
             task_id,
@@ -118,8 +129,6 @@ def _invoke_runner(
             {"exc_type": type(e).__name__, "exc_message": str(e)},
             callback_url,
         )
-        # TODO: make this work
-        logger.exception(e)
 
     finally:
         os.chdir(original_wd)
