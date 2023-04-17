@@ -116,9 +116,7 @@ class TestInvoke(TestCase):
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_success_callback(
-        self, patched_dbt_runner, patched_session, _, __
-    ):
+    def test_success_callback(self, patched_dbt_runner, patched_session, _, __):
         patched_session.return_value.mount.return_value = None
         patched_session.return_value.post.return_value = None
         patched_dbt_runner.return_value = self.mock_dbt_runner
@@ -146,9 +144,7 @@ class TestInvoke(TestCase):
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
     @patch("dbt_worker.tasks.dbtRunner")
-    def test_failure_callback(
-        self, patched_dbt_runner, patched_session, _, __
-    ):
+    def test_failure_callback(self, patched_dbt_runner, patched_session, _, __):
         patched_session.return_value.mount.return_value = None
         patched_session.return_value.post.return_value = None
         patched_dbt_runner.return_value = self.mock_dbt_runner
