@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Optional
 
 from dbt.events.eventmgr import EventLevel
-from dbt.events.base_types import EventMsg
 from pythonjsonlogger import jsonlogger
 from dbt_server.flags import CELERY_LOG_FILE
 
