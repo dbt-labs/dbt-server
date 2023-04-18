@@ -13,6 +13,10 @@ from celery.states import STARTED
 from celery.states import SUCCESS
 
 from dbt.cli.main import dbtRunner
+try:
+    from dbt.cli.main import dbtRunnerResult
+except (ModuleNotFoundError, ImportError):
+    dbtRunnerResult = None
 from requests.adapters import HTTPAdapter
 from requests import Session
 from threading import Thread
@@ -110,6 +114,17 @@ def _invoke_runner(
             os.chdir(project_dir)
         dbt = dbtRunner()
         dbt.invoke(command)
+        result = dbt.invoke(command)
+        # dbt-core 1.5.0-latest changes the return type from a tuple to a
+        #  dbtRunnerResult obj and no longer raises exceptions on invoke
+        if all(
+            [
+                dbtRunnerResult,
+                type(result) == dbtRunnerResult,
+                not result.success
+            ]
+        ):
+            raise result.exception
         logger.info(f"Task with id: {task_id} has completed successfully")
     except Exception as e:
         logger.exception(e)
