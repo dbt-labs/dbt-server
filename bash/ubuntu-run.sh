@@ -23,6 +23,8 @@ done <<< "$env_vars"
 service redis-server start
 service celeryd start
 
+tail -f /var/log/celery/celery-all.log &
+
 ${gunicorn} dbt_server.server:app --workers ${dbt_server_worker} \
 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${dbt_server_port} \
 --max-requests ${dbt_server_max_requests} --max-requests-jitter 3

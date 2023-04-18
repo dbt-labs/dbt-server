@@ -95,6 +95,9 @@ WORKSPACE_ID = InMemoryFlag("WORKSPACE_ID", None)
 CELERY_BROKER_URL = InMemoryFlag("CELERY_BROKER_URL", "redis://localhost:6379/0")
 # Celery task backend url for dbt server to get task results.
 CELERY_BACKEND_URL = InMemoryFlag("CELERY_BACKEND_URL", "redis://localhost:6379/0")
+# File path to use for celery log formatting -- should match what is used for CELERYD_LOG_FILE in celery config
+# or what is passed to --log-file in the celery command if running locally
+CELERY_LOG_FILE = InMemoryFlag("CELERY_LOG_FILE", "/var/log/celery/celery-all.log")
 
 #
 # EnvironFlag.

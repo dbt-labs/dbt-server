@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Optional
 
 from dbt.events.eventmgr import EventLevel
-from dbt.events.base_types import EventMsg
 from pythonjsonlogger import jsonlogger
+from dbt_server.flags import CELERY_LOG_FILE
 
 from dbt_server.models import TaskState
 
@@ -41,40 +41,60 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
             log_record["workspaceID"] = WORKSPACE_ID
 
 
-# setup json logging for stdout and datadog
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-stdout = logging.StreamHandler()
-if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
-    formatter = logging.Formatter(
-        "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
-    )
-else:
-    formatter = CustomJsonFormatter(
-        "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
-        "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
-        "%(processName)s %(thread)s %(threadName)s %(name)s "
-        "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
-        "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
-    )
-stdout.setFormatter(formatter)
-logger.addHandler(stdout)
+def get_log_formatter():
+    if os.environ.get("APPLICATION_ENVIRONMENT") in ("dev", None):
+        formatter = logging.Formatter(
+            "%(asctime)s - [%(process)d] %(name)s - %(levelname)s - %(message)s"
+        )
+    else:
+        formatter = CustomJsonFormatter(
+            "%(timestamp)f %(filename)s %(funcName)s %(levelname)s "
+            "%(lineno)d %(message)s %(module)s %(pathname)s %(process)d "
+            "%(processName)s %(thread)s %(threadName)s %(name)s "
+            "[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s "
+            "dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s]"
+        )
+    return formatter
+
 
 # Use standard python logger for all dbt-server logs-- these will be sent to
 # stdout but will not be written to task log files
 DBT_SERVER_LOGGER = logging.getLogger("dbt-server")
 DBT_SERVER_LOGGER.setLevel(logging.DEBUG)
+stdout = logging.StreamHandler()
+formatter = get_log_formatter()
+stdout.setFormatter(formatter)
+DBT_SERVER_LOGGER.addHandler(stdout)
 
 # make sure uvicorn is deferring to the root
 # logger to format logs
 logger_instance = logging.root.manager.loggerDict.get("uvicorn")
 if logger_instance:
-    logger.propagate = True
+    logger_instance.propagate = True
     logger_instance.handlers = []
 logger_instance = logging.root.manager.loggerDict.get("uvicorn.error")
 if logger_instance:
-    logger.propagate = True
+    logger_instance.propagate = True
     logger_instance.handlers = []
+
+
+def get_configured_celery_logger():
+    logger = logging.getLogger(__name__)
+    logger.handlers = []
+
+    formatter = get_log_formatter()
+    try:
+        handler = logging.FileHandler(filename=CELERY_LOG_FILE.get())
+    except FileNotFoundError:
+        # If file is not specified or specified path doesn't exist, just use stdout.
+        # This avoids errors in local dev and CI/CD
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    return logger
 
 
 def configure_uvicorn_access_log():
@@ -88,15 +108,6 @@ def configure_uvicorn_access_log():
     ual = logging.getLogger("uvicorn.access")
     ual.propagate = True
     ual.handlers = []
-
-
-# Push event messages to root python logger for formatting
-def log_event_to_console(event: EventMsg):
-    logging_method = dbt_event_to_python_root_log[event.info.level]
-    # if logging_method == logging.root.debug:
-    #     # Only log debug level for dbt-server logs
-    #     return
-    logging_method(event.info.msg)
 
 
 # TODO: This should be some type of event. We may also choose to send events for all task state updates.

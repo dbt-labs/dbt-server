@@ -8,6 +8,10 @@ import dbt.tracking
 import dbt.adapters.factory
 from dbt.contracts.graph.manifest import Manifest
 
+try:
+    from dbt.cli.main import dbtRunnerResult
+except (ModuleNotFoundError, ImportError):
+    dbtRunnerResult = None
 from dbt_server.helpers import get_profile_name
 
 # These exceptions were removed in v1.4
@@ -132,8 +136,13 @@ def compile_sql(manifest, project_dir, sql_config):
             write_json=False,
             write_manifest=False,
         )
-        # core will not raise an exception in runner, it will just return it in the result
-        if not run_result.success:
+        # dbt-core 1.5.0-latest changes the return type from a tuple to a
+        # dbtRunnerResult obj and no longer raises exceptions on invoke
+        if (
+            run_result
+            and type(run_result) == dbtRunnerResult
+            and not run_result.success
+        ):
             raise run_result.exception
         # convert to RemoteCompileResult to keep original return format
         node_result = run_result.result.results[0]
