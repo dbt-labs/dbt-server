@@ -117,13 +117,7 @@ def _invoke_runner(
         result = dbt.invoke(command)
         # dbt-core 1.5.0-latest changes the return type from a tuple to a
         #  dbtRunnerResult obj and no longer raises exceptions on invoke
-        if all(
-            [
-                dbtRunnerResult,
-                type(result) == dbtRunnerResult,
-                not result.success
-            ]
-        ):
+        if result and type(result) == dbtRunnerResult and not result.success:
             raise result.exception
         logger.info(f"Task with id: {task_id} has completed successfully")
     except Exception as e:
