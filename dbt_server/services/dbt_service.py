@@ -138,7 +138,11 @@ def compile_sql(manifest, project_dir, sql_config):
         )
         # dbt-core 1.5.0-latest changes the return type from a tuple to a
         # dbtRunnerResult obj and no longer raises exceptions on invoke
-        if run_result and type(run_result) == dbtRunnerResult and not run_result.success:
+        if (
+            run_result
+            and type(run_result) == dbtRunnerResult
+            and not run_result.success
+        ):
             raise run_result.exception
         # convert to RemoteCompileResult to keep original return format
         node_result = run_result.result.results[0]
