@@ -67,7 +67,12 @@ class CompilationInterfaceTests(unittest.TestCase):
                     "target": "new_target",
                 },
             )
-            expected_compile_args = SQLConfig(state_id='goodid', sql='select {{ 1 + 1 }}', target='new_target', profile=None)
+            expected_compile_args = SQLConfig(
+                state_id="goodid",
+                sql="select {{ 1 + 1 }}",
+                target="new_target",
+                profile=None,
+            )
             state_mock.assert_called_once_with(expected_compile_args)
             compile_mock.assert_called_once_with(
                 None, "./working-dir/state-goodid", expected_compile_args
