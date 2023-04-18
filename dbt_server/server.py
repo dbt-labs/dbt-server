@@ -76,6 +76,5 @@ def startup_cache_initialize():
 async def startup_event():
     # This method is `async` intentionally to block serving until startup is complete
     configure_uvicorn_access_log()
-    dbt_service.inject_dd_trace_into_core_lib()
     if DBT_CLOUD_CONTEXT.get() != "develop":
         startup_cache_initialize()
