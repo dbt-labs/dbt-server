@@ -97,6 +97,8 @@ def parse_to_manifest(project_path, args):
             write_json=False,
             write_manifest=False,
         )
+        if not result.success:
+            raise result.exception
         return result.result
     except CompilationException as e:
         logger.error(
