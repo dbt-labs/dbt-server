@@ -18,3 +18,4 @@ sql_app.db
 dbt-core-server-exploration/
 dbt.log
 .DS_Store
+*/.user.yml

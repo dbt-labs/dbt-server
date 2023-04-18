@@ -2,7 +2,6 @@ from collections import deque
 import dbt.events.functions
 import os
 import signal
-import uuid
 from uuid import uuid4
 
 from celery.backends.redis import RedisBackend
@@ -10,7 +9,7 @@ from celery.contrib.abortable import AbortableAsyncResult
 from celery.states import UNREADY_STATES
 from celery.states import PENDING
 from celery.states import FAILURE
-from fastapi import FastAPI, BackgroundTasks, Depends, status, HTTPException
+from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
 from pydantic import BaseModel
@@ -20,11 +19,11 @@ from fastapi.responses import JSONResponse
 from typing import List, Optional, Dict, Any
 from copy import deepcopy
 
-from dbt_server import crud, schemas, tracer, helpers
+from dbt_server import tracer
 from dbt_server.services import filesystem_service
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
-from dbt_server.models import TaskState
 from dbt_server.state import StateController
+from dbt_server.services import dbt_service
 
 from dbt_server.exceptions import (
     InvalidConfigurationException,
@@ -39,8 +38,6 @@ from dbt_worker.app import app as celery_app
 from dbt_worker.tasks import append_project_dir, invoke, resolve_project_dir
 from dbt_worker.tasks import is_command_has_log_path
 
-# ORM stuff
-from sqlalchemy.orm import Session
 
 LOG_PATH_ARGS = "--log-path"
 
@@ -242,102 +239,18 @@ def parse_project(args: ParseArgs):
     )
 
 
-@app.post("/async/dbt")
-async def dbt_entry_async(
-    args: DbtCommandArgs,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(crud.get_db),
-):
-    # example body: {"state_id": "123", "command":["run", "--threads", 1]}
-    state = StateController.load_state_async(args)
-
-    if args.task_id:
-        task_id = args.task_id
-    else:
-        task_id = str(uuid.uuid4())
-
-    log_path = filesystem_service.get_log_path(task_id, state.state_id)
-    task = schemas.Task(
-        task_id=task_id,
-        state=TaskState.PENDING,
-        command=(" ").join(str(param) for param in args.command),
-        log_path=log_path,
-    )
-
-    db_task = crud.get_task(db, task_id)
-    if db_task:
-        raise HTTPException(status_code=400, detail="Task already registered")
-
-    background_tasks.add_task(
-        state.execute_async_command, task_id, args.command, db, args.callback_url
-    )
-    created_task = crud.create_task(db, task)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "task_id": created_task.task_id,
-            "state_id": state.state_id,
-            "state": created_task.state,
-            "command": created_task.command,
-            "log_path": created_task.log_path,
-        },
-    )
-
-
-@app.post("/sync/dbt")
-async def dbt_entry_sync(args: DbtCommandArgs):
-    # example body: {"command":["list", "--output", "json"]}
-    state = StateController.load_state(args)
-    # TODO: See what if any useful info is returned when there's no success
-    results, _ = state.execute_sync_command(args.command)
-    try:
-        encoded_results = jsonable_encoder(results.to_dict())
-    except AttributeError:
-        encoded_results = jsonable_encoder(results)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parsing": state.state_id or state.project_path,
-            "path": state.serialize_path,
-            "command": (" ").join(str(param) for param in args.command),
-            "res": encoded_results,
-        },
-    )
-
-
-@app.post("/preview")
-async def preview_sql(sql: SQLConfig):
-    state = StateController.load_state(sql)
-    result = state.execute_query(sql.sql)
-    compiled_code = helpers.extract_compiled_code_from_node(result)
-
-    tag_request_span(state)
-    return JSONResponse(
-        status_code=200,
-        content={
-            "parsing": state.state_id,
-            "path": state.serialize_path,
-            "res": jsonable_encoder(result),
-            "compiled_code": compiled_code,
-        },
-    )
-
-
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController.load_state(sql)
-    result = state.compile_query(sql.sql)
-    compiled_code = helpers.extract_compiled_code_from_node(result)
-
+    result = dbt_service.compile_sql(state.manifest, state.root_path, sql)
     tag_request_span(state)
-
     return JSONResponse(
         status_code=200,
         content={
             "parsing": state.state_id,
             "path": state.serialize_path,
-            "res": jsonable_encoder(result),
-            "compiled_code": compiled_code,
+            "res": jsonable_encoder(result),  # TODO why we need this?
+            "compiled_code": result["compiled_code"],
         },
     )
 
@@ -352,15 +265,6 @@ def get_manifest_metadata(state):
         "manifest_size": state.manifest_size,
         "is_manifest_cached": state.is_manifest_cached,
     }
-
-
-@app.get("/status/{task_id}")
-def get_task_status(
-    task_id: str,
-    db: Session = Depends(crud.get_db),
-):
-    task = crud.get_task(db, task_id)
-    return JSONResponse(status_code=200, content={"status": task.state})
 
 
 class PostInvocationRequest(BaseModel):
