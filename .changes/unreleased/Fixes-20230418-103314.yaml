@@ -1,0 +1,7 @@
+kind: Fixes
+body: Updates the /compile and /parse endpoints to use dbtRunner interface
+time: 2023-04-18T10:33:14.640613-05:00
+custom:
+  Author: racheldaniel
+  Issue: "1"
+  PR: "213"

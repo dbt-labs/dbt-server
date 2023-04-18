@@ -16,7 +16,8 @@ fi
 # Export env vars to be sourced in celeryd script
 env_vars=$(printenv)
 while IFS= read -r line; do
-    echo "export $line" >> ~/.bashrc
+    value=$(echo "$line" | cut -d= -f2-)
+    echo "export ${line%=*}=\"$value\"" >> ~/.bashrc
 done <<< "$env_vars"
 
 service redis-server start

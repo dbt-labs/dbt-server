@@ -1,12 +1,11 @@
 # Need to run this as early in the server's startup as possible
-import os
 from typing import Optional
 from pydantic import BaseModel
 from dbt_server import tracer  # noqa
 
 from dbt_server import models
 from dbt_server.database import engine
-from dbt_server.flags import DBT_CLOUD_CONTEXT
+from dbt_server.flags import WORKSPACE_ID
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.views import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger, configure_uvicorn_access_log
@@ -63,16 +62,10 @@ def startup_cache_initialize():
         )
         return
 
-    target_name = os.environ.get("__DBT_TARGET_NAME", None)
-    if target_name == "":
-        target_name = None
-    config_args = ConfigArgs(target=target_name)
-
     manifest_size = filesystem_service.get_size(manifest_path)
-    config = dbt_service.create_dbt_config(root_path, config_args)
 
     LAST_PARSED.set_last_parsed_manifest(
-        latest_state_id, latest_project_path, root_path, manifest, manifest_size, config
+        latest_state_id, latest_project_path, root_path, manifest, manifest_size
     )
 
     logger.info(f"[STARTUP] Cached manifest in memory (path={root_path})")
@@ -83,6 +76,6 @@ def startup_cache_initialize():
 async def startup_event():
     # This method is `async` intentionally to block serving until startup is complete
     configure_uvicorn_access_log()
-    dbt_service.inject_dd_trace_into_core_lib()
-    if DBT_CLOUD_CONTEXT.get() != "develop":
+    # Only run this for semantic layer environment
+    if WORKSPACE_ID.get():
         startup_cache_initialize()

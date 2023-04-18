@@ -37,7 +37,8 @@ class CompilationInterfaceTests(unittest.TestCase):
         # Compile with invalid state id returns a 422
         assert response.status_code == 422
 
-    def test_compilation_interface_valid_state_id(self):
+    @patch("dbt_server.views.dbt_service.compile_sql")
+    def test_compilation_interface_valid_state_id(self, compile_mock):
         state_id = "goodid"
         source_query = "select {{ 1 + 1 }}"
         compiled_query = "select 2 as id"
@@ -48,19 +49,15 @@ class CompilationInterfaceTests(unittest.TestCase):
                 project_path=None,
                 root_path=f"./working-dir/state-{state_id}",
                 manifest=None,
-                config=None,
-                parser=None,
                 manifest_size=0,
                 is_manifest_cached=False,
             )
         )
 
-        query_mock = Mock(return_value={"compiled_code": compiled_query})
-
+        compile_mock.return_value = {"compiled_code": compiled_query}
         with patch.multiple(
             "dbt_server.state.StateController",
             load_state=state_mock,
-            compile_query=query_mock,
         ):
             response = client.post(
                 "/compile",
@@ -70,13 +67,16 @@ class CompilationInterfaceTests(unittest.TestCase):
                     "target": "new_target",
                 },
             )
-
-            state_mock.assert_called_once_with(
-                SQLConfig(
-                    state_id=state_id, sql="select {{ 1 + 1 }}", target="new_target"
-                ),
+            expected_compile_args = SQLConfig(
+                state_id="goodid",
+                sql="select {{ 1 + 1 }}",
+                target="new_target",
+                profile=None,
             )
-            query_mock.assert_called_once_with(source_query)
+            state_mock.assert_called_once_with(expected_compile_args)
+            compile_mock.assert_called_once_with(
+                None, "./working-dir/state-goodid", expected_compile_args
+            )
             assert response.status_code == 200
 
             expected = {
@@ -152,10 +152,8 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Update cache (ie. on /parse)
         manifest_mock = Mock()
-        config_mock = Mock()
-        with patch.multiple(
+        with patch(
             "dbt_server.services.dbt_service",
-            get_sql_parser=Mock(),
         ):
             cached.set_last_parsed_manifest(
                 "abc123",
@@ -163,14 +161,11 @@ class CompilationInterfaceTests(unittest.TestCase):
                 "./working_dir/state-abc123",
                 manifest_mock,
                 512,
-                config_mock,
             )
 
             assert cached.state_id == "abc123"
             assert cached.manifest is not None
             assert cached.manifest_size == 512
-            assert cached.config == config_mock
-            assert cached.parser is not None
             assert cached.root_path == "./working_dir/state-abc123"
             assert cached.project_path is None
 
@@ -184,11 +179,9 @@ class CompilationInterfaceTests(unittest.TestCase):
 
         # Re-update cache (ie. on subsequent /parse)
         new_manifest_mock = Mock()
-        new_config_mock = Mock()
 
-        with patch.multiple(
+        with patch(
             "dbt_server.services.dbt_service",
-            get_sql_parser=Mock(),
         ):
             cached.set_last_parsed_manifest(
                 None,
@@ -196,13 +189,10 @@ class CompilationInterfaceTests(unittest.TestCase):
                 "../jaffle-shop",
                 new_manifest_mock,
                 1024,
-                new_config_mock,
             )
             assert cached.state_id is None
             assert cached.manifest is not None
             assert cached.manifest_size == 1024
-            assert cached.config == new_config_mock
-            assert cached.parser is not None
             assert cached.root_path == "../jaffle-shop"
             assert cached.project_path == "../jaffle-shop"
 
