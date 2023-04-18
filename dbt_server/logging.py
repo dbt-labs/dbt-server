@@ -84,14 +84,14 @@ def get_configured_celery_logger():
 
     formatter = get_log_formatter()
     try:
-        file_handler = logging.FileHandler(filename=CELERY_LOG_FILE.get())
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        handler = logging.FileHandler(filename=CELERY_LOG_FILE.get())
     except FileNotFoundError:
-        # If file is not specified or specified path doesn't exist, just use stdout
+        # If file is not specified or specified path doesn't exist, just use stdout.
         # This avoids errors in local dev and CI/CD
-        stream_handler = logging.StreamHandler()
-        logger.addHandler(stream_handler)
+        handler = logging.StreamHandler()
+
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
     logger.setLevel(logging.INFO)
 
     return logger
