@@ -13,6 +13,7 @@ from celery.states import STARTED
 from celery.states import SUCCESS
 
 from dbt.cli.main import dbtRunner
+
 try:
     from dbt.cli.main import dbtRunnerResult
 except (ModuleNotFoundError, ImportError):
