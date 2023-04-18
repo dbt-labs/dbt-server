@@ -120,7 +120,7 @@ def _invoke_runner(
         #  dbtRunnerResult obj and no longer raises exceptions on invoke
         if result and type(result) == dbtRunnerResult and not result.success:
             raise result.exception
-        logger.info(f"Task with id: {task_id} has completed successfully")
+        logger.info(f"Task with id: {task_id} has completed")
     except Exception as e:
         logger.exception(e)
         _update_state(
