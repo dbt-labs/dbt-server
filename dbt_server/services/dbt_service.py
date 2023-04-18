@@ -8,6 +8,8 @@ import dbt.tracking
 import dbt.adapters.factory
 from dbt.contracts.graph.manifest import Manifest
 
+from dbt_server.helpers import get_profile_name
+
 # These exceptions were removed in v1.4
 try:
     from dbt.exceptions import (
@@ -69,16 +71,7 @@ def disable_tracking():
 @tracer.wrap
 def parse_to_manifest(project_path, args):
     try:
-
-        # If no profile name is passed in args, we will attempt to get it from env vars
-        # If profile is None, dbt will default to reading from dbt_project.yml
-        env_profile_name = os.getenv("DBT_PROFILE_NAME")
-        if args and hasattr(args, "profile") and args.profile:
-            profile_name = args.profile
-        elif env_profile_name:
-            profile_name = env_profile_name
-        else:
-            profile_name = None
+        profile_name = get_profile_name(args)
         # Target can be specified at the semantic layer level. If this field comes over as
         # an empty string instead of null, dbt will not use the default target name and
         # parsing will fail
@@ -122,14 +115,16 @@ def deserialize_manifest(serialize_path):
 
 @handle_dbt_compilation_error
 @tracer.wrap
-def compile_sql(manifest, project_dir, sql):
+def compile_sql(manifest, project_dir, sql_config):
     # Currently this command will load project and profile from disk
     # It uses the manifest passed in
     try:
+        profile_name = get_profile_name(sql_config)
         # Invoke dbtRunner to compile SQL code
         # TODO skip relational cache.
         run_result = dbtRunner(manifest=manifest).invoke(
-            ["compile", "--inline", sql],
+            ["compile", "--inline", sql_config.sql],
+            profile=profile_name,
             project_dir=project_dir,
             introspect=False,
             send_anonymous_usage_stats=False,

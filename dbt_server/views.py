@@ -242,7 +242,7 @@ def parse_project(args: ParseArgs):
 @app.post("/compile")
 def compile_sql(sql: SQLConfig):
     state = StateController.load_state(sql)
-    result = dbt_service.compile_sql(state.manifest, state.root_path, sql.sql)
+    result = dbt_service.compile_sql(state.manifest, state.root_path, sql)
     tag_request_span(state)
     return JSONResponse(
         status_code=200,
