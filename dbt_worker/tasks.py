@@ -119,7 +119,13 @@ def _invoke_runner(
         # dbt-core 1.5.0-latest changes the return type from a tuple to a
         #  dbtRunnerResult obj and no longer raises exceptions on invoke
         if result and type(result) == dbtRunnerResult and not result.success:
-            raise result.exception
+            # TODO: Dig into instances where exception is not returned from core
+            if result.exception:
+                raise result.exception
+            else:
+                logger.error(
+                    "Task was unsuccessful but no exception was returned from dbt-core"
+                )
         logger.info(f"Task with id: {task_id} has completed")
     except Exception as e:
         logger.exception(e)
