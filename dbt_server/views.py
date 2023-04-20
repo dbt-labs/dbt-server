@@ -38,7 +38,6 @@ from dbt_worker.app import app as celery_app
 from dbt_worker.tasks import append_project_dir, invoke, resolve_project_dir
 from dbt_worker.tasks import is_command_has_log_path
 
-
 LOG_PATH_ARGS = "--log-path"
 
 # We need to override the EVENT_HISTORY queue to store
@@ -381,7 +380,7 @@ async def list_invocation():
     )
 
 
-@app.post("/invocation/{task_id}/abort")
+@app.post("/invocations/{task_id}/abort")
 async def abort_invocation(task_id: str):
     """Aborts tasks. Notice it's best effort, task may still finish or fail.
     Returns invocation model."""
@@ -397,6 +396,7 @@ async def abort_invocation(task_id: str):
     # If task is not finalized, we are able to abort it, otherwise we should not
     # abort it.
     if task.state in UNREADY_STATES:
+        logger.info(f"Attempting to abort task: {task_id}")
         task.abort()
 
     # Re-pull task result from backend.

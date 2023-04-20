@@ -12,17 +12,6 @@ NOT_FOUND = "NOT_FOUND"
 INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
-class Task(BaseModel):
-    task_id: str
-    state: str
-    command: Optional[str] = None
-    log_path: Optional[str] = None
-    error: Optional[str] = None
-
-    class Config:
-        orm_mode = True
-
-
 class Invocation(BaseModel):
     # Unique task id of invocation, same as request.
     task_id: str
