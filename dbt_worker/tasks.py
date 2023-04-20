@@ -263,22 +263,17 @@ def _handle_abort(task_id, p, callback_url):
         return
     try:
         # Try to kill process using SIGINT.
+        # TODO: Send SIGTERM after a timeout-- there is
+        # a bug in core that sometimes makes SIGINT ineffective
         os.kill(p.pid, signal.SIGINT)
     except Exception as e:
         logger.info(str(e))
 
     try:
         if callback_url:
-            _send_status_callback(callback_url, task_id, ABORTED)
+            _send_state_callback(callback_url, task_id, ABORTED)
     except Exception as e:
         logger.info(str(e))
-
-
-def _send_status_callback(callback_url, task_id, status):
-    retries = Retry(total=5, allowed_methods=frozenset(["POST"]))
-    session = Session()
-    session.mount("http://", HTTPAdapter(max_retries=retries))
-    session.post(callback_url, json={"task_id": task_id, "status": status})
 
 
 @app.task(bind=True, track_started=True, base=AbortableTask)
