@@ -3,22 +3,12 @@ from typing import Optional
 from pydantic import BaseModel
 from dbt_server import tracer  # noqa
 
-from dbt_server import models
-from dbt_server.database import engine
 from dbt_server.flags import WORKSPACE_ID
 from dbt_server.services import dbt_service, filesystem_service
 from dbt_server.views import app
 from dbt_server.logging import DBT_SERVER_LOGGER as logger, configure_uvicorn_access_log
 from dbt_server.state import LAST_PARSED
 from dbt_server.exceptions import StateNotFoundException
-from sqlalchemy.exc import OperationalError
-
-# The default checkfirst=True should handle this, however we still
-# see a table exists error from time to time
-try:
-    models.Base.metadata.create_all(bind=engine, checkfirst=True)
-except OperationalError as err:
-    logger.debug(f"Handled error when creating database: {str(err)}")
 
 dbt_service.disable_tracking()
 

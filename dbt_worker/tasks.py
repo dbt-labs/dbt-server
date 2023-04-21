@@ -1,4 +1,8 @@
+from time import sleep
+from billiard.context import Process
+
 import os
+import signal
 from dbt_server.flags import DBT_PROJECT_DIRECTORY
 from dbt_worker.app import app
 from dbt_server.logging import get_configured_celery_logger
@@ -20,13 +24,11 @@ except (ModuleNotFoundError, ImportError):
     dbtRunnerResult = None
 from requests.adapters import HTTPAdapter
 from requests import Session
-from threading import Thread
 from typing import Any, Dict, Optional, List
 from urllib3 import Retry
 
 # How long the timeout that parent thread should join with child dbt invocation
 # thread. It's used to poll abort status.
-JOIN_INTERVAL_SECONDS = 0.5
 LOG_PATH_ARGS = "--log-path"
 LOG_FORMAT_ARGS = "--log-format"
 LOG_FORMAT_DEFAULT = "json"
@@ -196,6 +198,10 @@ def append_project_dir(command: List[str], project_dir: Optional[str]) -> None:
         command.extend([PROJECT_DIR_ARGS, resolved_project_dir])
 
 
+def raise_exception(*_):
+    raise KeyboardInterrupt
+
+
 def _invoke(
     task: Any,
     command: List[str],
@@ -212,6 +218,10 @@ def _invoke(
             status may be updated but we are not able to trigger callback, e.g.
             worker process is killed."""
     task_id = task.request.id
+
+    # Make sure celery doesn't ignore sigint, re-raise to allow task cancellation
+    signal.signal(signal.SIGINT, raise_exception)
+
     _insert_log_path(command, task_id)
     logger.info(f"Running dbt task ({task_id}) with {command}")
     if callback_url:
@@ -219,28 +229,51 @@ def _invoke(
 
     # To support abort, we need to run dbt in a child thread, make parent thread
     # monitor abort signal and join with child thread.
-    t = Thread(
+
+    p = Process(
         target=_invoke_runner, args=[task, task_id, command, project_dir, callback_url]
     )
-    t.start()
-    while t.is_alive():
-        # TODO: Handle abort signal.
-        t.join(JOIN_INTERVAL_SECONDS)
+    p.start()
+    while p.is_alive():
+        sleep(0.5)
+        if task.is_aborted():
+            _handle_abort(task_id, p, callback_url)
+
     # By the end of execution, a task state might be.
     # - STARTED, everything is fine!
     # - FAILURE, error occurs.
     # - ABORTED, user abort the task.
     task_status = _get_task_status(task, task_id)
     if task_status == ABORTED:
-        # TODO: Handle abort.
-        pass
+        _handle_abort(task_id, p, callback_url)
+
     # If task status is not propagatable, we need to mark it as success manually
     # to trigger callback.
     elif task_status not in PROPAGATE_STATES:
         _update_state(task, task_id, SUCCESS, {}, callback_url)
+
     # Raises Ignore exception to make Celery not automatically set state to
     # SUCCESS.
     raise Ignore()
+
+
+def _handle_abort(task_id, p, callback_url):
+    # Process is not alive, simply return.
+    if not p.is_alive():
+        return
+    try:
+        # Try to kill process using SIGINT.
+        # TODO: Send SIGTERM after a timeout-- there is
+        # a bug in core that sometimes makes SIGINT ineffective
+        os.kill(p.pid, signal.SIGINT)
+    except Exception as e:
+        logger.info(str(e))
+
+    try:
+        if callback_url:
+            _send_state_callback(callback_url, task_id, ABORTED)
+    except Exception as e:
+        logger.info(str(e))
 
 
 @app.task(bind=True, track_started=True, base=AbortableTask)

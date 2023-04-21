@@ -1,15 +1,11 @@
-import json
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from dbt.events.eventmgr import EventLevel
 from pythonjsonlogger import jsonlogger
 from dbt_server.flags import CELERY_LOG_FILE
 
-from dbt_server.models import TaskState
 
 ACCOUNT_ID = os.environ.get("ACCOUNT_ID")
 ENVIRONMENT_ID = os.environ.get("ENVIRONMENT_ID")
@@ -108,13 +104,3 @@ def configure_uvicorn_access_log():
     ual = logging.getLogger("uvicorn.access")
     ual.propagate = True
     ual.handlers = []
-
-
-# TODO: This should be some type of event. We may also choose to send events for all task state updates.
-@dataclass
-class ServerLog:
-    state: TaskState
-    error: Optional[str]
-
-    def to_json(self):
-        return json.dumps(self.__dict__)

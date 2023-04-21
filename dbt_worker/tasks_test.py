@@ -33,6 +33,7 @@ class MockTask:
         self.request.id = TEST_TASK_ID
         self.AsyncResult = MagicMock()
         self.update_state = MagicMock()
+        self.is_aborted = MagicMock(return_value=False)
 
 
 def mock_invoke_success(command):
@@ -69,12 +70,12 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
 
-        self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once()
-        self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
-        self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID, state="SUCCESS", meta={}
-        )
+            self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
+            patched_dbt_runner.assert_called_once()
+            self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
+            self.mock_task.update_state.assert_called_once_with(
+                task_id=TEST_TASK_ID, state="SUCCESS", meta={}
+            )
 
     @patch("dbt_worker.tasks.dbtRunner")
     def test_ignore_log_path(self, patched_dbt_runner, _):
@@ -87,12 +88,14 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, self.project_path, None)
 
-        self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH)
-        patched_dbt_runner.assert_called_once()
-        self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
-        self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID, state="SUCCESS", meta={}
-        )
+            self.assertEqual(
+                mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH
+            )
+            patched_dbt_runner.assert_called_once()
+            self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
+            self.mock_task.update_state.assert_called_once_with(
+                task_id=TEST_TASK_ID, state="SUCCESS", meta={}
+            )
 
     @patch("dbt_worker.tasks.dbtRunner")
     def test_failure(self, patched_dbt_runner, _):
@@ -102,16 +105,15 @@ class TestInvoke(TestCase):
         started_state.state = "FAILURE"
         self.mock_task.AsyncResult.return_value = started_state
 
-        with self.assertRaises(Ignore) as _:
+        with self.assertRaises(Ignore):
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, None)
-
-        self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once()
-        self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID,
-            state="FAILURE",
-            meta={"exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE},
-        )
+            self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
+            patched_dbt_runner.assert_called_once()
+            self.mock_task.update_state.assert_called_once_with(
+                task_id=TEST_TASK_ID,
+                state="FAILURE",
+                meta={"exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE},
+            )
 
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
@@ -128,18 +130,18 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
-        self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once()
-        patched_session.return_value.post.assert_any_call(
-            TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
-        )
-        patched_session.return_value.post.assert_any_call(
-            TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "SUCCESS"}
-        )
-        self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
-        self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID, state="SUCCESS", meta={}
-        )
+            self.assertEqual(mock_invoke_success.last_command, TEST_RESOLVED_COMMAND)
+            patched_dbt_runner.assert_called_once()
+            patched_session.return_value.post.assert_any_call(
+                TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
+            )
+            patched_session.return_value.post.assert_any_call(
+                TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "SUCCESS"}
+            )
+            self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
+            self.mock_task.update_state.assert_called_once_with(
+                task_id=TEST_TASK_ID, state="SUCCESS", meta={}
+            )
 
     @patch("dbt_worker.tasks.Retry", return_value=None)
     @patch("dbt_worker.tasks.Session", return_value=MagicMock())
@@ -156,17 +158,17 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND, self.project_path, TEST_CALLBACK_URL)
 
-        self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
-        patched_dbt_runner.assert_called_once()
-        patched_session.return_value.post.assert_any_call(
-            TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
-        )
-        patched_session.return_value.post.assert_any_call(
-            TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "FAILURE"}
-        )
-        self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
-        self.mock_task.update_state.assert_called_once_with(
-            task_id=TEST_TASK_ID,
-            state="FAILURE",
-            meta={"exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE},
-        )
+            self.assertEqual(mock_invoke_failure.last_command, TEST_RESOLVED_COMMAND)
+            patched_dbt_runner.assert_called_once()
+            patched_session.return_value.post.assert_any_call(
+                TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "STARTED"}
+            )
+            patched_session.return_value.post.assert_any_call(
+                TEST_CALLBACK_URL, json={"task_id": TEST_TASK_ID, "status": "FAILURE"}
+            )
+            self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
+            self.mock_task.update_state.assert_called_once_with(
+                task_id=TEST_TASK_ID,
+                state="FAILURE",
+                meta={"exc_type": "Exception", "exc_message": TEST_ERROR_MESSAGE},
+            )
