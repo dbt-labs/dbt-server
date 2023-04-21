@@ -36,7 +36,6 @@ class MockTask:
         self.is_aborted = MagicMock(return_value=False)
 
 
-
 def mock_invoke_success(command):
     sleep(0.5)
     mock_invoke_success.last_command = command
@@ -89,7 +88,9 @@ class TestInvoke(TestCase):
         with self.assertRaises(Ignore) as _:
             _invoke(self.mock_task, TEST_COMMAND_WITH_LOG_PATH, self.project_path, None)
 
-            self.assertEqual(mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH)
+            self.assertEqual(
+                mock_invoke_success.last_command, TEST_COMMAND_WITH_LOG_PATH
+            )
             patched_dbt_runner.assert_called_once()
             self.mock_task.AsyncResult.assert_called_once_with(TEST_TASK_ID)
             self.mock_task.update_state.assert_called_once_with(
