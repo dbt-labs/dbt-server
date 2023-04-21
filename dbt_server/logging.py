@@ -1,9 +1,6 @@
-import json
 import logging
 import os
-from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 from dbt.events.eventmgr import EventLevel
 from pythonjsonlogger import jsonlogger
