@@ -1,0 +1,7 @@
+kind: Features
+body: Adds core 1.5.0-latest to tests and image build
+time: 2023-04-28T09:09:55.222868-05:00
+custom:
+  Author: racheldaniel
+  Issue: "1"
+  PR: "221"
