@@ -95,13 +95,9 @@ def parse_to_manifest(project_path, args):
             write_manifest=False,
         )
         if result and type(result) == dbtRunnerResult and not result.success:
-            # TODO: Dig into instances where exception is not returned from core
+            # If task had unhandled errors, raise
             if result.exception:
                 raise result.exception
-            else:
-                logger.error(
-                    "Task was unsuccessful but no exception was returned from dbt-core"
-                )
         return result.result
     except CompilationException as e:
         logger.error(
@@ -149,13 +145,9 @@ def compile_sql(manifest, project_dir, sql_config):
             and type(run_result) == dbtRunnerResult
             and not run_result.success
         ):
-            # TODO: Dig into instances where exception is not returned from core
+            # If task had unhandled errors, raise
             if run_result.exception:
                 raise run_result.exception
-            else:
-                logger.error(
-                    "Task was unsuccessful but no exception was returned from dbt-core"
-                )
         # convert to RemoteCompileResult to keep original return format
         node_result = run_result.result.results[0]
         result = RemoteCompileResult(
