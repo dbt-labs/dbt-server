@@ -32,20 +32,20 @@ runs:
   using: "composite"
   steps:
     - name: login to the development container registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         registry: ${{ inputs.development-registry-endpoint }}
         username: ${{ inputs.development-registry-username }}
         password: ${{ inputs.development-registry-password }}
     - name: login to the staging container registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         registry: ${{ inputs.staging-registry-endpoint }}
         username: ${{ inputs.staging-registry-username }}
         password: ${{ inputs.staging-registry-password }}
 
     - name: login to the production container registry
-      uses: docker/login-action@v1
+      uses: docker/login-action@v2
       with:
         registry: ${{ inputs.production-registry-endpoint }}
         username: ${{ inputs.production-registry-username }}
