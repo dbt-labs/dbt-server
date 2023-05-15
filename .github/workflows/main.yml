@@ -70,7 +70,7 @@ jobs:
           pip install -r requirements.txt -r dev-requirements.txt
           pip install ${{ (matrix.dbt-core.prerelease && '--pre') || '' }} ${{ matrix.dbt-core.package }} dbt-postgres dbt-snowflake
           pytest
-    
+
       - name: run tests - head
         run: |
           pip install -r requirements.txt -r dev-requirements.txt
@@ -126,7 +126,7 @@ jobs:
               package: git+https://github.com/dbt-labs/dbt-bigquery#egg=dbt-bigquery
     steps:
       - name: checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: registry login
         uses: ./.github/actions/registry-login-action
