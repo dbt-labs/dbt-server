@@ -18,14 +18,13 @@ app = Celery(
 
 app.config_from_object(celeryconfig)
 
-HEARTBEAT_FILE = Path("/tmp/worker_heartbeat")
-READINESS_FILE = Path("/tmp/worker_ready")
+LIVENESS_FILE = Path("/tmp/worker_heartbeat")
 
 
 class LivenessProbe(bootsteps.StartStopStep):
     requires = {"celery.worker.components:Timer"}
 
-    def __init__(self, worker, **kwargs):
+    def __init__(self, _, **kwargs):
         self.requests = []
         self.tref = None
 
@@ -37,21 +36,21 @@ class LivenessProbe(bootsteps.StartStopStep):
             priority=10,
         )
 
-    def stop(self, worker):
-        HEARTBEAT_FILE.unlink(missing_ok=True)
+    def stop(self, _):
+        LIVENESS_FILE.unlink(missing_ok=True)
 
-    def update_heartbeat_file(self, worker):
-        HEARTBEAT_FILE.touch()
+    def update_heartbeat_file(self, _):
+        LIVENESS_FILE.touch()
 
 
 @worker_ready.connect
 def worker_ready(**_):
-    READINESS_FILE.touch()
+    LIVENESS_FILE.touch()
 
 
 @worker_shutdown.connect
 def worker_shutdown(**_):
-    READINESS_FILE.unlink(missing_ok=True)
+    LIVENESS_FILE.unlink(missing_ok=True)
 
 
 app.steps["worker"].add(LivenessProbe)
