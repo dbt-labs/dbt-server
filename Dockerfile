@@ -11,6 +11,8 @@ RUN apt-get -y update && apt-get -y upgrade && \
   apt-get -y update --fix-missing && \
   apt-get -y install && apt-get -y upgrade && \
   apt-get -y install software-properties-common && \
+  apt-get -y install curl && \
+  apt-get -y install iputils-ping &&\
   apt-get -y install git libpq-dev openssh-client openssl && \
   apt-get -y autoremove && \
   rm -rf /var/lib/apt/lists/*
