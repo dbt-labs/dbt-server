@@ -1,4 +1,4 @@
-from time import sleep
+from time import sleep, time
 from billiard.context import Process
 
 import os
@@ -121,12 +121,16 @@ def _invoke_runner(
         # dbt-core 1.5.0-latest changes the return type from a tuple to a
         #  dbtRunnerResult obj and no longer raises exceptions on invoke
         if result and type(result) == dbtRunnerResult and not result.success:
-            # TODO: Dig into instances where exception is not returned from core
+            # If task had unhandled errors, raise them
             if result.exception:
                 raise result.exception
             else:
-                logger.error(
-                    "Task was unsuccessful but no exception was returned from dbt-core"
+                _update_state(
+                    task,
+                    task_id,
+                    FAILURE,
+                    None,
+                    callback_url,
                 )
         logger.info(f"Task with id: {task_id} has completed")
     except Exception as e:
@@ -261,14 +265,24 @@ def _handle_abort(task_id, p, callback_url):
     # Process is not alive, simply return.
     if not p.is_alive():
         return
-    try:
-        # Try to kill process using SIGINT.
-        # TODO: Send SIGTERM after a timeout-- there is
-        # a bug in core that sometimes makes SIGINT ineffective
-        os.kill(p.pid, signal.SIGINT)
-    except Exception as e:
-        logger.info(str(e))
 
+    # As of 05/2023 there is a bug in dbt-core that will cause occasional
+    # timeouts for KeyboardInterrupts.
+    # To mediate, wait for process to exit or retry killing it with SIGINT
+    retry_timeout = 5  # seconds
+    start_time = time()
+    while p.is_alive():
+        if time() - start_time >= retry_timeout:
+            break
+        try:
+            os.kill(p.pid, signal.SIGINT)
+        except Exception as e:
+            logger.info(str(e))
+        sleep(1)
+
+    # If the process is still alive, send a SIGKILL signal to force it to exit.
+    if p.is_alive():
+        os.kill(p.pid, signal.SIGKILL)
     try:
         if callback_url:
             _send_state_callback(callback_url, task_id, ABORTED)
