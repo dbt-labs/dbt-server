@@ -9,3 +9,4 @@ psutil==5.9.2
 requests==2.26.0
 celery==5.2.7
 redis==4.5.4
+starlette>=0.27.0 # not directly required, pinned by Snyk to avoid a vulnerability
