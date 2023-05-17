@@ -99,7 +99,14 @@ jobs:
             package: dbt-postgres
           - name: redshift
             package: dbt-redshift
+          - name: databricks
+            package: dbt-databricks
+          - name: spark
+            package: dbt-spark
+          - name: trino
+            package: dbt-trino
         include:
+        # We do not build head images for trino or databricks
           - dbt-core:
               version: head
               package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
@@ -124,6 +131,12 @@ jobs:
             dbt-database-adapter:
               name: bigquery
               package: git+https://github.com/dbt-labs/dbt-bigquery#egg=dbt-bigquery
+          - dbt-core:
+              version: head
+              package: git+https://github.com/dbt-labs/dbt-core#egg=dbt-core&subdirectory=core
+            dbt-database-adapter:
+              name: spark
+              package: git+https://github.com/dbt-labs/dbt-spark#egg=dbt-spark
     steps:
       - name: checkout code
         uses: actions/checkout@v3
