@@ -30,6 +30,8 @@ RUN /usr/src/app/bash/ubuntu-setup-redis.sh
 
 COPY requirements.txt /usr/src/app
 
+RUN pip install --upgrade pip
+
 RUN pip install                     \
     --no-cache-dir                  \
     --upgrade                       \
