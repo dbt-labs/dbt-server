@@ -38,8 +38,8 @@ RUN pip install                     \
     --upgrade                       \
     -r requirements.txt             \
     ${DBT_PIP_FLAGS}                \
-    ${DBT_CORE_PACKAGE}             \
-    ${DBT_DATABASE_ADAPTER_PACKAGE} \
+    # ${DBT_CORE_PACKAGE}             \
+    # ${DBT_DATABASE_ADAPTER_PACKAGE} \
     ${DATADOG_PACKAGE}
 
 RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for this
@@ -59,3 +59,4 @@ RUN --mount=type=ssh \
 RUN apt remove -y squashfs-tools
 
 RUN echo "venvs:" && ls -al /venv
+
