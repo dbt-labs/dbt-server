@@ -1,0 +1,7 @@
+kind: Features
+body: Adds dbt-core v1.6.0-pre to image builds
+time: 2023-05-23T15:07:56.851209-05:00
+custom:
+  Author: isaac-taylor
+  Issue: "1"
+  PR: "233"

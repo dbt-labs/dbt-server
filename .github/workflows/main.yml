@@ -54,6 +54,9 @@ jobs:
         dbt-core:
           - version: "1.5.0-latest"
             package: "dbt-core~=1.5.0"
+          - version: "1.6.0-pre"
+            package: "dbt-core~=1.6.0b1"
+            prerelease: true
 
     steps:
       - name: checkout repo
@@ -90,6 +93,9 @@ jobs:
             prerelease: true
           - version: "1.5.0-latest"
             package: "dbt-core~=1.5.0"
+          - version: "1.6.0-pre"
+            package: "dbt-core~=1.6.0b1"
+            prerelease: true
         dbt-database-adapter:
           - name: snowflake
             package: dbt-snowflake
@@ -103,8 +109,8 @@ jobs:
             package: dbt-databricks
           - name: spark
             package: dbt-spark
-          - name: trino
-            package: dbt-trino
+          #- name: trino Does not support dbt 1.6 yet!
+          #  package: dbt-trino
         include:
         # We do not build head images for trino or databricks
           - dbt-core:
