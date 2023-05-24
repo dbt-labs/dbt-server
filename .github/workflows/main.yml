@@ -109,8 +109,8 @@ jobs:
             package: dbt-databricks
           - name: spark
             package: dbt-spark
-          - name: trino
-            package: dbt-trino
+          #- name: trino Does not support dbt 1.6 yet!
+          #  package: dbt-trino
         include:
         # We do not build head images for trino or databricks
           - dbt-core:
