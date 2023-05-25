@@ -1,6 +1,6 @@
 #!/bin/bash
 # If set to true, ddtrace-run will be enabled for dbt-server.
-readonly dbt_server_enable_ddtrace="${DBT_SERVER_ENABLE_DDTRACE-false}"
+readonly dbt_server_enable_ddtrace="${DBT_SERVER_ENABLE_DDTRACE-true}"
 # How many dbt server worker processes.
 readonly dbt_server_worker="${DBT_SERVER_WORKER_NUM-3}"
 # Dbt server listening port.
@@ -20,11 +20,13 @@ while IFS= read -r line; do
     echo "export ${line%=*}=\"$value\"" >> ~/.bashrc
 done <<< "$env_vars"
 
+# these require root permission
 service redis-server start
 service celeryd start
 
 tail -f /var/log/celery/celery-all.log &
 
+su restricted
 ${gunicorn} dbt_server.server:app --workers ${dbt_server_worker} \
 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${dbt_server_port} \
 --max-requests ${dbt_server_max_requests} --max-requests-jitter 3
