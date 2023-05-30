@@ -19,6 +19,11 @@ RUN apt-get -y update && apt-get -y upgrade && \
 
 WORKDIR /usr/src/app
 
+RUN groupadd -g 999 restricted && \
+  useradd -s /bin/sh \
+  -m -d /home/restricted \
+  -r -u 999 -g restricted restricted
+
 COPY ./bash /usr/src/app/bash
 # Copy celery config and serviced.
 COPY ./configs/celeryd /etc/default/celeryd
