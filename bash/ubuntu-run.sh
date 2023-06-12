@@ -9,6 +9,7 @@ readonly dbt_server_port="${DBT_SERVER_WORKER_PORT-8585}"
 readonly dbt_server_max_requests="${DBT_SERVER_MAX_REQUESTS-5}"
 
 readonly dbt_server_user="${DBT_SERVER_USER-root}"
+echo $dbt_server_user
 
 gunicorn="gunicorn"
 if [ "${dbt_server_enable_ddtrace}" = "true" ]; then
@@ -30,4 +31,4 @@ tail -f /var/log/celery/celery-all.log &
 
 su -c "${gunicorn} dbt_server.server:app --workers ${dbt_server_worker} \
 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${dbt_server_port} \
---max-requests ${dbt_server_max_requests} --max-requests-jitter 3 $(dbt_server_user)"
+--max-requests ${dbt_server_max_requests} --max-requests-jitter 3" ${dbt_server_user}
