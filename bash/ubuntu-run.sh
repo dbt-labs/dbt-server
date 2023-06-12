@@ -30,4 +30,4 @@ tail -f /var/log/celery/celery-all.log &
 
 su -c "${gunicorn} dbt_server.server:app --workers ${dbt_server_worker} \
 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${dbt_server_port} \
---max-requests ${dbt_server_max_requests} --max-requests-jitter 3" $(dbt_server_user)
+--max-requests ${dbt_server_max_requests} --max-requests-jitter 3 $(dbt_server_user)"
