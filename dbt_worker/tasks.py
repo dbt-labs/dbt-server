@@ -116,7 +116,6 @@ def _invoke_runner(
         if project_dir:
             os.chdir(project_dir)
         dbt = dbtRunner()
-        dbt.invoke(command)
         result = dbt.invoke(command)
         # dbt-core 1.5.0-latest changes the return type from a tuple to a
         #  dbtRunnerResult obj and no longer raises exceptions on invoke
