@@ -27,7 +27,7 @@ except (ModuleNotFoundError, ImportError):
     )
 
 
-from dbt.contracts.sql import RemoteCompileResult
+from dbt.contracts.sql import RemoteCompileResult, RemoteRunResult, ResultTable
 
 # dbt Server imports
 from dbt_server.services import filesystem_service
@@ -138,16 +138,7 @@ def compile_sql(manifest, project_dir, sql_config):
             write_json=False,
             write_manifest=False,
         )
-        # dbt-core 1.5.0-latest changes the return type from a tuple to a
-        # dbtRunnerResult obj and no longer raises exceptions on invoke
-        if (
-            run_result
-            and type(run_result) == dbtRunnerResult
-            and not run_result.success
-        ):
-            # If task had unhandled errors, raise
-            if run_result.exception:
-                raise run_result.exception
+        check_run_result(run_result)
         # convert to RemoteCompileResult to keep original return format
         node_result = run_result.result.results[0]
         result = RemoteCompileResult(
@@ -160,14 +151,7 @@ def compile_sql(manifest, project_dir, sql_config):
         )
 
     except InvalidConnectionException:
-        if ALLOW_INTROSPECTION:
-            # Raise original error if introspection is not disabled
-            # and therefore errors are unexpected
-            raise
-        else:
-            msg = "This dbt server environment does not support introspective queries. \n Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes that command"
-            logger.exception(msg)
-            raise UnsupportedQueryException(msg)
+        invalid_connection_handle()
     except CompilationException as e:
         logger.error(f"Failed to compile sql. Compilation Error: {repr(e)}")
         raise dbtCoreCompilationException(e)
@@ -179,3 +163,74 @@ def compile_sql(manifest, project_dir, sql_config):
         )
 
     return result.to_dict()
+
+
+@handle_dbt_compilation_error
+@tracer.wrap
+def preview_sql(manifest, project_dir, sql_config):
+    try:
+        profile_name = get_profile_name(sql_config)
+        # Invoke dbtRunner to compile SQL code
+        run_result = dbtRunner(manifest=manifest).invoke(
+            ["show", "--inline", sql_config.sql],
+            profile=profile_name,
+            project_dir=project_dir,
+            introspect=True,
+            send_anonymous_usage_stats=False,
+            populate_cache=False,
+            write_json=False,
+            write_manifest=False,
+        )
+        check_run_result(run_result)
+        # convert to RemoteCompileResult to keep original return format
+        node_result = run_result.result.results[0]
+        result = RemoteRunResult(
+            raw_code=node_result.node.raw_code,
+            compiled_code=node_result.node.compiled_code,
+            node=node_result.node,
+            timing=node_result.timing,
+            logs=[],
+            generated_at=datetime.utcnow(),
+            table=ResultTable(
+                column_names=node_result.agate_table.column_names,
+                rows=node_result.agate_table.rows,
+            ),
+        )
+
+    except InvalidConnectionException:
+        invalid_connection_handle()
+    except CompilationException as e:
+        logger.error(f"Failed to compile sql. Compilation Error: {repr(e)}")
+        raise dbtCoreCompilationException(e)
+
+    if type(result) != RemoteRunResult:
+        # Theoretically this shouldn't happen-- handling just in case
+        raise InternalException(
+            f"Got unexpected result type ({type(result)}) from dbt Core"
+        )
+
+    return result.to_dict()
+
+
+def check_run_result(run_result):
+    # dbt-core 1.5.0-latest changes the return type from a tuple to a
+    # dbtRunnerResult obj and no longer raises exceptions on invoke
+    if run_result and type(run_result) == dbtRunnerResult and not run_result.success:
+        # If task had unhandled errors, raise
+        if run_result.exception:
+            raise run_result.exception
+
+
+def invalid_connection_handle():
+    if ALLOW_INTROSPECTION:
+        # Raise original error if introspection is not disabled
+        # and therefore errors are unexpected
+        raise
+    else:
+        msg = (
+            "This dbt server environment does not support introspective queries. \n "
+            "Hint: typically introspective queries use the 'run_query' jinja command or a macro that invokes "
+            "that command"
+        )
+        logger.exception(msg)
+        raise UnsupportedQueryException(msg)
