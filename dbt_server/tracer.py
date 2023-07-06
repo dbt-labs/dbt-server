@@ -8,7 +8,7 @@ APM_ENABLED = os.getenv("APPLICATION_TRACING_ENABLED", "") not in (
     "false",
 )
 
-PROFILING_ENABLED = os.getenv("PROFILING_ENABLED", False).lower() == "true"
+PROFILING_ENABLED = os.getenv("PROFILING_ENABLED", "").lower() == "true"
 
 ENV_HAS_DDTRACE = False
 TRACING_ENABLED = False
