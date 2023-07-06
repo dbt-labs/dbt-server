@@ -8,6 +8,8 @@ APM_ENABLED = os.getenv("APPLICATION_TRACING_ENABLED", "") not in (
     "false",
 )
 
+PROFILING_ENABLED = os.getenv("PROFILING_ENABLED", False).lower() == "true"
+
 ENV_HAS_DDTRACE = False
 TRACING_ENABLED = False
 DBT_VERSION = str(version.installed).lstrip("=")
@@ -15,7 +17,7 @@ DBT_VERSION = str(version.installed).lstrip("=")
 try:
     import ddtrace
 
-    if APM_ENABLED:
+    if PROFILING_ENABLED:
         import ddtrace.profiling.auto
 
     ENV_HAS_DDTRACE = True
