@@ -139,7 +139,6 @@ class TestManifestBuildingPostgres(ManifestBuildingTestBase):
         # Compile a query which results in a dbt compilation error
         invalid_query = "select * from {{ ref('not_a_model') }}"
         resp = self.compile_against_state(self.state_id, invalid_query)
-        data = resp.json()
         self.assertEqual(resp.status_code, 400)
 
     def test_valid_query_call_macro(self):
@@ -156,9 +155,6 @@ class TestManifestBuildingPostgres(ManifestBuildingTestBase):
 
         resp = self.compile_against_state(self.state_id, valid_macro_query)
         self.assertEqual(resp.status_code, 400)
-        data = resp.json()
-
-        self.maxDiff = None
 
     def test_cached_compilation(self):
         # Test that compilation which uses the `graph` context variable
