@@ -1,0 +1,8 @@
+kind: Features
+body: Add a new environment variable PROFILING_ENABLED to separately configure profiling
+  from APM.
+time: 2023-07-10T14:05:25.669635-04:00
+custom:
+  Author: chrispasakarnis
+  Issue: "244"
+  PR: "243"
