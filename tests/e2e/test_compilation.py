@@ -10,6 +10,7 @@ import hashlib
 import json
 import pytest
 import tempfile
+from pprint import pprint
 
 client = TestClient(app)
 
@@ -141,7 +142,7 @@ class TestManifestBuildingPostgres(ManifestBuildingTestBase):
         resp = self.compile_against_state(self.state_id, invalid_query)
         data = resp.json()
         self.assertEqual(resp.status_code, 400)
-        assert bool(re.match("compilation error", data["message"], re.I))
+        assert bool(re.match("Error parsing inline query", data["message"], re.I))
 
     def test_valid_query_call_macro(self):
         # Compile a query that calls a dbt user-space macro
@@ -154,11 +155,17 @@ class TestManifestBuildingPostgres(ManifestBuildingTestBase):
 
     def test_invalid_query_call_macro(self):
         valid_macro_query = "select '{{ my_macro(unexpected=true) }}'"
+
+        pprint("=========== HELLO")
+
         resp = self.compile_against_state(self.state_id, valid_macro_query)
+        pprint(resp)
         self.assertEqual(resp.status_code, 400)
         data = resp.json()
+
+        pprint(data)
         self.maxDiff = None
-        assert bool(re.match("compilation error", data["message"], re.I))
+        assert bool(re.match("Error parsing inline query", data["message"], re.I))
 
     def test_cached_compilation(self):
         # Test that compilation which uses the `graph` context variable
