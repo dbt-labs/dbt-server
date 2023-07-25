@@ -1,0 +1,7 @@
+kind: Features
+body: 'Add a new environment variable PROFILING_ENABLED to separately configure profiling '
+time: 2023-07-21T16:22:24.319514-04:00
+custom:
+  Author: chrispasakarnis
+  Issue: "244"
+  PR: "245"
