@@ -1,6 +1,5 @@
 import re
 import requests
-import time
 import sys
 import hashlib
 import os
@@ -9,13 +8,12 @@ import json
 import yaml
 
 # CALL THIS SCRIPT WITH A PROJECT_DIR, OR FROM THE ROOT OF A DBT PROJECT
-# ex. python test_server.py ../jaffle_shop
+# ex. python init_project.py ../jaffle_shop
 
 if len(sys.argv) > 1:
     project_dir = sys.argv[1]
 else:
     project_dir = None
-
 
 SERVER_HOST_PUSH = "http://0.0.0.0:8585/push"
 SERVER_HOST_PARSE = "http://0.0.0.0:8585/parse"
@@ -100,10 +98,6 @@ def read_project(project_dir, paths):
                 if file_contents is not None:
                     manifest[relpath] = file_contents
     return manifest
-
-
-def get_hash(s):
-    return hashlib.md5(json.dumps(s).encode()).hexdigest()
 
 
 def get_state(project_dir):
