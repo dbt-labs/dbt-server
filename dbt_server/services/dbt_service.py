@@ -125,6 +125,10 @@ def compile_sql(manifest, project_dir, sql_config):
     # Currently this command will load project and profile from disk
     # It uses the manifest passed in
     try:
+        # remove any inline_query nodes that might be generated in previous parse
+        for node_name in manifest.nodes.keys():
+            if "inline_query" in node_name:
+                manifest.nodes.pop(node_name)
         profile_name = get_profile_name(sql_config)
         # Invoke dbtRunner to compile SQL code
         # TODO skip relational cache.
