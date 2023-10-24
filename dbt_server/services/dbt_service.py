@@ -1,5 +1,5 @@
 import os
-import threading
+from multiprocessing import Lock
 
 from datetime import datetime
 
@@ -49,8 +49,7 @@ ALLOW_INTROSPECTION = str(os.environ.get("__DBT_ALLOW_INTROSPECTION", "1")).lowe
     "on",
 )
 
-CONFIG_GLOBAL_LOCK = threading.Lock()
-
+COMPILE_SQL_LOCK = Lock()
 
 class Args(BaseModel):
     profile: str = None
@@ -124,11 +123,8 @@ def deserialize_manifest(serialize_path):
 def compile_sql(manifest, project_dir, sql_config):
     # Currently this command will load project and profile from disk
     # It uses the manifest passed in
+    COMPILE_SQL_LOCK.acquire()
     try:
-        # remove any inline_query nodes that might be generated in previous parse
-        for node_name in manifest.nodes.keys():
-            if "inline_query" in node_name:
-                manifest.nodes.pop(node_name)
         profile_name = get_profile_name(sql_config)
         # Invoke dbtRunner to compile SQL code
         # TODO skip relational cache.
@@ -175,6 +171,8 @@ def compile_sql(manifest, project_dir, sql_config):
     except CompilationException as e:
         logger.error(f"Failed to compile sql. Compilation Error: {repr(e)}")
         raise dbtCoreCompilationException(e)
+    finally:
+        COMPILE_SQL_LOCK.release()
 
     if type(result) != RemoteCompileResult:
         # Theoretically this shouldn't happen-- handling just in case
