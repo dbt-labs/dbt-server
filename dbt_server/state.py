@@ -1,3 +1,4 @@
+import multiprocessing
 from dbt_server.services import filesystem_service, dbt_service
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server.logging import DBT_SERVER_LOGGER as logger
@@ -6,10 +7,9 @@ from dbt_server import tracer
 
 from dataclasses import dataclass
 from typing import Optional, Any
-import threading
 
 
-MANIFEST_LOCK = threading.Lock()
+MANIFEST_LOCK = multiprocessing.Lock()
 
 
 @dataclass
