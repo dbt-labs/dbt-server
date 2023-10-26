@@ -12,7 +12,10 @@ RUN apt-get -y update && apt-get -y upgrade && \
   apt-get -y install && apt-get -y upgrade && \
   apt-get -y install software-properties-common && \
   apt-get -y install curl && \
-  apt-get -y install iputils-ping &&\
+  apt-get -y install iputils-ping \
+  squashfs-tools \
+  python3-venv \
+  jq && \
   apt-get -y install git libpq-dev openssh-client openssl && \
   apt-get -y autoremove && \
   rm -rf /var/lib/apt/lists/*
@@ -42,11 +45,25 @@ RUN pip install                     \
     --upgrade                       \
     -r requirements.txt             \
     ${DBT_PIP_FLAGS}                \
-    ${DBT_CORE_PACKAGE}             \
-    ${DBT_DATABASE_ADAPTER_PACKAGE} \
+    # ${DBT_CORE_PACKAGE}             \
+    # ${DBT_DATABASE_ADAPTER_PACKAGE} \
     ${DATADOG_PACKAGE}
 
 RUN pip install --force-reinstall MarkupSafe==2.0.1 # TODO: find better fix for this
 
 COPY ./dbt_server /usr/src/app/dbt_server
 COPY ./dbt_worker /usr/src/app/dbt_worker
+
+# dbt virtual environments
+#
+RUN mkdir -p /venv
+RUN --mount=type=ssh \
+    --mount=type=secret,id=GITHUB_TOKEN \
+    # TODO: MAKE TOKEN AVAILABLE TO SCRIPT
+    export GITHUB_TOKEN={{token}} && \
+    /usr/src/app/bash/install-venv.sh
+# no longer needed
+RUN apt remove -y squashfs-tools
+
+RUN echo "venvs:" && ls -al /venv
+
