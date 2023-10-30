@@ -1,5 +1,7 @@
 import os
 import shutil
+from typing import Union
+
 from dbt_server.exceptions import StateNotFoundException
 from dbt_server import tracer
 
@@ -221,7 +223,7 @@ def write_unparsed_manifest_to_disk(
 
 
 @tracer.wrap
-def get_latest_state_id(state_id: str):
+def get_latest_state_id(state_id: Union[str, None]):
     """Returns dbt-server latest processed state id.
 
     Args:
