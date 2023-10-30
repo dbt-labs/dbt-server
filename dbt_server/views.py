@@ -45,7 +45,6 @@ LOG_PATH_ARGS = "--log-path"
 # from being used.
 dbt.events.functions.EVENT_HISTORY = deque(maxlen=10)
 
-
 # Enable `ALLOW_ORCHESTRATED_SHUTDOWN` to instruct dbt server to
 # ignore a first SIGINT or SIGTERM and enable a `/shutdown` endpoint
 ALLOW_ORCHESTRATED_SHUTDOWN = os.environ.get(
@@ -137,7 +136,6 @@ async def handled_dbt_error(request: Request, exc: InvalidRequestException):
 
 
 if ALLOW_ORCHESTRATED_SHUTDOWN:
-
     @app.post("/shutdown")
     def shutdown():
         # raising a SIGKILL logs some
@@ -168,7 +166,7 @@ def _list_all_task_ids_redis() -> List[str]:
     # Celery will insert a prefix automatically, we need to remove it.
     celery_prefix = backend.get_key_for_task("")
     return [
-        key_bytes.decode()[len(celery_prefix) :]
+        key_bytes.decode()[len(celery_prefix):]
         for key_bytes in backend.client.keys(key)
     ]
 
