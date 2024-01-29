@@ -5,7 +5,7 @@
 </p>
 <p align="center">
 
-> :warning: **dbt Server is deprecated and will no longer be maintained by dbt Labs going forward.**
+> :warning: **dbt Server is deprecated and will no longer be maintained by dbt Labs going forward. You may continue to use this repository and fork it for your needs. If you would like to be a maintainer of this repository, please reach out to us by opening an issue.**
 
 > dbt Server supported our legacy Semantic Layer, which was [fully deprecated in December 2023.](https://docs.getdbt.com/docs/dbt-versions/release-notes/Dec-2023/legacy-sl) In October 2023, we introduced the GA of the revamped dbt Semantic Layer with [significant improvements](https://www.getdbt.com/blog/build-centralize-and-deliver-consistent-metrics-with-the-dbt-semantic-layer), made possible by the [acquisition of Transform](https://www.getdbt.com/blog/dbt-acquisition-transform) and the integration of [MetricFlow](https://docs.getdbt.com/docs/build/about-metricflow) into dbt. The dbt Semantic Layer is now independent of dbt Server and operates on MetricFlow Server, a new proprietary technology designed for enhanced connectivity and scale.
 
