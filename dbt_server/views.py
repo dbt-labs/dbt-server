@@ -254,6 +254,22 @@ def compile_sql(sql: SQLConfig):
     )
 
 
+@app.post("/preview")
+async def preview_sql(sql: SQLConfig):
+    state = StateController.load_state(sql)
+    result = dbt_service.preview_sql(state.manifest, state.root_path, sql)
+    tag_request_span(state)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "parsing": state.state_id,
+            "path": state.serialize_path,
+            "res": jsonable_encoder(result),
+            "compiled_code": result["compiled_code"],
+        },
+    )
+
+
 def tag_request_span(state):
     manifest_metadata = get_manifest_metadata(state)
     tracer.add_tags_to_current_span(manifest_metadata)
