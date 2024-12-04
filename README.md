@@ -1,13 +1,25 @@
+# ***Archival Notice***
+This repository has been archived.
+
+As a result all of its historical issues and PRs have been closed.
+
+Please *do not clone* this repo without understanding the risk in doing so:
+- It may have unaddressed security vulnerabilities
+- It may have unaddressed bugs
+
+<details>
+   <summary>Click for historical readme</summary>
+
 # dbt-server
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/dbt-labs/dbt/ec7dee39f793aa4f7dd3dae37282cc87664813e4/etc/dbt-logo-full.svg" alt="dbt logo" width="500"/>
-</p>
-<p align="center">
+&lt;p align=&quot;center&quot;&gt;
+  &lt;img src=&quot;https://raw.githubusercontent.com/dbt-labs/dbt/ec7dee39f793aa4f7dd3dae37282cc87664813e4/etc/dbt-logo-full.svg&quot; alt=&quot;dbt logo&quot; width=&quot;500&quot;/&gt;
+&lt;/p&gt;
+&lt;p align=&quot;center&quot;&gt;
 
-> :warning: **dbt Server is deprecated and will no longer be maintained by dbt Labs going forward. You may continue to use this repository and fork it for your needs. If you would like to be a maintainer of this repository, please reach out to us by opening an issue.**
+&gt; :warning: **dbt Server is deprecated and will no longer be maintained by dbt Labs going forward. You may continue to use this repository and fork it for your needs. If you would like to be a maintainer of this repository, please reach out to us by opening an issue.**
 
-> dbt Server supported our legacy Semantic Layer, which was [fully deprecated in December 2023.](https://docs.getdbt.com/docs/dbt-versions/release-notes/Dec-2023/legacy-sl). In October 2023, we introduced the GA of the revamped dbt Semantic Layer with [significant improvements](https://www.getdbt.com/blog/build-centralize-and-deliver-consistent-metrics-with-the-dbt-semantic-layer), made possible by the [acquisition of Transform](https://www.getdbt.com/blog/dbt-acquisition-transform) and the integration of [MetricFlow](https://docs.getdbt.com/docs/build/about-metricflow) into dbt. The dbt Semantic Layer is now independent of dbt Server and operates on MetricFlow Server, a new proprietary technology designed for enhanced connectivity and scale.
+&gt; dbt Server supported our legacy Semantic Layer, which was [fully deprecated in December 2023.](https://docs.getdbt.com/docs/dbt-versions/release-notes/Dec-2023/legacy-sl). In October 2023, we introduced the GA of the revamped dbt Semantic Layer with [significant improvements](https://www.getdbt.com/blog/build-centralize-and-deliver-consistent-metrics-with-the-dbt-semantic-layer), made possible by the [acquisition of Transform](https://www.getdbt.com/blog/dbt-acquisition-transform) and the integration of [MetricFlow](https://docs.getdbt.com/docs/build/about-metricflow) into dbt. The dbt Semantic Layer is now independent of dbt Server and operates on MetricFlow Server, a new proprietary technology designed for enhanced connectivity and scale.
 
 Welcome to the `dbt-server` repository! The dbt Server is intended to provide a web API for [dbt](https://github.com/dbt-labs/dbt-core) operations and replace the [`dbt-rpc`](https://github.com/dbt-labs/dbt-rpc) Server.
 
@@ -25,8 +37,9 @@ See the [developer setup in the contributing guide](CONTRIBUTING.md#developer-se
 
 ## License
 
-The `dbt-server` repository uses the Business Source License (BSL). That makes the repository "source available", unlike most of our repositories which are "open source". See [the license](LICENSE) and [our blog on licensing](https://www.getdbt.com/blog/licensing-dbt/) for details.
+The `dbt-server` repository uses the Business Source License (BSL). That makes the repository &quot;source available&quot;, unlike most of our repositories which are &quot;open source&quot;. See [the license](LICENSE) and [our blog on licensing](https://www.getdbt.com/blog/licensing-dbt/) for details.
 
 ## Code of Conduct
 
 Everyone interacting in the dbt project's codebases, issue trackers, chat rooms, and mailing lists is expected to follow the [dbt Code of Conduct](https://community.getdbt.com/code-of-conduct).
+
